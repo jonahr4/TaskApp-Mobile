@@ -1,0 +1,565 @@
+import { useRef, useState, useMemo, useCallback } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TouchableOpacity,
+    Dimensions,
+    ScrollView,
+    Alert,
+} from "react-native";
+import PagerView from "react-native-pager-view";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useAutoUrgent } from "@/hooks/useAutoUrgent";
+import { updateTask, deleteTask } from "@/lib/firestore";
+import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import type { Task, TaskGroup } from "@/lib/types";
+import TaskModal from "@/components/TaskModal";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+function formatDueDateTime(task: Task): string | null {
+    if (!task.dueDate) return null;
+    const d = new Date(`${task.dueDate}T00:00:00`);
+    const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+    let str = d.toLocaleDateString("en-US", options);
+    if (task.dueTime) {
+        const [hh, mm] = task.dueTime.split(":").map(Number);
+        const period = hh >= 12 ? "PM" : "AM";
+        const h12 = hh % 12 || 12;
+        str += ` • ${h12}:${String(mm).padStart(2, "0")} ${period}`;
+    }
+    return str;
+}
+
+function TaskRow({
+    task,
+    group,
+    onToggle,
+    onPress,
+    onDelete,
+}: {
+    task: Task;
+    group?: TaskGroup;
+    onToggle: () => void;
+    onPress: () => void;
+    onDelete: () => void;
+}) {
+    const quadrant = getQuadrant(task);
+    const meta = quadrant ? QUADRANT_META[quadrant] : null;
+    const due = formatDueDateTime(task);
+
+    return (
+        <TouchableOpacity
+            style={styles.taskRow}
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            <TouchableOpacity
+                style={[
+                    styles.checkbox,
+                    task.completed && styles.checkboxChecked,
+                ]}
+                onPress={onToggle}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+                {task.completed && (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                )}
+            </TouchableOpacity>
+
+            <View style={styles.taskContent}>
+                <Text
+                    style={[
+                        styles.taskTitle,
+                        task.completed && styles.taskTitleCompleted,
+                    ]}
+                    numberOfLines={2}
+                >
+                    {task.title}
+                </Text>
+                <View style={styles.taskMeta}>
+                    {due && (
+                        <Text style={styles.taskDue}>{due}</Text>
+                    )}
+                    {meta && (
+                        <View style={[styles.priorityBadge, { backgroundColor: meta.bg, borderColor: meta.border }]}>
+                            <View style={[styles.priorityDot, { backgroundColor: meta.color }]} />
+                            <Text style={[styles.priorityText, { color: meta.color }]}>
+                                {meta.sublabel}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            <TouchableOpacity
+                onPress={onDelete}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.deleteBtn}
+            >
+                <Ionicons name="trash-outline" size={16} color={Colors.light.textTertiary} />
+            </TouchableOpacity>
+        </TouchableOpacity>
+    );
+}
+
+function GroupPage({
+    group,
+    tasks,
+    uid,
+    onEditTask,
+    onAddTask,
+}: {
+    group: TaskGroup | null;
+    tasks: Task[];
+    uid: string;
+    onEditTask: (t: Task) => void;
+    onAddTask: (groupId: string | null) => void;
+}) {
+    const groupName = group?.name ?? "Ungrouped";
+    const groupColor = group?.color ?? Colors.light.textTertiary;
+    const activeTasks = tasks.filter((t) => !t.completed);
+    const completedTasks = tasks.filter((t) => t.completed);
+    const [showCompleted, setShowCompleted] = useState(false);
+
+    const handleToggle = async (task: Task) => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await updateTask(uid, task.id, { completed: !task.completed });
+    };
+
+    const handleDelete = (task: Task) => {
+        Alert.alert("Delete Task", `Delete "${task.title}"?`, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => deleteTask(uid, task.id),
+            },
+        ]);
+    };
+
+    return (
+        <View style={styles.groupPage}>
+            <View style={styles.groupCard}>
+                {/* Group Header */}
+                <View style={styles.groupHeader}>
+                    <View style={styles.groupHeaderLeft}>
+                        <View style={[styles.groupDot, { backgroundColor: groupColor }]} />
+                        <Text style={styles.groupName}>{groupName}</Text>
+                        <View style={styles.countBadge}>
+                            <Text style={styles.countText}>{activeTasks.length}</Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => onAddTask(group?.id ?? null)}
+                        style={styles.addBtn}
+                    >
+                        <Ionicons name="add" size={22} color={Colors.light.accent} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Task List */}
+                <ScrollView
+                    style={styles.taskList}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                    {activeTasks.length === 0 && (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="checkmark-done" size={32} color={Colors.light.borderLight} />
+                            <Text style={styles.emptyText}>All caught up!</Text>
+                        </View>
+                    )}
+                    {activeTasks.map((task) => (
+                        <TaskRow
+                            key={task.id}
+                            task={task}
+                            onToggle={() => handleToggle(task)}
+                            onPress={() => onEditTask(task)}
+                            onDelete={() => handleDelete(task)}
+                        />
+                    ))}
+
+                    {/* Completed Section */}
+                    {completedTasks.length > 0 && (
+                        <TouchableOpacity
+                            style={styles.completedToggle}
+                            onPress={() => setShowCompleted(!showCompleted)}
+                        >
+                            <Ionicons
+                                name={showCompleted ? "chevron-down" : "chevron-forward"}
+                                size={16}
+                                color={Colors.light.textTertiary}
+                            />
+                            <Text style={styles.completedToggleText}>
+                                Completed ({completedTasks.length})
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                    {showCompleted &&
+                        completedTasks.map((task) => (
+                            <TaskRow
+                                key={task.id}
+                                task={task}
+                                onToggle={() => handleToggle(task)}
+                                onPress={() => onEditTask(task)}
+                                onDelete={() => handleDelete(task)}
+                            />
+                        ))}
+                </ScrollView>
+            </View>
+        </View>
+    );
+}
+
+export default function TasksScreen() {
+    const { user, logOut } = useAuth();
+    const { tasks } = useTasks(user?.uid);
+    const { groups } = useTaskGroups(user?.uid);
+    useAutoUrgent(user?.uid, tasks);
+
+    const [currentPage, setCurrentPage] = useState(0);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editTask, setEditTask] = useState<Task | null>(null);
+    const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
+    const pagerRef = useRef<PagerView>(null);
+
+    // Build pages: one per group + "Ungrouped" if there are ungrouped tasks
+    const pages = useMemo(() => {
+        const result: { group: TaskGroup | null; tasks: Task[] }[] = [];
+
+        for (const g of groups) {
+            const groupTasks = tasks.filter((t) => t.groupId === g.id);
+            result.push({ group: g, tasks: groupTasks });
+        }
+
+        const ungrouped = tasks.filter(
+            (t) => !t.groupId || !groups.find((g) => g.id === t.groupId)
+        );
+        if (ungrouped.length > 0 || groups.length === 0) {
+            result.push({ group: null, tasks: ungrouped });
+        }
+
+        return result;
+    }, [tasks, groups]);
+
+    const handleEditTask = useCallback((task: Task) => {
+        setEditTask(task);
+        setDefaultGroupId(null);
+        setModalOpen(true);
+    }, []);
+
+    const handleAddTask = useCallback((groupId: string | null) => {
+        setEditTask(null);
+        setDefaultGroupId(groupId);
+        setModalOpen(true);
+    }, []);
+
+    return (
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Tasks</Text>
+                <TouchableOpacity onPress={logOut} style={styles.profileBtn}>
+                    <Ionicons name="person-circle-outline" size={28} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Pager View - iOS Home Screen Style */}
+            {pages.length > 0 ? (
+                <PagerView
+                    ref={pagerRef}
+                    style={styles.pager}
+                    initialPage={0}
+                    onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
+                    overdrag
+                >
+                    {pages.map((page, index) => (
+                        <View key={page.group?.id ?? "ungrouped"} style={styles.pageWrapper}>
+                            <GroupPage
+                                group={page.group}
+                                tasks={page.tasks}
+                                uid={user!.uid}
+                                onEditTask={handleEditTask}
+                                onAddTask={handleAddTask}
+                            />
+                        </View>
+                    ))}
+                </PagerView>
+            ) : (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="add-circle-outline" size={48} color={Colors.light.borderLight} />
+                    <Text style={styles.emptyContainerText}>No task groups yet</Text>
+                </View>
+            )}
+
+            {/* Page Indicator Dots */}
+            {pages.length > 1 && (
+                <View style={styles.dotContainer}>
+                    {pages.map((_, i) => (
+                        <View
+                            key={i}
+                            style={[
+                                styles.dot,
+                                i === currentPage && styles.dotActive,
+                            ]}
+                        />
+                    ))}
+                </View>
+            )}
+
+            {/* FAB */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => handleAddTask(pages[currentPage]?.group?.id ?? null)}
+                activeOpacity={0.85}
+            >
+                <Ionicons name="add" size={28} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Task Modal */}
+            <TaskModal
+                visible={modalOpen}
+                onClose={() => { setModalOpen(false); setEditTask(null); }}
+                task={editTask}
+                defaultGroupId={defaultGroupId}
+                groups={groups}
+            />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Colors.light.bg,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 60,
+        paddingBottom: Spacing.md,
+        backgroundColor: Colors.light.bgCard,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.light.borderLight,
+    },
+    headerTitle: {
+        fontSize: FontSize.xxl,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+        letterSpacing: -0.3,
+    },
+    profileBtn: {
+        padding: 4,
+    },
+    pager: {
+        flex: 1,
+    },
+    pageWrapper: {
+        flex: 1,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.lg,
+    },
+    groupPage: {
+        flex: 1,
+    },
+    groupCard: {
+        flex: 1,
+        backgroundColor: Colors.light.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+        overflow: "hidden",
+    },
+    groupHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.light.borderLight,
+    },
+    groupHeaderLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+    },
+    groupDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    groupName: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: Colors.light.textPrimary,
+    },
+    countBadge: {
+        backgroundColor: Colors.light.bg,
+        borderRadius: Radius.full,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+    },
+    countText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: Colors.light.textSecondary,
+    },
+    addBtn: {
+        padding: 4,
+    },
+    taskList: {
+        flex: 1,
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.sm,
+    },
+    taskRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: Colors.light.borderLight,
+        gap: Spacing.md,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: Colors.light.border,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    checkboxChecked: {
+        backgroundColor: Colors.light.success,
+        borderColor: Colors.light.success,
+    },
+    taskContent: {
+        flex: 1,
+    },
+    taskTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: Colors.light.textPrimary,
+        lineHeight: 20,
+    },
+    taskTitleCompleted: {
+        textDecorationLine: "line-through",
+        color: Colors.light.textTertiary,
+    },
+    taskMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        marginTop: 3,
+        flexWrap: "wrap",
+    },
+    taskDue: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+    },
+    priorityBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+    },
+    priorityDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+    priorityText: {
+        fontSize: 10,
+        fontWeight: "600",
+    },
+    deleteBtn: {
+        padding: 4,
+    },
+    emptyState: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: 60,
+        gap: Spacing.sm,
+    },
+    emptyText: {
+        fontSize: FontSize.md,
+        color: Colors.light.textTertiary,
+    },
+    completedToggle: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+        marginTop: Spacing.sm,
+    },
+    completedToggleText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textTertiary,
+        fontWeight: "500",
+    },
+    dotContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingVertical: Spacing.md,
+        gap: 6,
+    },
+    dot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: Colors.light.borderLight,
+    },
+    dotActive: {
+        backgroundColor: Colors.light.accent,
+        width: 20,
+        borderRadius: 4,
+    },
+    fab: {
+        position: "absolute",
+        right: Spacing.xl,
+        bottom: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.light.accent,
+        justifyContent: "center",
+        alignItems: "center",
+        shadowColor: Colors.light.accent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: Spacing.md,
+    },
+    emptyContainerText: {
+        fontSize: FontSize.md,
+        color: Colors.light.textTertiary,
+    },
+});
