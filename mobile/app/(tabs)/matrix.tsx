@@ -13,7 +13,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { updateTask, deleteTask } from "@/lib/firestore";
+import { updateTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, Quadrant } from "@/lib/types";
@@ -50,7 +50,7 @@ export default function MatrixScreen() {
 
     const handleToggle = async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        await updateTask(user!.uid, task.id, { completed: !task.completed });
+        await updateTaskUnified(user?.uid, task.id, { completed: !task.completed });
     };
 
     const openNewInQuadrant = (q: Quadrant) => {

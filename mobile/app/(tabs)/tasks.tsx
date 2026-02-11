@@ -8,21 +8,29 @@ import {
     Dimensions,
     ScrollView,
     Alert,
+    Animated,
+    Pressable,
+    NativeSyntheticEvent,
+    NativeScrollEvent,
 } from "react-native";
-import PagerView from "react-native-pager-view";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
-import { updateTask, deleteTask } from "@/lib/firestore";
+import { updateTaskUnified, deleteTaskUnified, createGroupUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
+import GroupModal from "@/components/GroupModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PEEK_WIDTH = 24;
+const CARD_GAP = 10;
+const CARD_WIDTH = SCREEN_WIDTH - PEEK_WIDTH * 2 - CARD_GAP;
 
 function formatDueDateTime(task: Task): string | null {
     if (!task.dueDate) return null;
@@ -116,12 +124,16 @@ function GroupPage({
     uid,
     onEditTask,
     onAddTask,
+    onEditGroup,
+    onLocalChange,
 }: {
     group: TaskGroup | null;
     tasks: Task[];
-    uid: string;
+    uid: string | undefined;
     onEditTask: (t: Task) => void;
     onAddTask: (groupId: string | null) => void;
+    onEditGroup?: (g: TaskGroup) => void;
+    onLocalChange?: () => void;
 }) {
     const groupName = group?.name ?? "Ungrouped";
     const groupColor = group?.color ?? Colors.light.textTertiary;
@@ -131,7 +143,8 @@ function GroupPage({
 
     const handleToggle = async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        await updateTask(uid, task.id, { completed: !task.completed });
+        await updateTaskUnified(uid, task.id, { completed: !task.completed });
+        if (!uid) onLocalChange?.();
     };
 
     const handleDelete = (task: Task) => {
@@ -140,7 +153,10 @@ function GroupPage({
             {
                 text: "Delete",
                 style: "destructive",
-                onPress: () => deleteTask(uid, task.id),
+                onPress: async () => {
+                    await deleteTaskUnified(uid, task.id);
+                    if (!uid) onLocalChange?.();
+                },
             },
         ]);
     };
@@ -157,12 +173,23 @@ function GroupPage({
                             <Text style={styles.countText}>{activeTasks.length}</Text>
                         </View>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => onAddTask(group?.id ?? null)}
-                        style={styles.addBtn}
-                    >
-                        <Ionicons name="add" size={22} color={Colors.light.accent} />
-                    </TouchableOpacity>
+                    <View style={styles.groupHeaderRight}>
+                        {group && onEditGroup && (
+                            <TouchableOpacity
+                                onPress={() => onEditGroup(group)}
+                                style={styles.addBtn}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <Ionicons name="ellipsis-horizontal" size={20} color={Colors.light.textSecondary} />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            onPress={() => onAddTask(group?.id ?? null)}
+                            style={styles.addBtn}
+                        >
+                            <Ionicons name="add" size={22} color={Colors.light.accent} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Task List */}
@@ -221,30 +248,41 @@ function GroupPage({
 
 export default function TasksScreen() {
     const { user, logOut } = useAuth();
-    const { tasks } = useTasks(user?.uid);
-    const { groups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
+    const router = useRouter();
     useAutoUrgent(user?.uid, tasks);
+
+    const handleLocalChange = () => {
+        reloadLocal();
+        reloadLocalGroups();
+    };
 
     const [currentPage, setCurrentPage] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
-    const pagerRef = useRef<PagerView>(null);
+    const pagerRef = useRef<ScrollView>(null);
+
+    const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const offset = e.nativeEvent.contentOffset.x;
+        const page = Math.round(offset / (CARD_WIDTH + CARD_GAP));
+        setCurrentPage(page);
+    }, []);
 
     // Build pages: one per group + "Ungrouped" if there are ungrouped tasks
     const pages = useMemo(() => {
         const result: { group: TaskGroup | null; tasks: Task[] }[] = [];
 
-        for (const g of groups) {
-            const groupTasks = tasks.filter((t) => t.groupId === g.id);
-            result.push({ group: g, tasks: groupTasks });
-        }
-
+        // Always show an "Ungrouped" / general page first
         const ungrouped = tasks.filter(
             (t) => !t.groupId || !groups.find((g) => g.id === t.groupId)
         );
-        if (ungrouped.length > 0 || groups.length === 0) {
-            result.push({ group: null, tasks: ungrouped });
+        result.push({ group: null, tasks: ungrouped });
+
+        for (const g of groups) {
+            const groupTasks = tasks.filter((t) => t.groupId === g.id);
+            result.push({ group: g, tasks: groupTasks });
         }
 
         return result;
@@ -262,37 +300,109 @@ export default function TasksScreen() {
         setModalOpen(true);
     }, []);
 
+    // Group modal state
+    const [groupModalOpen, setGroupModalOpen] = useState(false);
+    const [editGroup, setEditGroup] = useState<TaskGroup | null>(null);
+
+    const handleEditGroup = useCallback((g: TaskGroup) => {
+        setEditGroup(g);
+        setGroupModalOpen(true);
+    }, []);
+
+    // Expandable FAB state
+    const [fabOpen, setFabOpen] = useState(false);
+    const fabAnim = useRef(new Animated.Value(0)).current;
+
+    const toggleFab = () => {
+        const toValue = fabOpen ? 0 : 1;
+        Animated.spring(fabAnim, {
+            toValue,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 80,
+        }).start();
+        setFabOpen(!fabOpen);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handleNewGroup = () => {
+        setFabOpen(false);
+        Animated.timing(fabAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+        setEditGroup(null);
+        setGroupModalOpen(true);
+    };
+
+    const handleNewTask = () => {
+        setFabOpen(false);
+        Animated.timing(fabAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+        handleAddTask(pages[currentPage]?.group?.id ?? null);
+    };
+
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Tasks</Text>
-                <TouchableOpacity onPress={logOut} style={styles.profileBtn}>
-                    <Ionicons name="person-circle-outline" size={28} color={Colors.light.textSecondary} />
+                <TouchableOpacity
+                    onPress={() => user ? logOut() : router.push("/(auth)/login")}
+                    style={styles.profileBtn}
+                >
+                    <Ionicons
+                        name={user ? "person-circle" : "person-circle-outline"}
+                        size={28}
+                        color={user ? Colors.light.accent : Colors.light.textSecondary}
+                    />
                 </TouchableOpacity>
             </View>
 
-            {/* Pager View - iOS Home Screen Style */}
-            {pages.length > 0 ? (
-                <PagerView
-                    ref={pagerRef}
-                    style={styles.pager}
-                    initialPage={0}
-                    onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
-                    overdrag
+            {/* Sign-in banner */}
+            {!user && (
+                <TouchableOpacity
+                    style={styles.syncBanner}
+                    onPress={() => router.push("/(auth)/login")}
+                    activeOpacity={0.8}
                 >
-                    {pages.map((page, index) => (
-                        <View key={page.group?.id ?? "ungrouped"} style={styles.pageWrapper}>
+                    <Ionicons name="cloud-offline-outline" size={16} color={Colors.light.accent} />
+                    <Text style={styles.syncBannerText}>Sign in to sync across devices</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Colors.light.accent} />
+                </TouchableOpacity>
+            )}
+
+            {/* Carousel */}
+            {pages.length > 0 ? (
+                <ScrollView
+                    ref={pagerRef}
+                    horizontal
+                    pagingEnabled={false}
+                    snapToInterval={CARD_WIDTH + CARD_GAP}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{
+                        paddingHorizontal: PEEK_WIDTH,
+                        paddingTop: Spacing.lg,
+                        paddingBottom: Spacing.sm,
+                    }}
+                    style={styles.pager}
+                    onMomentumScrollEnd={handleScroll}
+                >
+                    {pages.map((page) => (
+                        <View
+                            key={page.group?.id ?? "ungrouped"}
+                            style={styles.pageWrapper}
+                        >
                             <GroupPage
                                 group={page.group}
                                 tasks={page.tasks}
-                                uid={user!.uid}
+                                uid={user?.uid}
                                 onEditTask={handleEditTask}
                                 onAddTask={handleAddTask}
+                                onEditGroup={handleEditGroup}
+                                onLocalChange={handleLocalChange}
                             />
                         </View>
                     ))}
-                </PagerView>
+                </ScrollView>
             ) : (
                 <View style={styles.emptyContainer}>
                     <Ionicons name="add-circle-outline" size={48} color={Colors.light.borderLight} />
@@ -301,9 +411,9 @@ export default function TasksScreen() {
             )}
 
             {/* Page Indicator Dots */}
-            {pages.length > 1 && (
-                <View style={styles.dotContainer}>
-                    {pages.map((_, i) => (
+            <View style={styles.dotContainer}>
+                {pages.length > 1
+                    ? pages.map((_, i) => (
                         <View
                             key={i}
                             style={[
@@ -311,26 +421,101 @@ export default function TasksScreen() {
                                 i === currentPage && styles.dotActive,
                             ]}
                         />
-                    ))}
-                </View>
+                    ))
+                    : <View style={styles.dotSpacer} />}
+            </View>
+
+            {/* FAB Backdrop */}
+            {fabOpen && (
+                <Pressable style={styles.fabBackdrop} onPress={toggleFab} />
             )}
+
+            {/* FAB Mini Actions */}
+            <Animated.View
+                style={[
+                    styles.fabMini,
+                    styles.fabMiniTop,
+                    {
+                        opacity: fabAnim,
+                        transform: [
+                            { translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -130] }) },
+                            { scale: fabAnim },
+                        ],
+                    },
+                ]}
+                pointerEvents={fabOpen ? "auto" : "none"}
+            >
+                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewGroup} activeOpacity={0.85}>
+                    <Ionicons name="folder-outline" size={20} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.fabMiniLabel}>New List</Text>
+            </Animated.View>
+
+            <Animated.View
+                style={[
+                    styles.fabMini,
+                    styles.fabMiniBottom,
+                    {
+                        opacity: fabAnim,
+                        transform: [
+                            { translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -70] }) },
+                            { scale: fabAnim },
+                        ],
+                    },
+                ]}
+                pointerEvents={fabOpen ? "auto" : "none"}
+            >
+                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewTask} activeOpacity={0.85}>
+                    <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.fabMiniLabel}>New Task</Text>
+            </Animated.View>
 
             {/* FAB */}
             <TouchableOpacity
                 style={styles.fab}
-                onPress={() => handleAddTask(pages[currentPage]?.group?.id ?? null)}
+                onPress={toggleFab}
                 activeOpacity={0.85}
             >
-                <Ionicons name="add" size={28} color="#fff" />
+                <Animated.View
+                    style={{
+                        transform: [
+                            {
+                                rotate: fabAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: ["0deg", "45deg"],
+                                }),
+                            },
+                        ],
+                    }}
+                >
+                    <Ionicons name="add" size={28} color="#fff" />
+                </Animated.View>
             </TouchableOpacity>
 
             {/* Task Modal */}
             <TaskModal
                 visible={modalOpen}
-                onClose={() => { setModalOpen(false); setEditTask(null); }}
+                onClose={() => {
+                    setModalOpen(false);
+                    setEditTask(null);
+                    if (!user) handleLocalChange();
+                }}
                 task={editTask}
                 defaultGroupId={defaultGroupId}
                 groups={groups}
+            />
+
+            {/* Group Modal */}
+            <GroupModal
+                visible={groupModalOpen}
+                onClose={() => {
+                    setGroupModalOpen(false);
+                    setEditGroup(null);
+                    if (!user) handleLocalChange();
+                }}
+                group={editGroup}
+                groupCount={groups.length}
             />
         </View>
     );
@@ -365,9 +550,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     pageWrapper: {
-        flex: 1,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Spacing.lg,
+        width: CARD_WIDTH,
+        marginRight: CARD_GAP,
     },
     groupPage: {
         flex: 1,
@@ -398,6 +582,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
+        flex: 1,
+    },
+    groupHeaderRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.xs,
     },
     groupDot: {
         width: 10,
@@ -522,8 +712,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.sm,
         gap: 6,
+        minHeight: 24,
+    },
+    dotSpacer: {
+        height: 7,
     },
     dot: {
         width: 7,
@@ -539,7 +733,7 @@ const styles = StyleSheet.create({
     fab: {
         position: "absolute",
         right: Spacing.xl,
-        bottom: 20,
+        bottom: 16,
         width: 56,
         height: 56,
         borderRadius: 28,
@@ -551,6 +745,52 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.35,
         shadowRadius: 8,
         elevation: 6,
+        zIndex: 20,
+    },
+    fabBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.25)",
+        zIndex: 10,
+    },
+    fabMini: {
+        position: "absolute",
+        right: Spacing.xl,
+        bottom: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        zIndex: 15,
+    },
+    fabMiniTop: {},
+    fabMiniBottom: {},
+    fabMiniBtn: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: Colors.light.accent,
+        justifyContent: "center",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 5,
+    },
+    fabMiniLabel: {
+        position: "absolute",
+        right: 58,
+        backgroundColor: Colors.light.bgCard,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 8,
+        borderRadius: Radius.md,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 3,
+        fontSize: FontSize.md,
+        fontWeight: "600" as const,
+        color: Colors.light.textPrimary,
     },
     emptyContainer: {
         flex: 1,
@@ -561,5 +801,21 @@ const styles = StyleSheet.create({
     emptyContainerText: {
         fontSize: FontSize.md,
         color: Colors.light.textTertiary,
+    },
+    syncBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
+        backgroundColor: Colors.light.accentLight,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.light.borderLight,
+    },
+    syncBannerText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.accent,
+        fontWeight: "500",
     },
 });

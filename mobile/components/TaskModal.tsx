@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
-import { createTask, updateTask, deleteTask } from "@/lib/firestore";
+import { createTaskUnified, updateTaskUnified, deleteTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
@@ -98,7 +98,7 @@ export default function TaskModal({
     };
 
     const handleSave = async () => {
-        if (!user || !title.trim()) return;
+        if (!title.trim()) return;
         setSaving(true);
         try {
             const data = {
@@ -116,9 +116,9 @@ export default function TaskModal({
             };
 
             if (isEdit && task) {
-                await updateTask(user.uid, task.id, data);
+                await updateTaskUnified(user?.uid, task.id, data);
             } else {
-                await createTask(user.uid, data as any);
+                await createTaskUnified(user?.uid, data as any);
             }
             onClose();
         } catch (err) {
@@ -129,14 +129,14 @@ export default function TaskModal({
     };
 
     const handleDelete = () => {
-        if (!user || !task) return;
+        if (!task) return;
         Alert.alert("Delete Task", `Delete "${task.title}"?`, [
             { text: "Cancel", style: "cancel" },
             {
                 text: "Delete",
                 style: "destructive",
                 onPress: async () => {
-                    await deleteTask(user.uid, task.id);
+                    await deleteTaskUnified(user?.uid, task.id);
                     onClose();
                 },
             },

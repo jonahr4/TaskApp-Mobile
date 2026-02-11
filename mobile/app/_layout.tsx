@@ -5,22 +5,11 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { Colors } from "@/lib/theme";
+import MergePrompt from "@/components/MergePrompt";
 
-function AuthGate() {
-  const { user, loading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (loading) return;
-    const inAuth = segments[0] === "(auth)";
-
-    if (!user && !inAuth) {
-      router.replace("/(auth)/login");
-    } else if (user && inAuth) {
-      router.replace("/(tabs)/tasks");
-    }
-  }, [user, loading, segments]);
+function AppShell() {
+  const { loading, syncScenario, syncing, syncLocalTasks, confirmMerge, discardLocal } =
+    useAuth();
 
   if (loading) {
     return (
@@ -30,7 +19,19 @@ function AuthGate() {
     );
   }
 
-  return <Slot />;
+  return (
+    <>
+      <Slot />
+      {/* Merge prompt shown after sign-in when both local and cloud data exist */}
+      <MergePrompt
+        visible={syncScenario === "merge_needed"}
+        localTasks={syncLocalTasks}
+        merging={syncing}
+        onConfirm={confirmMerge}
+        onDiscard={discardLocal}
+      />
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -38,7 +39,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <StatusBar style="auto" />
-        <AuthGate />
+        <AppShell />
       </AuthProvider>
     </GestureHandlerRootView>
   );

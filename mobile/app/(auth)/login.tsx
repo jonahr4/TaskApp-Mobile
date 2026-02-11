@@ -10,12 +10,14 @@ import {
     ScrollView,
     ActivityIndicator,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
     const { signInEmail, signUpEmail } = useAuth();
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
@@ -32,6 +34,7 @@ export default function LoginScreen() {
             } else {
                 await signInEmail(email, password);
             }
+            router.back();
         } catch (err: any) {
             const code = err?.code || "";
             if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
@@ -57,6 +60,18 @@ export default function LoginScreen() {
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+            {/* Back Button */}
+            <View style={styles.navBar}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.backBtn}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="chevron-back" size={24} color={Colors.light.accent} />
+                    <Text style={styles.backText}>Back</Text>
+                </TouchableOpacity>
+            </View>
+
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
@@ -94,6 +109,18 @@ export default function LoginScreen() {
                     <Text style={styles.cardSubtitle}>
                         {isSignUp ? "Start organizing in seconds." : "Welcome back."}
                     </Text>
+
+                    {/* Google Sign-In */}
+                    <TouchableOpacity style={styles.googleBtn} activeOpacity={0.8}>
+                        <Ionicons name="logo-google" size={18} color={Colors.light.textPrimary} />
+                        <Text style={styles.googleBtnText}>Continue with Google</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.divider}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>or</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
 
                     <TextInput
                         style={styles.input}
@@ -151,11 +178,26 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.bg,
     },
+    navBar: {
+        paddingTop: 56,
+        paddingHorizontal: Spacing.md,
+        paddingBottom: Spacing.sm,
+        backgroundColor: Colors.light.bg,
+    },
+    backBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+    },
+    backText: {
+        fontSize: FontSize.md,
+        color: Colors.light.accent,
+    },
     scrollContent: {
         flexGrow: 1,
         justifyContent: "center",
         padding: Spacing.xxl,
-        paddingTop: 60,
+        paddingTop: 0,
     },
     brandSection: {
         alignItems: "center",
@@ -226,6 +268,37 @@ const styles = StyleSheet.create({
         color: Colors.light.textTertiary,
         marginTop: 2,
         marginBottom: Spacing.lg,
+    },
+    googleBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        backgroundColor: Colors.light.bg,
+        borderWidth: 1,
+        borderColor: Colors.light.border,
+        borderRadius: Radius.md,
+        paddingVertical: 14,
+    },
+    googleBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: Colors.light.textPrimary,
+    },
+    divider: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginVertical: Spacing.lg,
+        gap: Spacing.md,
+    },
+    dividerLine: {
+        flex: 1,
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: Colors.light.borderLight,
+    },
+    dividerText: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
     },
     input: {
         backgroundColor: Colors.light.bg,

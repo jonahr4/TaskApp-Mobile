@@ -19,18 +19,7 @@ export default function TabLayout() {
           fontSize: 11,
           fontWeight: "600",
         },
-        headerStyle: {
-          backgroundColor: Colors.light.bgCard,
-          shadowColor: "transparent",
-          elevation: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: Colors.light.borderLight,
-        },
-        headerTitleStyle: {
-          fontSize: 17,
-          fontWeight: "600",
-          color: Colors.light.textPrimary,
-        },
+        headerShown: false,
       }}
     >
       <Tabs.Screen

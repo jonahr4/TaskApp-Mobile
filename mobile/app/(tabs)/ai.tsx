@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
-import { createTask } from "@/lib/firestore";
+import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
 import type { Quadrant } from "@/lib/types";
@@ -41,7 +41,7 @@ export default function AiScreen() {
     const [creating, setCreating] = useState(false);
 
     const handleParse = async () => {
-        if (!text.trim() || !user) return;
+        if (!text.trim()) return;
         setParsing(true);
         try {
             const today = new Date().toISOString().split("T")[0];
@@ -88,12 +88,12 @@ export default function AiScreen() {
     };
 
     const handleCreate = async () => {
-        if (!user || results.length === 0) return;
+        if (results.length === 0) return;
         setCreating(true);
         try {
             for (const task of results) {
                 const meta = QUADRANT_META[task.priority];
-                await createTask(user.uid, {
+                await createTaskUnified(user?.uid, {
                     title: task.title,
                     notes: task.notes || undefined,
                     dueDate: task.dueDate,
