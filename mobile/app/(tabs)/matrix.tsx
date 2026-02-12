@@ -25,6 +25,7 @@ import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
+import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
 
 // ── Constants ────────────────────────────────────────────────
 const EXPANDED = 0.75;
@@ -124,6 +125,45 @@ export default function MatrixScreen() {
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
     const [trayOpen, setTrayOpen] = useState(false);
+
+    // Group filter — start with all selected
+    const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(() => {
+        const s = new Set<string>();
+        s.add("");
+        for (const g of groups) s.add(g.id);
+        return s;
+    });
+    useMemo(() => {
+        setSelectedGroupIds((prev) => {
+            const next = new Set(prev);
+            if (!next.has("")) next.add("");
+            for (const g of groups) {
+                if (!next.has(g.id)) next.add(g.id);
+            }
+            return next;
+        });
+    }, [groups]);
+    const allGroupIds = useMemo(() => {
+        const s = new Set<string>();
+        s.add("");
+        for (const g of groups) s.add(g.id);
+        return s;
+    }, [groups]);
+    const handleToggleGroup = useCallback((id: string) => {
+        setSelectedGroupIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+    const handleSelectAllGroups = useCallback(() => {
+        setSelectedGroupIds((prev) => {
+            if (prev.size === allGroupIds.size) return new Set<string>();
+            return new Set(allGroupIds);
+        });
+    }, [allGroupIds]);
+    const isGroupFiltered = selectedGroupIds.size < allGroupIds.size;
     const [isDragging, setIsDragging] = useState(false);
     const [hoverQuadrant, setHoverQuadrant] = useState<Quadrant | null>(null);
     const [dragTitle, setDragTitle] = useState("");
@@ -190,6 +230,7 @@ export default function MatrixScreen() {
         for (const t of tasks) {
             if (statusFilter === "in_progress" && t.completed) continue;
             if (statusFilter === "completed" && !t.completed) continue;
+            if (isGroupFiltered && !selectedGroupIds.has(t.groupId || "")) continue;
             const q = getQuadrant(t);
             if (q) result[q].push(t);
         }
@@ -200,7 +241,7 @@ export default function MatrixScreen() {
             result[q] = [...active, ...completed];
         }
         return result;
-    }, [tasks, statusFilter, sortBy]);
+    }, [tasks, statusFilter, sortBy, isGroupFiltered, selectedGroupIds]);
 
     // Uncategorized tasks (respects status filter)
     const uncategorizedTasks = useMemo(() => {
@@ -208,12 +249,13 @@ export default function MatrixScreen() {
             if (getQuadrant(t) !== null) return false;
             if (statusFilter === "in_progress" && t.completed) return false;
             if (statusFilter === "completed" && !t.completed) return false;
+            if (isGroupFiltered && !selectedGroupIds.has(t.groupId || "")) return false;
             return true;
         });
         const active = sortTasks(uncat.filter(t => !t.completed), sortBy);
         const completed = sortTasks(uncat.filter(t => t.completed), sortBy);
         return [...active, ...completed];
-    }, [tasks, statusFilter, sortBy]);
+    }, [tasks, statusFilter, sortBy, isGroupFiltered, selectedGroupIds]);
 
     const handleToggle = useCallback(async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -486,6 +528,17 @@ export default function MatrixScreen() {
                         </View>
                     )}
                 </View>
+
+                {/* Spacer */}
+                <View style={{ flex: 1 }} />
+
+                {/* Group filter */}
+                <GroupFilterDropdown
+                    groups={groups}
+                    selectedIds={selectedGroupIds}
+                    onToggle={handleToggleGroup}
+                    onSelectAll={handleSelectAllGroups}
+                />
 
                 {/* Reset */}
                 {expandedQIdx !== -1 && (

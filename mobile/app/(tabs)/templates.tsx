@@ -155,7 +155,14 @@ export default function SearchScreen() {
             dateMatches = pool.filter((t) => matchesDateQuery(t.dueDate, dateQ));
         }
 
-        // 3. Fuzzy text search
+        // 3. Group name matching (case-insensitive contains)
+        const qLower = q.toLowerCase();
+        const groupMatches = pool.filter((t) => {
+            const g = t.groupId ? groupMap[t.groupId] : undefined;
+            return g && g.name.toLowerCase().includes(qLower);
+        });
+
+        // 4. Fuzzy text search
         const fuseForPool = new Fuse(pool, {
             keys: [
                 { name: "title", weight: 0.7 },
@@ -167,10 +174,16 @@ export default function SearchScreen() {
         });
         const textResults = fuseForPool.search(q).map((r) => r.item);
 
-        // 4. Merge: date matches first, then text matches (deduped)
+        // 5. Merge: date matches → group matches → text matches (deduped)
         const seen = new Set<string>();
         const merged: Task[] = [];
         for (const t of dateMatches) {
+            if (!seen.has(t.id)) {
+                seen.add(t.id);
+                merged.push(t);
+            }
+        }
+        for (const t of groupMatches) {
             if (!seen.has(t.id)) {
                 seen.add(t.id);
                 merged.push(t);
@@ -184,7 +197,7 @@ export default function SearchScreen() {
         }
 
         return merged;
-    }, [query, tasks, statusFilter]);
+    }, [query, tasks, groups, statusFilter, groupMap]);
 
     const resultCount = results.length;
 
@@ -201,7 +214,7 @@ export default function SearchScreen() {
                 <TextInput
                     ref={inputRef}
                     style={styles.searchInput}
-                    placeholder="Search tasks, dates, notes..."
+                    placeholder="Search tasks, groups, dates..."
                     placeholderTextColor={Colors.light.textTertiary}
                     value={query}
                     onChangeText={setQuery}

@@ -16,6 +16,7 @@ import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
+import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -57,6 +58,49 @@ export default function CalendarScreen() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [showFilterMenu, setShowFilterMenu] = useState(false);
 
+    // Group filter — start with all selected
+    const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(() => {
+        const s = new Set<string>();
+        s.add(""); // General Tasks
+        for (const g of groups) s.add(g.id);
+        return s;
+    });
+    // Keep in sync when groups change
+    useMemo(() => {
+        setSelectedGroupIds((prev) => {
+            const next = new Set(prev);
+            if (!next.has("")) next.add("");
+            for (const g of groups) {
+                if (!next.has(g.id)) next.add(g.id);
+            }
+            return next;
+        });
+    }, [groups]);
+
+    const allGroupIds = useMemo(() => {
+        const s = new Set<string>();
+        s.add("");
+        for (const g of groups) s.add(g.id);
+        return s;
+    }, [groups]);
+
+    const handleToggleGroup = useCallback((id: string) => {
+        setSelectedGroupIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    const handleSelectAllGroups = useCallback(() => {
+        setSelectedGroupIds((prev) => {
+            const allCount = allGroupIds.size;
+            if (prev.size === allCount) return new Set<string>(); // deselect all
+            return new Set(allGroupIds);
+        });
+    }, [allGroupIds]);
+
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -74,10 +118,16 @@ export default function CalendarScreen() {
 
     // Filter tasks by status
     const filteredTasks = useMemo(() => {
-        if (statusFilter === "all") return tasks;
-        if (statusFilter === "in_progress") return tasks.filter(t => !t.completed);
-        return tasks.filter(t => t.completed);
-    }, [tasks, statusFilter]);
+        let pool = tasks;
+        // Group filter
+        if (selectedGroupIds.size < allGroupIds.size) {
+            pool = pool.filter(t => selectedGroupIds.has(t.groupId || ""));
+        }
+        // Status filter
+        if (statusFilter === "in_progress") pool = pool.filter(t => !t.completed);
+        else if (statusFilter === "completed") pool = pool.filter(t => t.completed);
+        return pool;
+    }, [tasks, statusFilter, selectedGroupIds, allGroupIds]);
 
     // Map date strings → tasks
     const tasksByDate = useMemo(() => {
@@ -191,6 +241,14 @@ export default function CalendarScreen() {
 
                 {/* Spacer */}
                 <View style={{ flex: 1 }} />
+
+                {/* Group filter */}
+                <GroupFilterDropdown
+                    groups={groups}
+                    selectedIds={selectedGroupIds}
+                    onToggle={handleToggleGroup}
+                    onSelectAll={handleSelectAllGroups}
+                />
 
                 {/* Return to Today */}
                 {!isCurrentMonth && (
