@@ -32,6 +32,7 @@ type Props = {
     defaultGroupId?: string | null;
     defaultUrgent?: boolean;
     defaultImportant?: boolean;
+    defaultDueDate?: string | null;
     groups: TaskGroup[];
 };
 
@@ -88,6 +89,7 @@ export default function TaskModal({
     defaultGroupId,
     defaultUrgent,
     defaultImportant,
+    defaultDueDate,
     groups,
 }: Props) {
     const { user } = useAuth();
@@ -129,7 +131,7 @@ export default function TaskModal({
             } else {
                 setTitle("");
                 setNotes("");
-                setDueDate(null);
+                setDueDate(defaultDueDate || null);
                 setDueTime(null);
                 setUrgent(defaultUrgent ?? null);
                 setImportant(defaultImportant ?? null);
@@ -144,7 +146,7 @@ export default function TaskModal({
             setShowTimePicker(false);
             setShowMapPicker(false);
         }
-    }, [visible, task, defaultGroupId, defaultUrgent, defaultImportant]);
+    }, [visible, task, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate]);
 
     const selectedPriority = (() => {
         if (urgent === null || important === null) return null;
