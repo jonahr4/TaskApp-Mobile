@@ -256,7 +256,7 @@ export default function TaskModal({
                     contentContainerStyle={{ paddingBottom: 60 }}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {/* Title + completed toggle */}
+                    {/* Title + Completed badge */}
                     <View style={styles.titleRow}>
                         <TextInput
                             style={styles.titleInput}
@@ -267,16 +267,28 @@ export default function TaskModal({
                             autoFocus={!isEdit}
                             multiline
                         />
-                        <TouchableOpacity
-                            onPress={() => setCompleted(!completed)}
-                            style={styles.completedBtn}
-                        >
-                            <Ionicons
-                                name={completed ? "checkmark-circle" : "ellipse-outline"}
-                                size={28}
-                                color={completed ? "#22c55e" : Colors.light.borderLight}
-                            />
-                        </TouchableOpacity>
+                        {isEdit && (
+                            <TouchableOpacity
+                                onPress={() => setCompleted(!completed)}
+                                style={[
+                                    styles.completedBadge,
+                                    completed && styles.completedBadgeActive,
+                                ]}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons
+                                    name={completed ? "checkmark-circle" : "ellipse-outline"}
+                                    size={16}
+                                    color={completed ? "#22c55e" : Colors.light.textTertiary}
+                                />
+                                <Text style={[
+                                    styles.completedBadgeText,
+                                    completed && styles.completedBadgeTextActive,
+                                ]}>
+                                    {completed ? "Completed" : "Mark Done"}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* Notes */}
@@ -822,8 +834,29 @@ const styles = StyleSheet.create({
         borderBottomColor: Colors.light.borderLight,
         minHeight: 48,
     },
-    completedBtn: {
-        paddingTop: Spacing.md,
+    completedBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: Radius.md,
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        marginTop: Spacing.md,
+    },
+    completedBadgeActive: {
+        backgroundColor: "#f0fdf4",
+        borderColor: "#bbf7d0",
+    },
+    completedBadgeText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: Colors.light.textTertiary,
+    },
+    completedBadgeTextActive: {
+        color: "#22c55e",
     },
     notesInput: {
         fontSize: FontSize.md,

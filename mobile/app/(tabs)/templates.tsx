@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
     View,
     Text,
@@ -6,293 +6,334 @@ import {
     ScrollView,
     TouchableOpacity,
     TextInput,
-    Alert,
     Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import Fuse from "fuse.js";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import type { Task, TaskGroup } from "@/lib/types";
+import TaskModal from "@/components/TaskModal";
 
-// ── Template data ────────────────────────────────────────────
-
-type Template = {
-    title: string;
-    notes?: string;
-    urgent: boolean;
-    important: boolean;
+// ── Date parsing ─────────────────────────────────────────────
+const MONTH_NAMES: Record<string, number> = {
+    jan: 0, january: 0,
+    feb: 1, february: 1,
+    mar: 2, march: 2,
+    apr: 3, april: 3,
+    may: 4,
+    jun: 5, june: 5,
+    jul: 6, july: 6,
+    aug: 7, august: 7,
+    sep: 8, sept: 8, september: 8,
+    oct: 9, october: 9,
+    nov: 10, november: 10,
+    dec: 11, december: 11,
 };
 
-type TemplateCategory = {
-    name: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    color: string;
-    templates: Template[];
-};
+/**
+ * Parse natural date queries into { month, day? } for matching.
+ * Handles: "sep", "sept 5", "september 5", "12/5", "12-5", "2025-12-05"
+ */
+function parseDateQuery(q: string): { month: number; day?: number } | null {
+    const trimmed = q.trim().toLowerCase();
 
-const TEMPLATE_CATEGORIES: TemplateCategory[] = [
-    {
-        name: "Morning Routine",
-        icon: "sunny-outline",
-        color: "#f59e0b",
-        templates: [
-            { title: "Make bed", urgent: false, important: false },
-            { title: "Drink water", urgent: false, important: true },
-            { title: "Exercise / stretch", urgent: false, important: true },
-            { title: "Shower & get ready", urgent: false, important: false },
-            { title: "Eat breakfast", urgent: false, important: true },
-            { title: "Plan the day", urgent: false, important: true },
-        ],
-    },
-    {
-        name: "Work & Productivity",
-        icon: "briefcase-outline",
-        color: "#3b82f6",
-        templates: [
-            { title: "Check emails", urgent: true, important: false },
-            { title: "Review calendar", urgent: true, important: true },
-            { title: "Deep work block", notes: "90-minute focused work session", urgent: false, important: true },
-            { title: "Team standup", urgent: true, important: false },
-            { title: "Update project tracker", urgent: false, important: false },
-            { title: "Clear Slack messages", urgent: true, important: false },
-            { title: "Weekly planning session", urgent: false, important: true },
-        ],
-    },
-    {
-        name: "Fitness",
-        icon: "barbell-outline",
-        color: "#ef4444",
-        templates: [
-            { title: "Upper body workout", urgent: false, important: true },
-            { title: "Lower body workout", urgent: false, important: true },
-            { title: "Cardio session", notes: "30 min run or cycling", urgent: false, important: true },
-            { title: "Yoga / mobility", urgent: false, important: true },
-            { title: "Track meals", urgent: false, important: false },
-            { title: "Drink 8 glasses of water", urgent: false, important: true },
-        ],
-    },
-    {
-        name: "Home & Errands",
-        icon: "home-outline",
-        color: "#10b981",
-        templates: [
-            { title: "Grocery shopping", urgent: true, important: false },
-            { title: "Do laundry", urgent: false, important: false },
-            { title: "Clean kitchen", urgent: false, important: false },
-            { title: "Vacuum / mop floors", urgent: false, important: false },
-            { title: "Take out trash", urgent: true, important: false },
-            { title: "Pay bills", urgent: true, important: true },
-            { title: "Schedule appointment", urgent: false, important: true },
-        ],
-    },
-    {
-        name: "Learning",
-        icon: "school-outline",
-        color: "#8b5cf6",
-        templates: [
-            { title: "Read for 30 minutes", urgent: false, important: true },
-            { title: "Online course lesson", urgent: false, important: true },
-            { title: "Practice new skill", urgent: false, important: true },
-            { title: "Review notes", urgent: false, important: false },
-            { title: "Write journal entry", urgent: false, important: true },
-            { title: "Listen to podcast", urgent: false, important: false },
-        ],
-    },
-    {
-        name: "Social & Relationships",
-        icon: "people-outline",
-        color: "#ec4899",
-        templates: [
-            { title: "Text a friend", urgent: false, important: true },
-            { title: "Plan a hangout", urgent: false, important: true },
-            { title: "Call family", urgent: false, important: true },
-            { title: "Send thank you note", urgent: false, important: false },
-            { title: "Date night planning", urgent: false, important: true },
-        ],
-    },
-    {
-        name: "Evening Wind-Down",
-        icon: "moon-outline",
-        color: "#6366f1",
-        templates: [
-            { title: "Review today's tasks", urgent: false, important: true },
-            { title: "Prepare tomorrow's outfit", urgent: false, important: false },
-            { title: "Screen-free time", urgent: false, important: true },
-            { title: "Skincare routine", urgent: false, important: false },
-            { title: "Read before bed", urgent: false, important: true },
-            { title: "Set alarm", urgent: false, important: false },
-        ],
-    },
-];
+    // ISO: 2025-12-05
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+        return { month: parseInt(isoMatch[2], 10) - 1, day: parseInt(isoMatch[3], 10) };
+    }
+
+    // Numeric: 12/5 or 12-5
+    const numMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+    if (numMatch) {
+        return { month: parseInt(numMatch[1], 10) - 1, day: parseInt(numMatch[2], 10) };
+    }
+
+    // Month name with optional day: "sep", "sept 5", "september 12"
+    const nameMatch = trimmed.match(/^([a-z]+)\s*(\d{1,2})?$/);
+    if (nameMatch) {
+        const monthNum = MONTH_NAMES[nameMatch[1]];
+        if (monthNum !== undefined) {
+            return { month: monthNum, day: nameMatch[2] ? parseInt(nameMatch[2], 10) : undefined };
+        }
+    }
+
+    return null;
+}
+
+function matchesDateQuery(dueDate: string | null, dateQ: { month: number; day?: number }): boolean {
+    if (!dueDate) return false;
+    // dueDate is "YYYY-MM-DD"
+    const parts = dueDate.split("-");
+    if (parts.length < 3) return false;
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (m !== dateQ.month) return false;
+    if (dateQ.day !== undefined && d !== dateQ.day) return false;
+    return true;
+}
+
+// ── Formatting helpers ───────────────────────────────────────
+function formatDueDate(task: Task): string | null {
+    if (!task.dueDate) return null;
+    const [y, m, d] = task.dueDate.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.getTime() === today.getTime()) return "Today";
+    if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
+    if (date.getTime() === yesterday.getTime()) return "Yesterday";
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const str = `${months[date.getMonth()]} ${date.getDate()}`;
+    if (date.getFullYear() !== today.getFullYear()) return `${str}, ${date.getFullYear()}`;
+    return str;
+}
+
+type StatusFilter = "all" | "active" | "completed";
 
 // ── Component ────────────────────────────────────────────────
-
-export default function TemplatesScreen() {
+export default function SearchScreen() {
     const { user } = useAuth();
-    const { reloadLocal } = useTasks(user?.uid);
-    const { groups } = useTaskGroups(user?.uid);
-    const [search, setSearch] = useState("");
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
+    const inputRef = useRef<TextInput>(null);
 
-    const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
-        if (!q) return TEMPLATE_CATEGORIES;
-        return TEMPLATE_CATEGORIES.map((cat) => ({
-            ...cat,
-            templates: cat.templates.filter(
-                (t) =>
-                    t.title.toLowerCase().includes(q) ||
-                    cat.name.toLowerCase().includes(q) ||
-                    (t.notes && t.notes.toLowerCase().includes(q))
-            ),
-        })).filter((cat) => cat.templates.length > 0);
-    }, [search]);
+    const [query, setQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [editTask, setEditTask] = useState<Task | null>(null);
+    const [modalOpen, setModalOpen] = useState(false);
 
-    const addTemplate = useCallback(
-        async (template: Template) => {
-            await createTaskUnified(user?.uid, {
-                title: template.title,
-                notes: template.notes || "",
-                urgent: template.urgent,
-                important: template.important,
-                completed: false,
-                dueDate: null,
-                dueTime: null,
-                groupId: groups[0]?.id ?? null,
-                order: 0,
-                autoUrgentDays: null,
-                location: null,
-            });
-            if (!user) reloadLocal();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        },
-        [user, groups, reloadLocal]
-    );
+    const handleLocalChange = useCallback(() => {
+        reloadLocal();
+        reloadLocalGroups();
+    }, [reloadLocal, reloadLocalGroups]);
 
-    const addAllInCategory = useCallback(
-        async (cat: TemplateCategory) => {
-            Alert.alert(
-                `Add ${cat.templates.length} tasks?`,
-                `This will add all tasks from "${cat.name}" to your list.`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Add All",
-                        onPress: async () => {
-                            for (const t of cat.templates) {
-                                await createTaskUnified(user?.uid, {
-                                    title: t.title,
-                                    notes: t.notes || "",
-                                    urgent: t.urgent,
-                                    important: t.important,
-                                    completed: false,
-                                    dueDate: null,
-                                    dueTime: null,
-                                    groupId: groups[0]?.id ?? null,
-                                    order: 0,
-                                    autoUrgentDays: null,
-                                    location: null,
-                                });
-                            }
-                            if (!user) reloadLocal();
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        },
-                    },
-                ]
-            );
-        },
-        [user, groups, reloadLocal]
-    );
+    // Group lookup map
+    const groupMap = useMemo(() => {
+        const m: Record<string, TaskGroup> = {};
+        for (const g of groups) m[g.id] = g;
+        return m;
+    }, [groups]);
+
+    // Fuse instance (fuzzy text search on title + notes)
+    const fuse = useMemo(() => {
+        return new Fuse(tasks, {
+            keys: [
+                { name: "title", weight: 0.7 },
+                { name: "notes", weight: 0.3 },
+            ],
+            threshold: 0.35,
+            ignoreLocation: true,
+            minMatchCharLength: 1,
+        });
+    }, [tasks]);
+
+    // Search results
+    const results = useMemo(() => {
+        const q = query.trim();
+        if (!q) return [];
+
+        // 1. Status filter
+        let pool = tasks;
+        if (statusFilter === "active") pool = tasks.filter((t) => !t.completed);
+        else if (statusFilter === "completed") pool = tasks.filter((t) => t.completed);
+
+        // 2. Try date parsing first
+        const dateQ = parseDateQuery(q);
+        let dateMatches: Task[] = [];
+        if (dateQ) {
+            dateMatches = pool.filter((t) => matchesDateQuery(t.dueDate, dateQ));
+        }
+
+        // 3. Fuzzy text search
+        const fuseForPool = new Fuse(pool, {
+            keys: [
+                { name: "title", weight: 0.7 },
+                { name: "notes", weight: 0.3 },
+            ],
+            threshold: 0.35,
+            ignoreLocation: true,
+            minMatchCharLength: 1,
+        });
+        const textResults = fuseForPool.search(q).map((r) => r.item);
+
+        // 4. Merge: date matches first, then text matches (deduped)
+        const seen = new Set<string>();
+        const merged: Task[] = [];
+        for (const t of dateMatches) {
+            if (!seen.has(t.id)) {
+                seen.add(t.id);
+                merged.push(t);
+            }
+        }
+        for (const t of textResults) {
+            if (!seen.has(t.id)) {
+                seen.add(t.id);
+                merged.push(t);
+            }
+        }
+
+        return merged;
+    }, [query, tasks, statusFilter]);
+
+    const resultCount = results.length;
 
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Templates</Text>
-                <Text style={styles.headerSub}>Quick-add tasks from curated templates</Text>
+                <Text style={styles.headerTitle}>Search</Text>
             </View>
 
-            {/* Search */}
+            {/* Search bar */}
             <View style={styles.searchWrap}>
-                <Ionicons name="search" size={18} color={Colors.light.textTertiary} style={styles.searchIcon} />
+                <Ionicons name="search" size={18} color={Colors.light.textTertiary} style={{ marginRight: 6 }} />
                 <TextInput
+                    ref={inputRef}
                     style={styles.searchInput}
-                    placeholder="Search templates..."
+                    placeholder="Search tasks, dates, notes..."
                     placeholderTextColor={Colors.light.textTertiary}
-                    value={search}
-                    onChangeText={setSearch}
+                    value={query}
+                    onChangeText={setQuery}
                     autoCapitalize="none"
                     autoCorrect={false}
                     clearButtonMode="while-editing"
+                    returnKeyType="search"
                 />
             </View>
 
-            {/* Templates */}
+            {/* Status filter chips */}
+            <View style={styles.filterRow}>
+                {(["all", "active", "completed"] as StatusFilter[]).map((f) => (
+                    <TouchableOpacity
+                        key={f}
+                        style={[styles.chip, statusFilter === f && styles.chipActive]}
+                        onPress={() => setStatusFilter(f)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.chipText, statusFilter === f && styles.chipTextActive]}>
+                            {f === "all" ? "All" : f === "active" ? "Active" : "Completed"}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+                {query.length > 0 && (
+                    <Text style={styles.resultCount}>{resultCount} result{resultCount !== 1 ? "s" : ""}</Text>
+                )}
+            </View>
+
+            {/* Results */}
             <ScrollView
                 style={styles.body}
                 contentContainerStyle={{ paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
                 keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
             >
-                {filtered.length === 0 && (
+                {query.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="search-outline" size={40} color={Colors.light.borderLight} />
-                        <Text style={styles.emptyText}>No templates match "{search}"</Text>
+                        <Ionicons name="search-outline" size={48} color={Colors.light.borderLight} />
+                        <Text style={styles.emptyTitle}>Search your tasks</Text>
+                        <Text style={styles.emptyHint}>Try a task name, note, or date like "sep 5" or "12/5"</Text>
                     </View>
-                )}
+                ) : results.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Ionicons name="alert-circle-outline" size={40} color={Colors.light.borderLight} />
+                        <Text style={styles.emptyTitle}>No matches</Text>
+                        <Text style={styles.emptyHint}>Try a different search term</Text>
+                    </View>
+                ) : (
+                    results.map((task) => {
+                        const quadrant = getQuadrant(task);
+                        const meta = quadrant ? QUADRANT_META[quadrant] : null;
+                        const due = formatDueDate(task);
+                        const group = task.groupId ? groupMap[task.groupId] : null;
 
-                {filtered.map((cat) => (
-                    <View key={cat.name} style={styles.categoryCard}>
-                        {/* Category Header */}
-                        <View style={styles.categoryHeader}>
-                            <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}15` }]}>
-                                <Ionicons name={cat.icon} size={20} color={cat.color} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.categoryName}>{cat.name}</Text>
-                                <Text style={styles.categoryCount}>{cat.templates.length} tasks</Text>
-                            </View>
+                        return (
                             <TouchableOpacity
-                                style={[styles.addAllBtn, { borderColor: cat.color }]}
-                                onPress={() => addAllInCategory(cat)}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons name="add-circle-outline" size={16} color={cat.color} />
-                                <Text style={[styles.addAllText, { color: cat.color }]}>Add All</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Template Items */}
-                        {cat.templates.map((t, idx) => (
-                            <TouchableOpacity
-                                key={t.title}
-                                style={[
-                                    styles.templateRow,
-                                    idx === cat.templates.length - 1 && { borderBottomWidth: 0 },
-                                ]}
-                                onPress={() => addTemplate(t)}
+                                key={task.id}
+                                style={styles.resultRow}
                                 activeOpacity={0.65}
+                                onPress={() => {
+                                    inputRef.current?.blur();
+                                    setEditTask(task);
+                                    setModalOpen(true);
+                                }}
                             >
-                                <View style={styles.templateContent}>
-                                    <Text style={styles.templateTitle}>{t.title}</Text>
-                                    {t.notes && (
-                                        <Text style={styles.templateNotes} numberOfLines={1}>{t.notes}</Text>
-                                    )}
+                                {/* Status indicator */}
+                                <View style={[styles.statusDot, task.completed ? styles.statusDotDone : styles.statusDotActive]} >
+                                    {task.completed && <Ionicons name="checkmark" size={10} color="#fff" />}
                                 </View>
-                                <Ionicons name="add" size={20} color={Colors.light.accent} />
+
+                                {/* Content */}
+                                <View style={styles.resultContent}>
+                                    <Text
+                                        style={[styles.resultTitle, task.completed && styles.resultTitleDone]}
+                                        numberOfLines={1}
+                                    >
+                                        {task.title}
+                                    </Text>
+
+                                    {/* Meta row */}
+                                    <View style={styles.metaRow}>
+                                        {due && (
+                                            <View style={styles.metaTag}>
+                                                <Ionicons name="calendar-outline" size={12} color={Colors.light.textTertiary} />
+                                                <Text style={styles.metaText}>{due}</Text>
+                                            </View>
+                                        )}
+                                        {group && (
+                                            <View style={styles.metaTag}>
+                                                <View style={[styles.groupDot, { backgroundColor: group.color || Colors.light.textTertiary }]} />
+                                                <Text style={styles.metaText} numberOfLines={1}>{group.name}</Text>
+                                            </View>
+                                        )}
+                                        {meta && (
+                                            <View style={[styles.priorityBadge, { backgroundColor: meta.bg, borderColor: meta.border }]}>
+                                                <View style={[styles.priorityDot, { backgroundColor: meta.color }]} />
+                                                <Text style={[styles.priorityText, { color: meta.color }]}>{meta.sublabel}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Notes preview */}
+                                    {task.notes ? (
+                                        <Text style={styles.notesPreview} numberOfLines={1}>
+                                            {task.notes}
+                                        </Text>
+                                    ) : null}
+                                </View>
                             </TouchableOpacity>
-                        ))}
-                    </View>
-                ))}
+                        );
+                    })
+                )}
             </ScrollView>
+
+            {/* Task Modal */}
+            <TaskModal
+                visible={modalOpen}
+                onClose={() => {
+                    setModalOpen(false);
+                    setEditTask(null);
+                    if (!user) handleLocalChange();
+                }}
+                task={editTask}
+                groups={groups}
+            />
         </View>
     );
 }
 
 // ── Styles ────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -312,23 +353,16 @@ const styles = StyleSheet.create({
         color: Colors.light.textPrimary,
         letterSpacing: -0.3,
     },
-    headerSub: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        marginTop: 2,
-    },
     searchWrap: {
         flexDirection: "row",
         alignItems: "center",
-        margin: Spacing.lg,
+        marginHorizontal: Spacing.lg,
+        marginTop: Spacing.md,
         backgroundColor: Colors.light.bgCard,
         borderRadius: Radius.md,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
         paddingHorizontal: Spacing.md,
-    },
-    searchIcon: {
-        marginRight: Spacing.xs,
     },
     searchInput: {
         flex: 1,
@@ -336,82 +370,140 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         color: Colors.light.textPrimary,
     },
+    filterRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.sm,
+    },
+    chip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        backgroundColor: Colors.light.bgCard,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+    },
+    chipActive: {
+        backgroundColor: Colors.light.accent,
+        borderColor: Colors.light.accent,
+    },
+    chipText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: Colors.light.textSecondary,
+    },
+    chipTextActive: {
+        color: "#fff",
+    },
+    resultCount: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+        marginLeft: "auto",
+    },
     body: {
         flex: 1,
         paddingHorizontal: Spacing.lg,
     },
     emptyState: {
         alignItems: "center",
-        paddingTop: 60,
-        gap: Spacing.sm,
+        paddingTop: 80,
+        gap: 8,
     },
-    emptyText: {
-        fontSize: FontSize.md,
+    emptyTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: Colors.light.textSecondary,
+    },
+    emptyHint: {
+        fontSize: FontSize.sm,
         color: Colors.light.textTertiary,
+        textAlign: "center",
+        paddingHorizontal: Spacing.xl,
     },
-    categoryCard: {
+    resultRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
+        borderRadius: Radius.md,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
-        marginBottom: Spacing.lg,
-        overflow: "hidden",
-    },
-    categoryHeader: {
-        flexDirection: "row",
-        alignItems: "center",
         padding: Spacing.md,
-        gap: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        marginBottom: 8,
     },
-    categoryIcon: {
-        width: 36,
-        height: 36,
+    statusDot: {
+        width: 20,
+        height: 20,
         borderRadius: 10,
         justifyContent: "center",
         alignItems: "center",
+        marginRight: Spacing.sm,
+        marginTop: 1,
     },
-    categoryName: {
+    statusDotActive: {
+        borderWidth: 2,
+        borderColor: Colors.light.borderLight,
+        backgroundColor: "transparent",
+    },
+    statusDotDone: {
+        backgroundColor: Colors.light.success,
+    },
+    resultContent: {
+        flex: 1,
+    },
+    resultTitle: {
         fontSize: FontSize.md,
-        fontWeight: "600",
+        fontWeight: "500",
         color: Colors.light.textPrimary,
+        marginBottom: 3,
     },
-    categoryCount: {
+    resultTitleDone: {
+        textDecorationLine: "line-through",
+        color: Colors.light.textTertiary,
+    },
+    metaRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+    },
+    metaTag: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+    },
+    metaText: {
         fontSize: FontSize.xs,
         color: Colors.light.textTertiary,
     },
-    addAllBtn: {
+    groupDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+    },
+    priorityBadge: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         borderRadius: Radius.full,
         borderWidth: 1,
     },
-    addAllText: {
-        fontSize: FontSize.xs,
+    priorityDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+    priorityText: {
+        fontSize: 10,
         fontWeight: "600",
     },
-    templateRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm + 2,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    templateContent: {
-        flex: 1,
-    },
-    templateTitle: {
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    templateNotes: {
+    notesPreview: {
         fontSize: FontSize.xs,
         color: Colors.light.textTertiary,
-        marginTop: 1,
+        fontStyle: "italic",
+        marginTop: 3,
     },
 });
