@@ -13,6 +13,11 @@ import {
 import { db } from "./firebase";
 import type { Task, TaskGroup } from "./types";
 
+/** Firestore rejects `undefined` values — strip them. */
+function stripUndefined(obj: Record<string, any>): Record<string, any> {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
 // --- Tasks ---
 
 function tasksCol(uid: string) {
@@ -28,7 +33,7 @@ export async function createTask(
     data: Omit<Task, "id" | "createdAt" | "updatedAt">
 ) {
     return addDoc(tasksCol(uid), {
-        ...data,
+        ...stripUndefined(data as any),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
     });
@@ -40,7 +45,7 @@ export async function updateTask(
     data: Partial<Omit<Task, "id" | "createdAt">>
 ) {
     return updateDoc(doc(db, "users", uid, "tasks", taskId), {
-        ...data,
+        ...stripUndefined(data as any),
         updatedAt: serverTimestamp(),
     });
 }

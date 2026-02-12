@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { onSnapshot } from "firebase/firestore";
 import { groupsQuery } from "@/lib/firestore";
 import { getLocalGroups } from "@/lib/localDb";
@@ -7,6 +7,8 @@ import type { TaskGroup } from "@/lib/types";
 export function useTaskGroups(uid: string | undefined) {
     const [groups, setGroups] = useState<TaskGroup[]>([]);
     const [loading, setLoading] = useState(true);
+    const uidRef = useRef(uid);
+    uidRef.current = uid;
 
     const loadLocal = useCallback(async () => {
         const local = await getLocalGroups();
@@ -28,5 +30,12 @@ export function useTaskGroups(uid: string | undefined) {
         }
     }, [uid, loadLocal]);
 
-    return { groups, loading, reloadLocal: loadLocal };
+    // Safe reload: only touches local storage when NOT logged in
+    const reloadLocal = useCallback(async () => {
+        if (!uidRef.current) {
+            await loadLocal();
+        }
+    }, [loadLocal]);
+
+    return { groups, loading, reloadLocal };
 }
