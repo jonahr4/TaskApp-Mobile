@@ -1,17 +1,49 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "@/lib/theme";
 import MergePrompt from "@/components/MergePrompt";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
+
+const ONBOARDING_KEY = "hasSeenOnboarding";
+
+// Global callback so account menu can retrigger onboarding
+let _showOnboarding: (() => void) | null = null;
+export function triggerOnboarding() {
+  _showOnboarding?.();
+}
 
 function AppShell() {
   const { loading, syncScenario, syncing, syncLocalTasks, confirmMerge, discardLocal } =
     useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_KEY).then((val: string | null) => {
+      if (val !== "true") {
+        setShowOnboarding(true);
+      }
+      setOnboardingChecked(true);
+    });
+  }, []);
+
+  // Register the global retrigger callback
+  useEffect(() => {
+    _showOnboarding = () => setShowOnboarding(true);
+    return () => { _showOnboarding = null; };
+  }, []);
+
+  const handleOnboardingDone = async () => {
+    setShowOnboarding(false);
+    await AsyncStorage.setItem(ONBOARDING_KEY, "true");
+  };
+
+  if (loading || !onboardingChecked) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color={Colors.light.accent} />
@@ -30,6 +62,8 @@ function AppShell() {
         onConfirm={confirmMerge}
         onDiscard={discardLocal}
       />
+      {/* Onboarding — first launch or retriggered */}
+      <OnboardingScreen visible={showOnboarding} onDone={handleOnboardingDone} />
     </>
   );
 }

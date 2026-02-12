@@ -35,6 +35,7 @@ import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import GroupModal from "@/components/GroupModal";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
+import { triggerOnboarding } from "@/app/_layout";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PEEK_WIDTH = 24;
@@ -631,6 +632,18 @@ export default function TasksScreen() {
                                 <Text style={styles.dropdownBtnText}>Calendar Feed</Text>
                             </TouchableOpacity>
                         )}
+
+                        <TouchableOpacity
+                            style={styles.dropdownBtn}
+                            onPress={() => {
+                                setAccountMenuOpen(false);
+                                triggerOnboarding();
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="help-circle-outline" size={18} color={Colors.light.textPrimary} />
+                            <Text style={styles.dropdownBtnText}>Learn More</Text>
+                        </TouchableOpacity>
 
                         <View style={{ height: 1, backgroundColor: Colors.light.borderLight, marginVertical: 4 }} />
 
