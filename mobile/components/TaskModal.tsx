@@ -308,7 +308,7 @@ export default function TaskModal({
                             </Text>
                             {dueDate && (
                                 <TouchableOpacity
-                                    onPress={() => { setDueDate(null); setShowDatePicker(false); }}
+                                    onPress={() => { setDueDate(null); setDueTime(null); setShowDatePicker(false); setShowTimePicker(false); }}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
                                     <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
@@ -326,41 +326,43 @@ export default function TaskModal({
                         )}
                     </View>
 
-                    {/* Due Time */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Due Time</Text>
-                        <TouchableOpacity
-                            style={styles.fieldRow}
-                            onPress={() => {
-                                if (!dueTime) setDueTime(formatTime(new Date()));
-                                setShowTimePicker(!showTimePicker);
-                                setShowDatePicker(false);
-                            }}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="time-outline" size={20} color={Colors.light.accent} />
-                            <Text style={[styles.fieldText, !dueTime && styles.fieldPlaceholder]}>
-                                {dueTime ? displayTime(dueTime) : "Add due time"}
-                            </Text>
-                            {dueTime && (
-                                <TouchableOpacity
-                                    onPress={() => { setDueTime(null); setShowTimePicker(false); }}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                    <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
-                                </TouchableOpacity>
+                    {/* Due Time — only when date is set */}
+                    {dueDate ? (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionLabel}>Due Time</Text>
+                            <TouchableOpacity
+                                style={styles.fieldRow}
+                                onPress={() => {
+                                    if (!dueTime) setDueTime(formatTime(new Date()));
+                                    setShowTimePicker(!showTimePicker);
+                                    setShowDatePicker(false);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="time-outline" size={20} color={Colors.light.accent} />
+                                <Text style={[styles.fieldText, !dueTime && styles.fieldPlaceholder]}>
+                                    {dueTime ? displayTime(dueTime) : "Add due time"}
+                                </Text>
+                                {dueTime && (
+                                    <TouchableOpacity
+                                        onPress={() => { setDueTime(null); setShowTimePicker(false); }}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
+                                    </TouchableOpacity>
+                                )}
+                            </TouchableOpacity>
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={parseTimeStr(dueTime) ?? new Date()}
+                                    mode="time"
+                                    display="spinner"
+                                    onChange={onTimeChange}
+                                    style={styles.picker}
+                                />
                             )}
-                        </TouchableOpacity>
-                        {showTimePicker && (
-                            <DateTimePicker
-                                value={parseTimeStr(dueTime) ?? new Date()}
-                                mode="time"
-                                display="spinner"
-                                onChange={onTimeChange}
-                                style={styles.picker}
-                            />
-                        )}
-                    </View>
+                        </View>
+                    ) : null}
 
                     {/* Priority */}
                     <View style={styles.section}>
@@ -445,6 +447,32 @@ export default function TaskModal({
                         <Text style={styles.sectionLabel}>List</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={styles.groupChips}>
+                                {/* General Tasks (ungrouped) */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.groupChip,
+                                        groupId === null && {
+                                            backgroundColor: Colors.light.accentLight,
+                                            borderColor: Colors.light.accent,
+                                        },
+                                    ]}
+                                    onPress={() => setGroupId(null)}
+                                >
+                                    <View
+                                        style={[
+                                            styles.chipDot,
+                                            { backgroundColor: Colors.light.textTertiary },
+                                        ]}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            groupId === null && { color: Colors.light.textPrimary },
+                                        ]}
+                                    >
+                                        General Tasks
+                                    </Text>
+                                </TouchableOpacity>
                                 {groups.map((g) => (
                                     <TouchableOpacity
                                         key={g.id}

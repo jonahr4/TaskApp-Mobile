@@ -32,6 +32,48 @@ const PEEK_WIDTH = 24;
 const CARD_GAP = 10;
 const CARD_WIDTH = SCREEN_WIDTH - PEEK_WIDTH * 2 - CARD_GAP;
 
+type StatusFilter = "all" | "in_progress" | "completed";
+type SortOption = "due_date" | "date_created" | "alphabetical" | "priority";
+
+const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "in_progress", label: "In Progress" },
+    { key: "completed", label: "Completed" },
+];
+
+const SORT_OPTIONS: { key: SortOption; label: string }[] = [
+    { key: "due_date", label: "Due Date" },
+    { key: "date_created", label: "Date Created" },
+    { key: "alphabetical", label: "Alphabetical" },
+    { key: "priority", label: "Priority" },
+];
+
+function sortTasks(tasks: Task[], sortBy: SortOption): Task[] {
+    return [...tasks].sort((a, b) => {
+        switch (sortBy) {
+            case "due_date":
+                if (!a.dueDate && !b.dueDate) return 0;
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return a.dueDate.localeCompare(b.dueDate);
+            case "date_created":
+                return (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0);
+            case "alphabetical":
+                return a.title.localeCompare(b.title);
+            case "priority": {
+                const order = { DO: 0, DELEGATE: 1, SCHEDULE: 2, DELETE: 3 };
+                const qa = getQuadrant(a);
+                const qb = getQuadrant(b);
+                const va = qa ? order[qa] : 4;
+                const vb = qb ? order[qb] : 4;
+                return va - vb;
+            }
+            default:
+                return 0;
+        }
+    });
+}
+
 function formatDueDateTime(task: Task): string | null {
     if (!task.dueDate) return null;
     const d = new Date(`${task.dueDate}T00:00:00`);
@@ -126,6 +168,8 @@ function GroupPage({
     onAddTask,
     onEditGroup,
     onLocalChange,
+    statusFilter,
+    sortBy,
 }: {
     group: TaskGroup | null;
     tasks: Task[];
@@ -134,12 +178,22 @@ function GroupPage({
     onAddTask: (groupId: string | null) => void;
     onEditGroup?: (g: TaskGroup) => void;
     onLocalChange?: () => void;
+    statusFilter: StatusFilter;
+    sortBy: SortOption;
 }) {
     const groupName = group?.name ?? "General Tasks";
     const groupColor = group?.color ?? Colors.light.textTertiary;
-    const activeTasks = tasks.filter((t) => !t.completed);
-    const completedTasks = tasks.filter((t) => t.completed);
-    const [showCompleted, setShowCompleted] = useState(false);
+
+    // Apply status filter
+    const filteredTasks = useMemo(() => {
+        let filtered = tasks;
+        if (statusFilter === "in_progress") filtered = tasks.filter((t) => !t.completed);
+        else if (statusFilter === "completed") filtered = tasks.filter((t) => t.completed);
+        return sortTasks(filtered, sortBy);
+    }, [tasks, statusFilter, sortBy]);
+
+    const activeTasks = filteredTasks.filter((t) => !t.completed);
+    const completedTasks = filteredTasks.filter((t) => t.completed);
 
     const handleToggle = async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -198,10 +252,10 @@ function GroupPage({
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 20 }}
                 >
-                    {activeTasks.length === 0 && (
+                    {activeTasks.length === 0 && completedTasks.length === 0 && (
                         <View style={styles.emptyState}>
                             <Ionicons name="checkmark-done" size={32} color={Colors.light.borderLight} />
-                            <Text style={styles.emptyText}>All caught up!</Text>
+                            <Text style={styles.emptyText}>No tasks yet</Text>
                         </View>
                     )}
                     {activeTasks.map((task) => (
@@ -214,32 +268,16 @@ function GroupPage({
                         />
                     ))}
 
-                    {/* Completed Section */}
-                    {completedTasks.length > 0 && (
-                        <TouchableOpacity
-                            style={styles.completedToggle}
-                            onPress={() => setShowCompleted(!showCompleted)}
-                        >
-                            <Ionicons
-                                name={showCompleted ? "chevron-down" : "chevron-forward"}
-                                size={16}
-                                color={Colors.light.textTertiary}
-                            />
-                            <Text style={styles.completedToggleText}>
-                                Completed ({completedTasks.length})
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                    {showCompleted &&
-                        completedTasks.map((task) => (
-                            <TaskRow
-                                key={task.id}
-                                task={task}
-                                onToggle={() => handleToggle(task)}
-                                onPress={() => onEditTask(task)}
-                                onDelete={() => handleDelete(task)}
-                            />
-                        ))}
+                    {/* Completed tasks at bottom */}
+                    {completedTasks.map((task) => (
+                        <TaskRow
+                            key={task.id}
+                            task={task}
+                            onToggle={() => handleToggle(task)}
+                            onPress={() => onEditTask(task)}
+                            onDelete={() => handleDelete(task)}
+                        />
+                    ))}
                 </ScrollView>
             </View>
         </View>
@@ -263,6 +301,9 @@ export default function TasksScreen() {
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [sortBy, setSortBy] = useState<SortOption>("due_date");
+    const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
     const pagerRef = useRef<ScrollView>(null);
 
     const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -411,6 +452,107 @@ export default function TasksScreen() {
                 </>
             )}
 
+            {/* Filter Bar */}
+            <View style={styles.filterBar}>
+                {/* Status */}
+                <View>
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip,
+                            statusFilter !== "all" && styles.filterChipActive,
+                        ]}
+                        onPress={() => setShowFilterMenu(showFilterMenu === "status" ? null : "status")}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Text style={[styles.filterChipText, statusFilter !== "all" && styles.filterChipTextActive]}>
+                            {STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label ?? "All"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                    </TouchableOpacity>
+                    {showFilterMenu === "status" && (
+                        <View style={styles.filterDropdown}>
+                            {STATUS_OPTIONS.map((opt) => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    style={[
+                                        styles.filterOption,
+                                        statusFilter === opt.key && styles.filterOptionActive,
+                                    ]}
+                                    onPress={() => {
+                                        setStatusFilter(opt.key);
+                                        setShowFilterMenu(null);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.filterOptionText,
+                                        statusFilter === opt.key && styles.filterOptionTextActive,
+                                    ]}>
+                                        {opt.label}
+                                    </Text>
+                                    {statusFilter === opt.key && (
+                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
+                {/* Sort */}
+                <View>
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip,
+                            sortBy !== "due_date" && styles.filterChipActive,
+                        ]}
+                        onPress={() => setShowFilterMenu(showFilterMenu === "sort" ? null : "sort")}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="swap-vertical-outline" size={14} color={sortBy !== "due_date" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Text style={[styles.filterChipText, sortBy !== "due_date" && styles.filterChipTextActive]}>
+                            {SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? "Due Date"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                    </TouchableOpacity>
+                    {showFilterMenu === "sort" && (
+                        <View style={[styles.filterDropdown, { left: 0 }]}>
+                            {SORT_OPTIONS.map((opt) => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    style={[
+                                        styles.filterOption,
+                                        sortBy === opt.key && styles.filterOptionActive,
+                                    ]}
+                                    onPress={() => {
+                                        setSortBy(opt.key);
+                                        setShowFilterMenu(null);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.filterOptionText,
+                                        sortBy === opt.key && styles.filterOptionTextActive,
+                                    ]}>
+                                        {opt.label}
+                                    </Text>
+                                    {sortBy === opt.key && (
+                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            {/* Dismiss filter menu backdrop */}
+            {showFilterMenu && (
+                <Pressable
+                    style={StyleSheet.absoluteFillObject}
+                    onPress={() => setShowFilterMenu(null)}
+                />
+            )}
+
             {/* Carousel */}
             {pages.length > 0 ? (
                 <ScrollView
@@ -442,6 +584,8 @@ export default function TasksScreen() {
                                 onAddTask={handleAddTask}
                                 onEditGroup={handleEditGroup}
                                 onLocalChange={handleLocalChange}
+                                statusFilter={statusFilter}
+                                sortBy={sortBy}
                             />
                         </View>
                     ))}
@@ -944,5 +1088,72 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         color: Colors.light.accent,
         fontWeight: "500",
+    },
+    filterBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: PEEK_WIDTH,
+        paddingTop: Spacing.sm,
+        paddingBottom: 4,
+        zIndex: 20,
+    },
+    filterChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        backgroundColor: Colors.light.bgCard,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+    },
+    filterChipActive: {
+        backgroundColor: Colors.light.accentLight,
+        borderColor: Colors.light.accent,
+    },
+    filterChipText: {
+        fontSize: FontSize.xs,
+        fontWeight: "500" as const,
+        color: Colors.light.textSecondary,
+    },
+    filterChipTextActive: {
+        color: Colors.light.accent,
+    },
+    filterDropdown: {
+        position: "absolute",
+        top: 36,
+        left: 0,
+        backgroundColor: Colors.light.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+        elevation: 6,
+        zIndex: 30,
+        minWidth: 150,
+        overflow: "hidden",
+    },
+    filterOption: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    filterOptionActive: {
+        backgroundColor: Colors.light.accentLight,
+    },
+    filterOptionText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textPrimary,
+    },
+    filterOptionTextActive: {
+        color: Colors.light.accent,
+        fontWeight: "600" as const,
     },
 });
