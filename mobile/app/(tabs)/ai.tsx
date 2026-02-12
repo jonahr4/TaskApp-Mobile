@@ -406,17 +406,6 @@ export default function AiScreen() {
                                                         <Text style={styles.clearBtnText}>Clear</Text>
                                                     </TouchableOpacity>
                                                 )}
-                                                {isDatePickerOpen && (
-                                                    <View style={styles.pickerInline}>
-                                                        <DateTimePicker
-                                                            value={ymdToDate(task.dueDate)}
-                                                            mode="date"
-                                                            display="inline"
-                                                            onChange={handleDateChange}
-                                                            themeVariant="light"
-                                                        />
-                                                    </View>
-                                                )}
                                             </View>
                                             <View style={styles.fieldHalf}>
                                                 <Text style={styles.fieldLabel}>TIME</Text>
@@ -447,19 +436,31 @@ export default function AiScreen() {
                                                         <Text style={styles.clearBtnText}>Clear</Text>
                                                     </TouchableOpacity>
                                                 )}
-                                                {isTimePickerOpen && (
-                                                    <View style={styles.pickerInline}>
-                                                        <DateTimePicker
-                                                            value={hmToDate(task.dueTime)}
-                                                            mode="time"
-                                                            display="spinner"
-                                                            onChange={handleDateChange}
-                                                            themeVariant="light"
-                                                        />
-                                                    </View>
-                                                )}
                                             </View>
                                         </View>
+                                        {/* Full-width pickers rendered below the row */}
+                                        {isDatePickerOpen && (
+                                            <View style={styles.pickerInline}>
+                                                <DateTimePicker
+                                                    value={ymdToDate(task.dueDate)}
+                                                    mode="date"
+                                                    display="inline"
+                                                    onChange={handleDateChange}
+                                                    themeVariant="light"
+                                                />
+                                            </View>
+                                        )}
+                                        {isTimePickerOpen && (
+                                            <View style={styles.pickerInline}>
+                                                <DateTimePicker
+                                                    value={hmToDate(task.dueTime)}
+                                                    mode="time"
+                                                    display="spinner"
+                                                    onChange={handleDateChange}
+                                                    themeVariant="light"
+                                                />
+                                            </View>
+                                        )}
 
                                         {/* Priority + Group row */}
                                         <View style={[styles.fieldRow, { zIndex: 20 }]}>

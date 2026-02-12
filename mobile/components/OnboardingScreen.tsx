@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
     View,
     Text,
@@ -7,13 +7,27 @@ import {
     Dimensions,
     Animated,
     Modal,
+    Alert,
+    Linking,
+    Platform,
+    ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import {
+    loadSettings,
+    saveSettings,
+    requestPermissions,
+    DEFAULT_SETTINGS,
+    setupNotificationChannel,
+} from "@/lib/notifications";
+import { useAuth } from "@/hooks/useAuth";
+import { getOrCreateCalendarToken } from "@/lib/firestore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BASE_URL = "https://the-task-app.vercel.app";
 
 type OnboardingPage = {
     icon: keyof typeof Ionicons.glyphMap;
@@ -22,6 +36,8 @@ type OnboardingPage = {
     title: string;
     subtitle: string;
     bullets: string[];
+    /** Which interactive slot to render below the bullets */
+    interactive?: "notifications" | "calendar";
 };
 
 const PAGES: OnboardingPage[] = [
@@ -61,8 +77,8 @@ const PAGES: OnboardingPage[] = [
             "Visual calendar with task dots on each day",
             "Tap any day to see tasks due",
             "Sync to Apple Calendar via iCal feed",
-            "Subscribe per-group for color-coded events",
         ],
+        interactive: "calendar",
     },
     {
         icon: "sparkles-outline",
@@ -84,11 +100,10 @@ const PAGES: OnboardingPage[] = [
         title: "Smart Notifications",
         subtitle: "Never miss a deadline",
         bullets: [
-            "Customizable reminder timing — 5 min to 1 day before",
-            "Choose which groups send notifications",
-            "Daily summary to start your morning",
-            "Location-based reminders coming soon",
+            "Get reminders before tasks are due",
+            "Daily summary each morning",
         ],
+        interactive: "notifications",
     },
     {
         icon: "cloud-done-outline",
@@ -117,6 +132,15 @@ export function OnboardingScreen({ visible, onDone }: Props) {
     const router = useRouter();
     const isLastPage = currentPage === PAGES.length - 1;
 
+    // Notification setup state
+    const [notifEnabled, setNotifEnabled] = useState(false);
+    const [notifLoading, setNotifLoading] = useState(false);
+
+    // Calendar feed state
+    const { user } = useAuth();
+    const [calLoading, setCalLoading] = useState(false);
+    const [calDone, setCalDone] = useState(false);
+
     const goToPage = (index: number) => {
         scrollRef.current?.scrollToOffset({ offset: index * SCREEN_WIDTH, animated: true });
         setCurrentPage(index);
@@ -140,6 +164,137 @@ export function OnboardingScreen({ visible, onDone }: Props) {
         onDone();
     };
 
+    // ── Notification quick-setup ──────────────────────────────────────────
+
+    const handleEnableNotifications = useCallback(async () => {
+        setNotifLoading(true);
+        try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (Platform.OS === "android") await setupNotificationChannel();
+            const granted = await requestPermissions();
+            if (!granted) {
+                Alert.alert(
+                    "Permission Required",
+                    "Please enable notifications in your device Settings to receive reminders.",
+                );
+                setNotifLoading(false);
+                return;
+            }
+            // Save enabled settings with sensible defaults
+            const current = await loadSettings();
+            const next = {
+                ...current,
+                enabled: true,
+                reminderMinutes: 15,
+                allGroupsEnabled: true,
+                dailySummaryEnabled: true,
+                dailySummaryHour: 8,
+                dailySummaryMinute: 0,
+            };
+            await saveSettings(next);
+            setNotifEnabled(true);
+        } catch {
+            Alert.alert("Error", "Could not enable notifications.");
+        }
+        setNotifLoading(false);
+    }, []);
+
+    // ── Calendar feed quick-add ───────────────────────────────────────────
+
+    const handleAddCalendar = useCallback(async () => {
+        if (!user) {
+            Alert.alert("Sign In Required", "You'll need to sign in first to use calendar sync. You can do this later from the Calendar tab.");
+            return;
+        }
+        setCalLoading(true);
+        try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const token = await getOrCreateCalendarToken(user.uid);
+            const feedUrl = `${BASE_URL}/api/ical/${token}`;
+            const webcalUrl = feedUrl.replace(/^https?:\/\//, "webcal://");
+            const supported = await Linking.canOpenURL(webcalUrl);
+            if (supported) {
+                await Linking.openURL(webcalUrl);
+            } else {
+                await Linking.openURL(feedUrl);
+            }
+            setCalDone(true);
+        } catch {
+            Alert.alert("Error", "Could not generate calendar feed.");
+        }
+        setCalLoading(false);
+    }, [user]);
+
+    // ── Render helpers ────────────────────────────────────────────────────
+
+    const renderNotificationActions = () => (
+        <View style={styles.actionArea}>
+            {notifEnabled ? (
+                <View style={styles.successRow}>
+                    <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                    <Text style={styles.successText}>
+                        Notifications enabled! 15-min reminders + daily summary at 8 AM.
+                    </Text>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: "#06b6d4" }]}
+                    onPress={handleEnableNotifications}
+                    activeOpacity={0.85}
+                    disabled={notifLoading}
+                >
+                    {notifLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                        <>
+                            <Ionicons name="notifications" size={18} color="#fff" />
+                            <Text style={styles.actionBtnText}>Enable Reminders</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            )}
+            {!notifEnabled && (
+                <Text style={styles.actionHint}>
+                    You can customize timing and groups later in Settings
+                </Text>
+            )}
+        </View>
+    );
+
+    const renderCalendarActions = () => (
+        <View style={styles.actionArea}>
+            {calDone ? (
+                <View style={styles.successRow}>
+                    <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                    <Text style={styles.successText}>
+                        Calendar feed opened! Check your Calendar app to confirm.
+                    </Text>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: "#f59e0b" }]}
+                    onPress={handleAddCalendar}
+                    activeOpacity={0.85}
+                    disabled={calLoading}
+                >
+                    {calLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                        <>
+                            <Ionicons name="calendar" size={18} color="#fff" />
+                            <Text style={styles.actionBtnText}>Add All Tasks to Calendar</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            )}
+            <Text style={styles.actionHint}>
+                {calDone
+                    ? "You can add per-group feeds later from the Calendar tab"
+                    : "You can always do this later from the Calendar tab"}
+            </Text>
+        </View>
+    );
+
     const renderPage = ({ item, index }: { item: OnboardingPage; index: number }) => (
         <View style={[styles.page, { width: SCREEN_WIDTH }]}>
             {/* Icon */}
@@ -160,6 +315,10 @@ export function OnboardingScreen({ visible, onDone }: Props) {
                     </View>
                 ))}
             </View>
+
+            {/* Interactive actions */}
+            {item.interactive === "notifications" && renderNotificationActions()}
+            {item.interactive === "calendar" && renderCalendarActions()}
         </View>
     );
 
@@ -312,6 +471,49 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         color: Colors.light.textSecondary,
         lineHeight: 18,
+    },
+    // ── Interactive action area ──
+    actionArea: {
+        alignSelf: "stretch",
+        marginTop: 20,
+        gap: 10,
+    },
+    actionBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: Radius.md,
+    },
+    actionBtnText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        fontWeight: "700",
+    },
+    actionHint: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+        textAlign: "center",
+        lineHeight: 16,
+    },
+    successRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: "#ecfdf5",
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: "#a7f3d0",
+    },
+    successText: {
+        flex: 1,
+        fontSize: FontSize.xs,
+        color: "#065f46",
+        lineHeight: 16,
+        fontWeight: "500",
     },
     // ── Bottom ──
     bottom: {

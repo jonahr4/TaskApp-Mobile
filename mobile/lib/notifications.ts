@@ -100,6 +100,32 @@ function getDailySummaryId(): string {
     return "daily-summary";
 }
 
+/** Map a hex colour to the closest coloured-circle emoji */
+function colorToEmoji(hex?: string): string {
+    if (!hex) return "📋";
+    // Parse hex to RGB
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substring(0, 2), 16) / 255;
+    const g = parseInt(c.substring(2, 4), 16) / 255;
+    const b = parseInt(c.substring(4, 6), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d < 0.08) return l > 0.6 ? "⚪" : "⚫"; // achromatic — grey/white/black
+    let h = 0;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+    // Map hue to emoji
+    if (h < 15 || h >= 345) return "🔴";
+    if (h < 45) return "🟠";
+    if (h < 70) return "🟡";
+    if (h < 170) return "🟢";
+    if (h < 260) return "🔵";
+    if (h < 310) return "🟣";
+    return "🔴"; // pinkish reds
+}
+
 export async function scheduleTaskReminder(
     task: Task,
     minutesBefore: number,
@@ -248,30 +274,4 @@ export function formatMinutes(mins: number): string {
     }
     const d = Math.round(mins / 1440);
     return `${d} day${d === 1 ? "" : "s"}`;
-}
-
-/** Map a hex colour to the closest coloured-circle emoji */
-function colorToEmoji(hex?: string): string {
-    if (!hex) return "📋";
-    // Parse hex to RGB
-    const c = hex.replace("#", "");
-    const r = parseInt(c.substring(0, 2), 16) / 255;
-    const g = parseInt(c.substring(2, 4), 16) / 255;
-    const b = parseInt(c.substring(4, 6), 16) / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    const d = max - min;
-    if (d < 0.08) return l > 0.6 ? "⚪" : "⚫"; // achromatic — grey/white/black
-    let h = 0;
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-    else if (max === g) h = ((b - r) / d + 2) * 60;
-    else h = ((r - g) / d + 4) * 60;
-    // Map hue to emoji
-    if (h < 15 || h >= 345) return "🔴";
-    if (h < 45) return "🟠";
-    if (h < 70) return "🟡";
-    if (h < 170) return "🟢";
-    if (h < 260) return "🔵";
-    if (h < 310) return "🟣";
-    return "🔴"; // pinkish reds
 }
