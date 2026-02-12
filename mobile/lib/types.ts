@@ -11,6 +11,7 @@ export type Task = {
     dueTime: string | null;
     groupId: string | null;
     autoUrgentDays: number | null;
+    location?: string | null;
     completed: boolean;
     order: number;
     createdAt: Timestamp;
