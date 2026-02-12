@@ -8,12 +8,13 @@ import {
     Modal,
     ScrollView,
     Alert,
+    Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { createGroupUnified, updateGroupUnified, deleteGroupUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
-import type { TaskGroup } from "@/lib/types";
+import type { Task, TaskGroup } from "@/lib/types";
 
 const GROUP_COLORS = [
     "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
@@ -27,9 +28,10 @@ type Props = {
     onClose: () => void;
     group?: TaskGroup | null;
     groupCount: number;
+    tasks?: Task[];
 };
 
-export default function GroupModal({ visible, onClose, group, groupCount }: Props) {
+export default function GroupModal({ visible, onClose, group, groupCount, tasks = [] }: Props) {
     const { user } = useAuth();
     const isEdit = !!group;
     const [name, setName] = useState("");
@@ -169,6 +171,34 @@ export default function GroupModal({ visible, onClose, group, groupCount }: Prop
                         </View>
                     </View>
 
+                    {/* Task Stats */}
+                    {isEdit && tasks.length > 0 && (() => {
+                        const total = tasks.length;
+                        const completed = tasks.filter(t => t.completed).length;
+                        const active = total - completed;
+                        return (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionLabel}>Stats</Text>
+                                <View style={styles.statsRow}>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statNumber}>{total}</Text>
+                                        <Text style={styles.statLabel}>Total</Text>
+                                    </View>
+                                    <View style={[styles.statDivider]} />
+                                    <View style={styles.statItem}>
+                                        <Text style={[styles.statNumber, { color: Colors.light.accent }]}>{active}</Text>
+                                        <Text style={styles.statLabel}>Active</Text>
+                                    </View>
+                                    <View style={[styles.statDivider]} />
+                                    <View style={styles.statItem}>
+                                        <Text style={[styles.statNumber, { color: Colors.light.success }]}>{completed}</Text>
+                                        <Text style={styles.statLabel}>Completed</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        );
+                    })()}
+
                     {/* Delete */}
                     {isEdit && (
                         <TouchableOpacity
@@ -196,7 +226,8 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
+        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
+        paddingBottom: Spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.borderLight,
         backgroundColor: Colors.light.bgCard,
@@ -297,5 +328,34 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         color: Colors.light.danger,
         fontWeight: "500",
+    },
+    statsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: Colors.light.bgCard,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        borderRadius: Radius.md,
+        paddingVertical: Spacing.md,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: "center",
+        gap: 2,
+    },
+    statNumber: {
+        fontSize: FontSize.xl,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+    },
+    statLabel: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+        fontWeight: "500",
+    },
+    statDivider: {
+        width: 1,
+        height: 28,
+        backgroundColor: Colors.light.borderLight,
     },
 });

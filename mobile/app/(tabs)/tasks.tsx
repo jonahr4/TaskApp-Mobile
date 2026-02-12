@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useCallback } from "react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import {
     View,
     Text,
@@ -12,7 +12,15 @@ import {
     Pressable,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    RefreshControl,
+    LayoutAnimation,
+    UIManager,
+    Platform,
+    Modal,
 } from "react-native";
+import PagerView from "react-native-pager-view";
+import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -20,7 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
-import { updateTaskUnified, deleteTaskUnified, createGroupUnified } from "@/lib/crud";
+import { updateTaskUnified, deleteTaskUnified, createGroupUnified, updateGroupUnified, createTaskUnified, reorderGroupsUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
@@ -94,21 +102,37 @@ function TaskRow({
     onToggle,
     onPress,
     onDelete,
+    onDuplicate,
 }: {
     task: Task;
     group?: TaskGroup;
     onToggle: () => void;
     onPress: () => void;
     onDelete: () => void;
+    onDuplicate: () => void;
 }) {
     const quadrant = getQuadrant(task);
     const meta = quadrant ? QUADRANT_META[quadrant] : null;
     const due = formatDueDateTime(task);
 
+    const handleLongPress = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Alert.alert(
+            task.title,
+            undefined,
+            [
+                { text: "Duplicate Task", onPress: onDuplicate },
+                { text: "Delete Task", style: "destructive", onPress: onDelete },
+                { text: "Cancel", style: "cancel" },
+            ]
+        );
+    }, [onDuplicate, onDelete, task.title]);
+
     return (
         <TouchableOpacity
             style={styles.taskRow}
             onPress={onPress}
+            onLongPress={handleLongPress}
             activeOpacity={0.7}
         >
             <TouchableOpacity
@@ -170,6 +194,7 @@ function GroupPage({
     onLocalChange,
     statusFilter,
     sortBy,
+    onRefresh,
 }: {
     group: TaskGroup | null;
     tasks: Task[];
@@ -180,6 +205,7 @@ function GroupPage({
     onLocalChange?: () => void;
     statusFilter: StatusFilter;
     sortBy: SortOption;
+    onRefresh?: () => Promise<void>;
 }) {
     const groupName = group?.name ?? "General Tasks";
     const groupColor = group?.color ?? Colors.light.textTertiary;
@@ -194,6 +220,13 @@ function GroupPage({
 
     const activeTasks = filteredTasks.filter((t) => !t.completed);
     const completedTasks = filteredTasks.filter((t) => t.completed);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await onRefresh?.();
+        setRefreshing(false);
+    }, [onRefresh]);
 
     const handleToggle = async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -215,6 +248,24 @@ function GroupPage({
         ]);
     };
 
+    const handleDuplicate = async (task: Task) => {
+        await createTaskUnified(uid, {
+            title: `${task.title} (copy)`,
+            notes: task.notes,
+            dueDate: task.dueDate,
+            dueTime: task.dueTime,
+            urgent: task.urgent,
+            important: task.important,
+            groupId: task.groupId,
+            completed: false,
+            order: task.order + 1,
+            autoUrgentDays: task.autoUrgentDays,
+            location: task.location,
+        });
+        if (!uid) onLocalChange?.();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    };
+
     return (
         <View style={styles.groupPage}>
             <View style={styles.groupCard}>
@@ -222,7 +273,7 @@ function GroupPage({
                 <View style={styles.groupHeader}>
                     <View style={styles.groupHeaderLeft}>
                         <View style={[styles.groupDot, { backgroundColor: groupColor }]} />
-                        <Text style={styles.groupName}>{groupName}</Text>
+                        <Text style={styles.groupName} numberOfLines={1}>{groupName}</Text>
                         <View style={styles.countBadge}>
                             <Text style={styles.countText}>{activeTasks.length}</Text>
                         </View>
@@ -251,6 +302,15 @@ function GroupPage({
                     style={styles.taskList}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 20 }}
+                    nestedScrollEnabled={true}
+                    alwaysBounceVertical={true}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={Colors.light.accent}
+                        />
+                    }
                 >
                     {activeTasks.length === 0 && completedTasks.length === 0 && (
                         <View style={styles.emptyState}>
@@ -265,6 +325,7 @@ function GroupPage({
                             onToggle={() => handleToggle(task)}
                             onPress={() => onEditTask(task)}
                             onDelete={() => handleDelete(task)}
+                            onDuplicate={() => handleDuplicate(task)}
                         />
                     ))}
 
@@ -276,6 +337,7 @@ function GroupPage({
                             onToggle={() => handleToggle(task)}
                             onPress={() => onEditTask(task)}
                             onDelete={() => handleDelete(task)}
+                            onDuplicate={() => handleDuplicate(task)}
                         />
                     ))}
                 </ScrollView>
@@ -305,12 +367,30 @@ export default function TasksScreen() {
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
     const pagerRef = useRef<ScrollView>(null);
+    const scrollOffsetAnim = useRef(new Animated.Value(0)).current;
 
-    const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const offset = e.nativeEvent.contentOffset.x;
-        const page = Math.round(offset / (CARD_WIDTH + CARD_GAP));
-        setCurrentPage(page);
-    }, []);
+    const handleScroll = Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollOffsetAnim } } }],
+        { useNativeDriver: false }
+    );
+
+    // Track current page from scroll position
+    const handleMomentumEnd = useCallback(() => {
+        // Read current value from the animated value
+        scrollOffsetAnim.addListener(({ value }) => {
+            const page = Math.round(value / (CARD_WIDTH + CARD_GAP));
+            setCurrentPage(page);
+            scrollOffsetAnim.removeAllListeners();
+        });
+    }, [scrollOffsetAnim]);
+
+    const handleRefresh = useCallback(async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        reloadLocal();
+        reloadLocalGroups();
+        // Small delay so the spinner has time to show
+        await new Promise<void>((r) => setTimeout(r, 600));
+    }, [reloadLocal, reloadLocalGroups]);
 
     // Build pages: one per group + "Ungrouped" if there are ungrouped tasks
     const pages = useMemo(() => {
@@ -345,6 +425,7 @@ export default function TasksScreen() {
     // Group modal state
     const [groupModalOpen, setGroupModalOpen] = useState(false);
     const [editGroup, setEditGroup] = useState<TaskGroup | null>(null);
+    const [reorderModalOpen, setReorderModalOpen] = useState(false);
 
     const handleEditGroup = useCallback((g: TaskGroup) => {
         setEditGroup(g);
@@ -364,6 +445,7 @@ export default function TasksScreen() {
             tension: 80,
         }).start();
         setFabOpen(!fabOpen);
+        if (!fabOpen) setShowFilterMenu(null);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
@@ -410,6 +492,21 @@ export default function TasksScreen() {
                         onPress={() => setAccountMenuOpen(false)}
                     />
                     <View style={styles.accountDropdown}>
+                        {/* Stats link — always visible */}
+                        <TouchableOpacity
+                            style={styles.dropdownBtn}
+                            onPress={() => {
+                                setAccountMenuOpen(false);
+                                router.push("/(tabs)/stats");
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="stats-chart-outline" size={18} color={Colors.light.textPrimary} />
+                            <Text style={styles.dropdownBtnText}>View Stats</Text>
+                        </TouchableOpacity>
+
+                        <View style={{ height: 1, backgroundColor: Colors.light.borderLight, marginVertical: 4 }} />
+
                         {user ? (
                             <>
                                 <Text style={styles.dropdownEmail} numberOfLines={1}>
@@ -543,6 +640,18 @@ export default function TasksScreen() {
                         </View>
                     )}
                 </View>
+
+                {/* Group Order */}
+                <View>
+                    <TouchableOpacity
+                        style={styles.filterChip}
+                        onPress={() => setReorderModalOpen(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="reorder-three-outline" size={14} color={Colors.light.textSecondary} />
+                        <Text style={styles.filterChipText}>Order</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Dismiss filter menu backdrop */}
@@ -562,6 +671,7 @@ export default function TasksScreen() {
                     snapToInterval={CARD_WIDTH + CARD_GAP}
                     snapToAlignment="start"
                     decelerationRate="fast"
+                    disableIntervalMomentum={true}
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{
                         paddingHorizontal: PEEK_WIDTH,
@@ -569,7 +679,9 @@ export default function TasksScreen() {
                         paddingBottom: Spacing.sm,
                     }}
                     style={styles.pager}
-                    onMomentumScrollEnd={handleScroll}
+                    onScroll={handleScroll}
+                    onMomentumScrollEnd={handleMomentumEnd}
+                    scrollEventThrottle={16}
                 >
                     {pages.map((page) => (
                         <View
@@ -586,6 +698,7 @@ export default function TasksScreen() {
                                 onLocalChange={handleLocalChange}
                                 statusFilter={statusFilter}
                                 sortBy={sortBy}
+                                onRefresh={handleRefresh}
                             />
                         </View>
                     ))}
@@ -600,15 +713,42 @@ export default function TasksScreen() {
             {/* Page Indicator Dots */}
             <View style={styles.dotContainer}>
                 {pages.length > 1
-                    ? pages.map((_, i) => (
-                        <View
-                            key={i}
-                            style={[
-                                styles.dot,
-                                i === currentPage && styles.dotActive,
-                            ]}
-                        />
-                    ))
+                    ? pages.map((_, i) => {
+                        const snapInterval = CARD_WIDTH + CARD_GAP;
+                        const inputRange = [
+                            (i - 1) * snapInterval,
+                            i * snapInterval,
+                            (i + 1) * snapInterval,
+                        ];
+                        const dotWidth = scrollOffsetAnim.interpolate({
+                            inputRange,
+                            outputRange: [8, 22, 8],
+                            extrapolate: "clamp",
+                        });
+                        const dotOpacity = scrollOffsetAnim.interpolate({
+                            inputRange,
+                            outputRange: [0.35, 1, 0.35],
+                            extrapolate: "clamp",
+                        });
+                        const dotColor = scrollOffsetAnim.interpolate({
+                            inputRange,
+                            outputRange: ["#bcc1ca", Colors.light.accent, "#bcc1ca"],
+                            extrapolate: "clamp",
+                        });
+                        return (
+                            <Animated.View
+                                key={i}
+                                style={[
+                                    styles.dot,
+                                    {
+                                        width: dotWidth,
+                                        opacity: dotOpacity,
+                                        backgroundColor: dotColor,
+                                    },
+                                ]}
+                            />
+                        );
+                    })
                     : <View style={styles.dotSpacer} />}
             </View>
 
@@ -703,7 +843,81 @@ export default function TasksScreen() {
                 }}
                 group={editGroup}
                 groupCount={groups.length}
+                tasks={editGroup ? tasks.filter(t => t.groupId === editGroup.id) : []}
             />
+
+            {/* Reorder Groups Modal */}
+            <Modal
+                visible={reorderModalOpen}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setReorderModalOpen(false)}
+            >
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.light.bg }}>
+                    {/* Handle */}
+                    <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
+                        <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: Colors.light.borderLight }} />
+                    </View>
+                    {/* Header */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Platform.OS === "ios" ? 10 : Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight }}>
+                        <Text style={{ fontSize: FontSize.lg, fontWeight: "700", color: Colors.light.textPrimary }}>Reorder Groups</Text>
+                        <TouchableOpacity onPress={() => setReorderModalOpen(false)}>
+                            <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
+                        </TouchableOpacity>
+                    </View>
+                    {/* Hint */}
+                    <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xs }}>
+                        <Text style={{ fontSize: FontSize.sm, color: Colors.light.textTertiary }}>Hold and drag the ≡ handle to reorder</Text>
+                    </View>
+                    {/* Draggable Group List */}
+                    {groups.length === 0 ? (
+                        <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
+                            <Ionicons name="layers-outline" size={40} color={Colors.light.borderLight} />
+                            <Text style={{ color: Colors.light.textTertiary, fontSize: FontSize.md }}>No groups to reorder</Text>
+                        </View>
+                    ) : (
+                        <DraggableFlatList
+                            data={groups}
+                            keyExtractor={(item) => item.id}
+                            onDragBegin={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+                            onDragEnd={async ({ data: reordered }) => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                await reorderGroupsUnified(user?.uid, reordered);
+                                if (!user) handleLocalChange();
+                            }}
+                            contentContainerStyle={{ padding: Spacing.lg, gap: 8 }}
+                            renderItem={({ item: g, drag, isActive }) => (
+                                <ScaleDecorator>
+                                    <TouchableOpacity
+                                        onLongPress={drag}
+                                        disabled={isActive}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            backgroundColor: isActive ? Colors.light.accentLight : Colors.light.bgCard,
+                                            borderRadius: Radius.md,
+                                            borderWidth: 1,
+                                            borderColor: isActive ? Colors.light.accent : Colors.light.borderLight,
+                                            paddingHorizontal: Spacing.md,
+                                            paddingVertical: Spacing.md,
+                                            shadowColor: isActive ? "#000" : "transparent",
+                                            shadowOffset: { width: 0, height: 4 },
+                                            shadowOpacity: isActive ? 0.15 : 0,
+                                            shadowRadius: 8,
+                                            elevation: isActive ? 6 : 0,
+                                        }}
+                                    >
+                                        <Ionicons name="menu" size={22} color={isActive ? Colors.light.accent : Colors.light.textTertiary} style={{ marginRight: Spacing.sm }} />
+                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: g.color || Colors.light.textTertiary, marginRight: Spacing.sm }} />
+                                        <Text style={{ flex: 1, fontSize: FontSize.md, fontWeight: "600", color: Colors.light.textPrimary }} numberOfLines={1}>{g.name}</Text>
+                                    </TouchableOpacity>
+                                </ScaleDecorator>
+                            )}
+                        />
+                    )}
+                </GestureHandlerRootView>
+            </Modal>
         </View>
     );
 }
@@ -820,6 +1034,12 @@ const styles = StyleSheet.create({
     pager: {
         flex: 1,
     },
+    pagerPage: {
+        flex: 1,
+        paddingHorizontal: PEEK_WIDTH,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.sm,
+    },
     pageWrapper: {
         width: CARD_WIDTH,
         marginRight: CARD_GAP,
@@ -869,6 +1089,7 @@ const styles = StyleSheet.create({
         fontSize: FontSize.lg,
         fontWeight: "600",
         color: Colors.light.textPrimary,
+        flexShrink: 1,
     },
     countBadge: {
         backgroundColor: Colors.light.bg,
@@ -1016,12 +1237,12 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.35,
         shadowRadius: 8,
         elevation: 6,
-        zIndex: 20,
+        zIndex: 50,
     },
     fabBackdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0,0,0,0.25)",
-        zIndex: 10,
+        zIndex: 40,
     },
     fabMini: {
         position: "absolute",
@@ -1030,7 +1251,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
-        zIndex: 15,
+        zIndex: 45,
     },
     fabMiniTop: {},
     fabMiniBottom: {},

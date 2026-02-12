@@ -17,6 +17,7 @@ import {
     localCreateGroup,
     localUpdateGroup,
     localDeleteGroup,
+    localReorderGroups,
 } from "./localDb";
 import type { Task, TaskGroup } from "./types";
 
@@ -89,5 +90,20 @@ export async function deleteGroupUnified(
         return cloudDeleteGroup(uid, groupId);
     } else {
         return localDeleteGroup(groupId);
+    }
+}
+
+export async function reorderGroupsUnified(
+    uid: string | undefined,
+    orderedGroups: { id: string }[]
+) {
+    if (uid) {
+        // Cloud: sequential updates to avoid race conditions
+        for (let i = 0; i < orderedGroups.length; i++) {
+            await cloudUpdateGroup(uid, orderedGroups[i].id, { order: i });
+        }
+    } else {
+        // Local: atomic batch update
+        await localReorderGroups(orderedGroups.map((g) => g.id));
     }
 }

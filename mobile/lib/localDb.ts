@@ -108,6 +108,15 @@ export async function localDeleteGroup(groupId: string): Promise<void> {
     await saveLocalGroups(groups.filter((g) => g.id !== groupId));
 }
 
+export async function localReorderGroups(orderedIds: string[]): Promise<void> {
+    const groups = await getLocalGroups();
+    for (let i = 0; i < orderedIds.length; i++) {
+        const g = groups.find((g) => g.id === orderedIds[i]);
+        if (g) g.order = i;
+    }
+    await saveLocalGroups(groups);
+}
+
 // ---------- Bulk ops (for sync) ----------
 
 export async function replaceAllLocalTasks(tasks: Task[]): Promise<void> {

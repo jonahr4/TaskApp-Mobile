@@ -59,12 +59,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="templates"
+        options={{
+          title: "Search",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="stats"
         options={{
-          title: "Stats",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" size={size} color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>

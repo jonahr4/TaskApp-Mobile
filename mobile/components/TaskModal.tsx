@@ -133,7 +133,7 @@ export default function TaskModal({
                 setDueTime(null);
                 setUrgent(defaultUrgent ?? null);
                 setImportant(defaultImportant ?? null);
-                setGroupId(defaultGroupId ?? groups[0]?.id ?? null);
+                setGroupId(defaultGroupId !== undefined ? defaultGroupId : (groups[0]?.id ?? null));
                 setCompleted(false);
                 setAutoUrgentEnabled(false);
                 setAutoUrgentDays(1);
@@ -290,6 +290,69 @@ export default function TaskModal({
                         numberOfLines={3}
                     />
 
+                    {/* List (Group) */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionLabel}>List</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={styles.groupChips}>
+                                {/* General Tasks (ungrouped) */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.groupChip,
+                                        groupId === null && {
+                                            backgroundColor: Colors.light.accentLight,
+                                            borderColor: Colors.light.accent,
+                                        },
+                                    ]}
+                                    onPress={() => setGroupId(null)}
+                                >
+                                    <View
+                                        style={[
+                                            styles.chipDot,
+                                            { backgroundColor: Colors.light.textTertiary },
+                                        ]}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            groupId === null && { color: Colors.light.textPrimary },
+                                        ]}
+                                    >
+                                        General Tasks
+                                    </Text>
+                                </TouchableOpacity>
+                                {groups.map((g) => (
+                                    <TouchableOpacity
+                                        key={g.id}
+                                        style={[
+                                            styles.groupChip,
+                                            groupId === g.id && {
+                                                backgroundColor: g.color ? `${g.color}15` : Colors.light.accentLight,
+                                                borderColor: g.color || Colors.light.accent,
+                                            },
+                                        ]}
+                                        onPress={() => setGroupId(g.id)}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.chipDot,
+                                                { backgroundColor: g.color || Colors.light.textTertiary },
+                                            ]}
+                                        />
+                                        <Text
+                                            style={[
+                                                styles.chipText,
+                                                groupId === g.id && { color: Colors.light.textPrimary },
+                                            ]}
+                                        >
+                                            {g.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+
                     {/* Due Date */}
                     <View style={styles.section}>
                         <Text style={styles.sectionLabel}>Due Date</Text>
@@ -366,7 +429,24 @@ export default function TaskModal({
 
                     {/* Priority */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Priority</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: Spacing.sm }}>
+                            <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Priority</Text>
+                            <TouchableOpacity
+                                onPress={() =>
+                                    Alert.alert(
+                                        "Eisenhower Focus Matrix",
+                                        "The Eisenhower Matrix helps you prioritize tasks by urgency and importance:\n\n" +
+                                        "🔴 Do First — Urgent & Important\nCritical tasks that need immediate attention.\n\n" +
+                                        "🟡 Schedule — Not Urgent & Important\nImportant goals to plan and work on over time.\n\n" +
+                                        "🔵 Delegate — Urgent & Not Important\nTime-sensitive but can be handed off to others.\n\n" +
+                                        "⚫ Eliminate — Not Urgent & Not Important\nDistractions to minimize or remove."
+                                    )
+                                }
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <Ionicons name="information-circle-outline" size={18} color={Colors.light.textTertiary} />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.priorityGrid}>
                             {priorityOptions.map((opt) => {
                                 const meta = QUADRANT_META[opt.key];
@@ -442,70 +522,7 @@ export default function TaskModal({
                         )}
                     </View>
 
-                    {/* Group */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>List</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={styles.groupChips}>
-                                {/* General Tasks (ungrouped) */}
-                                <TouchableOpacity
-                                    style={[
-                                        styles.groupChip,
-                                        groupId === null && {
-                                            backgroundColor: Colors.light.accentLight,
-                                            borderColor: Colors.light.accent,
-                                        },
-                                    ]}
-                                    onPress={() => setGroupId(null)}
-                                >
-                                    <View
-                                        style={[
-                                            styles.chipDot,
-                                            { backgroundColor: Colors.light.textTertiary },
-                                        ]}
-                                    />
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            groupId === null && { color: Colors.light.textPrimary },
-                                        ]}
-                                    >
-                                        General Tasks
-                                    </Text>
-                                </TouchableOpacity>
-                                {groups.map((g) => (
-                                    <TouchableOpacity
-                                        key={g.id}
-                                        style={[
-                                            styles.groupChip,
-                                            groupId === g.id && {
-                                                backgroundColor: g.color ? `${g.color}15` : Colors.light.accentLight,
-                                                borderColor: g.color || Colors.light.accent,
-                                            },
-                                        ]}
-                                        onPress={() => setGroupId(g.id)}
-                                    >
-                                        <View
-                                            style={[
-                                                styles.chipDot,
-                                                { backgroundColor: g.color || Colors.light.textTertiary },
-                                            ]}
-                                        />
-                                        <Text
-                                            style={[
-                                                styles.chipText,
-                                                groupId === g.id && { color: Colors.light.textPrimary },
-                                            ]}
-                                        >
-                                            {g.name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </ScrollView>
-                    </View>
-
-                    {/* Location (very bottom) */}
+                    {/* Location */}
                     <View style={styles.section}>
                         <Text style={styles.sectionLabel}>Location</Text>
                         <TouchableOpacity
