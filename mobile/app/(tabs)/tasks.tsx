@@ -34,6 +34,7 @@ import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import GroupModal from "@/components/GroupModal";
+import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PEEK_WIDTH = 24;
@@ -469,6 +470,7 @@ export default function TasksScreen() {
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const [calFeedOpen, setCalFeedOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
@@ -616,6 +618,20 @@ export default function TasksScreen() {
                             <Text style={styles.dropdownBtnText}>View Stats</Text>
                         </TouchableOpacity>
 
+                        {user && (
+                            <TouchableOpacity
+                                style={styles.dropdownBtn}
+                                onPress={() => {
+                                    setAccountMenuOpen(false);
+                                    setCalFeedOpen(true);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="calendar-outline" size={18} color={Colors.light.textPrimary} />
+                                <Text style={styles.dropdownBtnText}>Calendar Feed</Text>
+                            </TouchableOpacity>
+                        )}
+
                         <View style={{ height: 1, backgroundColor: Colors.light.borderLight, marginVertical: 4 }} />
 
                         {user ? (
@@ -659,6 +675,9 @@ export default function TasksScreen() {
                     </View>
                 </>
             )}
+
+            {/* Calendar Feed Sheet */}
+            <CalendarFeedSheet visible={calFeedOpen} onClose={() => setCalFeedOpen(false)} />
 
             {/* Filter Bar */}
             <View style={styles.filterBar}>
