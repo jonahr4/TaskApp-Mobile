@@ -346,6 +346,112 @@ function GroupPage({
     );
 }
 
+// ── Task Count Pill (header widget) ──────────────────────────
+function TaskCountPill({
+    pages,
+    pillPage,
+    statusFilter,
+}: {
+    pages: { group: TaskGroup | null; tasks: Task[] }[];
+    pillPage: number;
+    statusFilter: StatusFilter;
+}) {
+    const countForPage = useCallback((i: number) => {
+        if (i < 0 || i >= pages.length) return 0;
+        const t = pages[i].tasks;
+        if (statusFilter === "in_progress") return t.filter(x => !x.completed).length;
+        if (statusFilter === "completed") return t.filter(x => x.completed).length;
+        return t.length;
+    }, [pages, statusFilter]);
+
+    // Smooth interpolated index
+    const idx = Math.max(0, Math.min(pages.length - 1, pillPage));
+    const currentIdx = Math.round(idx);
+    const isFirst = currentIdx === 0;
+    const isLast = currentIdx === pages.length - 1;
+
+    // Compute counts
+    let beforeCount = 0;
+    for (let i = 0; i < currentIdx; i++) beforeCount += countForPage(i);
+    const currentCount = countForPage(currentIdx);
+    let afterCount = 0;
+    for (let i = currentIdx + 1; i < pages.length; i++) afterCount += countForPage(i);
+
+    // Subtle pulse scale for current segment
+    const frac = Math.abs(idx - currentIdx);
+    const currentScale = 1 + (1 - frac) * 0.08;
+
+    const segments: { value: number; isCurrent: boolean }[] = [];
+    if (!isFirst) segments.push({ value: beforeCount, isCurrent: false });
+    segments.push({ value: currentCount, isCurrent: true });
+    if (!isLast) segments.push({ value: afterCount, isCurrent: false });
+
+    return (
+        <View style={pillStyles.container}>
+            {segments.map((seg, i) => (
+                <View key={i} style={pillStyles.segmentRow}>
+                    {i > 0 && <View style={pillStyles.dot} />}
+                    <View style={[
+                        pillStyles.segment,
+                        seg.isCurrent && pillStyles.segmentCurrent,
+                        seg.isCurrent && { transform: [{ scale: currentScale }] },
+                    ]}>
+                        <Text style={[
+                            pillStyles.segmentText,
+                            seg.isCurrent && pillStyles.segmentTextCurrent,
+                        ]}>
+                            {seg.value}
+                        </Text>
+                    </View>
+                </View>
+            ))}
+        </View>
+    );
+}
+
+const pillStyles = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#e2e4ea",
+        borderRadius: 12,
+        paddingHorizontal: 3,
+        paddingVertical: 2,
+    },
+    segmentRow: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    dot: {
+        width: 2.5,
+        height: 2.5,
+        borderRadius: 1.25,
+        backgroundColor: "#a0a4ae",
+        marginHorizontal: 2,
+    },
+    segment: {
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 4,
+    },
+    segmentCurrent: {
+        backgroundColor: Colors.light.accent,
+    },
+    segmentText: {
+        fontSize: 10,
+        fontWeight: "600",
+        color: "#7a7e88",
+    },
+    segmentTextCurrent: {
+        color: "#fff",
+        fontWeight: "700",
+        fontSize: 10,
+    },
+});
+
 export default function TasksScreen() {
     const { user, logOut } = useAuth();
     const { tasks, reloadLocal } = useTasks(user?.uid);
@@ -374,15 +480,20 @@ export default function TasksScreen() {
         { useNativeDriver: false }
     );
 
-    // Track current page from scroll position
-    const handleMomentumEnd = useCallback(() => {
-        // Read current value from the animated value
-        scrollOffsetAnim.addListener(({ value }) => {
-            const page = Math.round(value / (CARD_WIDTH + CARD_GAP));
-            setCurrentPage(page);
-            scrollOffsetAnim.removeAllListeners();
+    // Track page + pill from scroll position via single listener
+    const [pillPage, setPillPage] = useState(0);
+    useEffect(() => {
+        const id = scrollOffsetAnim.addListener(({ value }) => {
+            const p = value / (CARD_WIDTH + CARD_GAP);
+            setPillPage(p);
         });
+        return () => scrollOffsetAnim.removeListener(id);
     }, [scrollOffsetAnim]);
+
+    const handleMomentumEnd = useCallback(() => {
+        const page = Math.round(pillPage);
+        setCurrentPage(page);
+    }, [pillPage]);
 
     const handleRefresh = useCallback(async () => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -652,6 +763,12 @@ export default function TasksScreen() {
                         <Text style={styles.filterChipText}>Order</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Spacer to push pill to right */}
+                <View style={{ flex: 1 }} />
+
+                {/* Task Count Pill */}
+                {pages.length > 1 && <TaskCountPill pages={pages} pillPage={pillPage} statusFilter={statusFilter} />}
             </View>
 
             {/* Dismiss filter menu backdrop */}
@@ -675,7 +792,7 @@ export default function TasksScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{
                         paddingHorizontal: PEEK_WIDTH,
-                        paddingTop: Spacing.lg,
+                        paddingTop: Spacing.sm,
                         paddingBottom: Spacing.sm,
                     }}
                     style={styles.pager}
@@ -1313,18 +1430,18 @@ const styles = StyleSheet.create({
     filterBar: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        paddingHorizontal: PEEK_WIDTH,
-        paddingTop: Spacing.sm,
-        paddingBottom: 4,
+        gap: 6,
+        paddingHorizontal: Spacing.md,
+        paddingTop: 6,
+        paddingBottom: 2,
         zIndex: 20,
     },
     filterChip: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        gap: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: Radius.full,
         backgroundColor: Colors.light.bgCard,
         borderWidth: 1,
