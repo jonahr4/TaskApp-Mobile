@@ -78,6 +78,19 @@ const PAGES: OnboardingPage[] = [
         ],
     },
     {
+        icon: "notifications-outline",
+        iconColor: "#06b6d4",
+        iconBg: "#ecfeff",
+        title: "Smart Notifications",
+        subtitle: "Never miss a deadline",
+        bullets: [
+            "Customizable reminder timing — 5 min to 1 day before",
+            "Choose which groups send notifications",
+            "Daily summary to start your morning",
+            "Location-based reminders coming soon",
+        ],
+    },
+    {
         icon: "cloud-done-outline",
         iconColor: "#10b981",
         iconBg: "#ecfdf5",

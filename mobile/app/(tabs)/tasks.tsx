@@ -35,7 +35,9 @@ import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import GroupModal from "@/components/GroupModal";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
+import { NotificationSettingsSheet } from "@/components/NotificationSettingsSheet";
 import { triggerOnboarding } from "@/app/_layout";
+import { loadSettings, rescheduleAllReminders } from "@/lib/notifications";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PEEK_WIDTH = 24;
@@ -277,7 +279,7 @@ function GroupPage({
                         <View style={[styles.groupDot, { backgroundColor: groupColor }]} />
                         <Text style={styles.groupName} numberOfLines={1}>{groupName}</Text>
                         <View style={styles.countBadge}>
-                            <Text style={styles.countText}>{activeTasks.length}</Text>
+                            <Text style={styles.countText}>{filteredTasks.length}</Text>
                         </View>
                     </View>
                     <View style={styles.groupHeaderRight}>
@@ -461,6 +463,23 @@ export default function TasksScreen() {
     const router = useRouter();
     useAutoUrgent(user?.uid, tasks);
 
+    // Auto-reschedule notifications whenever tasks change
+    useEffect(() => {
+        let cancelled = false;
+        loadSettings().then((settings) => {
+            if (!cancelled && settings.enabled) {
+                const groupMap: Record<string, string> = {};
+                const colorMap: Record<string, string> = {};
+                for (const g of groups) {
+                    groupMap[g.id] = g.name;
+                    if (g.color) colorMap[g.id] = g.color;
+                }
+                rescheduleAllReminders(tasks, settings, groupMap, colorMap);
+            }
+        });
+        return () => { cancelled = true; };
+    }, [tasks, groups]);
+
     const handleLocalChange = () => {
         reloadLocal();
         reloadLocalGroups();
@@ -472,6 +491,7 @@ export default function TasksScreen() {
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const [calFeedOpen, setCalFeedOpen] = useState(false);
+    const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
@@ -637,6 +657,18 @@ export default function TasksScreen() {
                             style={styles.dropdownBtn}
                             onPress={() => {
                                 setAccountMenuOpen(false);
+                                setNotifSettingsOpen(true);
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="notifications-outline" size={18} color={Colors.light.textPrimary} />
+                            <Text style={styles.dropdownBtnText}>Settings</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.dropdownBtn}
+                            onPress={() => {
+                                setAccountMenuOpen(false);
                                 triggerOnboarding();
                             }}
                             activeOpacity={0.8}
@@ -691,6 +723,7 @@ export default function TasksScreen() {
 
             {/* Calendar Feed Sheet */}
             <CalendarFeedSheet visible={calFeedOpen} onClose={() => setCalFeedOpen(false)} />
+            <NotificationSettingsSheet visible={notifSettingsOpen} onClose={() => setNotifSettingsOpen(false)} />
 
             {/* Filter Bar */}
             <View style={styles.filterBar}>

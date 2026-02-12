@@ -6,8 +6,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "@/lib/theme";
+import { configureForegroundHandler } from "@/lib/notifications";
 import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+
+// Configure notification display while app is in foreground
+configureForegroundHandler();
 
 const ONBOARDING_KEY = "hasSeenOnboarding";
 
