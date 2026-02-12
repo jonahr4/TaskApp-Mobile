@@ -4,7 +4,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const Colors = {
     light: {
-        bg: "#f8f9fb",
+        bg: "#f2f3f7",
         bgCard: "#ffffff",
         textPrimary: "#1a1d21",
         textSecondary: "#6b7280",

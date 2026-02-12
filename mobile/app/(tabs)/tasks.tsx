@@ -135,7 +135,7 @@ function GroupPage({
     onEditGroup?: (g: TaskGroup) => void;
     onLocalChange?: () => void;
 }) {
-    const groupName = group?.name ?? "Ungrouped";
+    const groupName = group?.name ?? "General Tasks";
     const groupColor = group?.color ?? Colors.light.textTertiary;
     const activeTasks = tasks.filter((t) => !t.completed);
     const completedTasks = tasks.filter((t) => t.completed);
@@ -262,6 +262,7 @@ export default function TasksScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
+    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const pagerRef = useRef<ScrollView>(null);
 
     const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -344,7 +345,7 @@ export default function TasksScreen() {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Tasks</Text>
                 <TouchableOpacity
-                    onPress={() => user ? logOut() : router.push("/(auth)/login")}
+                    onPress={() => setAccountMenuOpen(!accountMenuOpen)}
                     style={styles.profileBtn}
                 >
                     <Ionicons
@@ -352,20 +353,62 @@ export default function TasksScreen() {
                         size={28}
                         color={user ? Colors.light.accent : Colors.light.textSecondary}
                     />
+                    {!user && (
+                        <View style={styles.alertBadge}>
+                            <Text style={styles.alertBadgeText}>!</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
 
-            {/* Sign-in banner */}
-            {!user && (
-                <TouchableOpacity
-                    style={styles.syncBanner}
-                    onPress={() => router.push("/(auth)/login")}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="cloud-offline-outline" size={16} color={Colors.light.accent} />
-                    <Text style={styles.syncBannerText}>Sign in to sync across devices</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.light.accent} />
-                </TouchableOpacity>
+            {/* Account Dropdown */}
+            {accountMenuOpen && (
+                <>
+                    <Pressable
+                        style={styles.dropdownBackdrop}
+                        onPress={() => setAccountMenuOpen(false)}
+                    />
+                    <View style={styles.accountDropdown}>
+                        {user ? (
+                            <>
+                                <Text style={styles.dropdownEmail} numberOfLines={1}>
+                                    {user.email}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.dropdownBtn}
+                                    onPress={() => {
+                                        setAccountMenuOpen(false);
+                                        logOut();
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="log-out-outline" size={18} color={Colors.light.danger} />
+                                    <Text style={[styles.dropdownBtnText, { color: Colors.light.danger }]}>Sign Out</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <View style={styles.dropdownMessage}>
+                                    <Ionicons name="cloud-offline-outline" size={18} color={Colors.light.textSecondary} />
+                                    <Text style={styles.dropdownMessageText}>
+                                        Sign in to sync across devices
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.dropdownSignInBtn}
+                                    onPress={() => {
+                                        setAccountMenuOpen(false);
+                                        router.push("/(auth)/login");
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="log-in-outline" size={18} color="#fff" />
+                                    <Text style={styles.dropdownSignInText}>Sign In</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </>
             )}
 
             {/* Carousel */}
@@ -545,6 +588,90 @@ const styles = StyleSheet.create({
     },
     profileBtn: {
         padding: 4,
+        position: "relative",
+    },
+    alertBadge: {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: "#f59e0b",
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 2,
+        borderColor: Colors.light.bgCard,
+    },
+    alertBadgeText: {
+        fontSize: 9,
+        fontWeight: "800",
+        color: "#fff",
+    },
+    dropdownBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 30,
+    },
+    accountDropdown: {
+        position: "absolute",
+        top: 100,
+        right: Spacing.lg,
+        width: 240,
+        backgroundColor: Colors.light.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+        padding: Spacing.md,
+        zIndex: 31,
+    },
+    dropdownEmail: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        marginBottom: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+    },
+    dropdownBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        borderRadius: Radius.md,
+    },
+    dropdownBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+    },
+    dropdownMessage: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    dropdownMessageText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        flex: 1,
+    },
+    dropdownSignInBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        backgroundColor: Colors.light.accent,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.md,
+    },
+    dropdownSignInText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: "#fff",
     },
     pager: {
         flex: 1,
@@ -561,12 +688,12 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.light.bgCard,
         borderRadius: Radius.lg,
         borderWidth: 1,
-        borderColor: Colors.light.borderLight,
+        borderColor: "#e0e2e8",
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
         overflow: "hidden",
     },
     groupHeader: {
@@ -720,14 +847,14 @@ const styles = StyleSheet.create({
         height: 7,
     },
     dot: {
-        width: 7,
-        height: 7,
+        width: 8,
+        height: 8,
         borderRadius: 4,
-        backgroundColor: Colors.light.borderLight,
+        backgroundColor: "#bcc1ca",
     },
     dotActive: {
         backgroundColor: Colors.light.accent,
-        width: 20,
+        width: 22,
         borderRadius: 4,
     },
     fab: {
