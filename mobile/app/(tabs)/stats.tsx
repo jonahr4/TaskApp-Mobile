@@ -13,6 +13,7 @@ import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, Quadrant } from "@/lib/types";
+import ScreenHeader from "@/components/ScreenHeader";
 
 function StatCard({
     icon,
@@ -110,9 +111,7 @@ export default function StatsScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Stats</Text>
-            </View>
+            <ScreenHeader title="Stats" />
 
             <ScrollView
                 style={styles.body}

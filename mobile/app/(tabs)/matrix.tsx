@@ -26,6 +26,7 @@ import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
+import ScreenHeader from "@/components/ScreenHeader";
 
 // ── Constants ────────────────────────────────────────────────
 const EXPANDED = 0.75;
@@ -433,9 +434,7 @@ export default function MatrixScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Matrix</Text>
-            </View>
+            <ScreenHeader title="Matrix" />
 
             {/* Filter Bar */}
             <View style={styles.filterBar}>

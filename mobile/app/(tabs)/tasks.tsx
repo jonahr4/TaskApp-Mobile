@@ -23,7 +23,6 @@ import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatli
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
@@ -34,9 +33,7 @@ import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import GroupModal from "@/components/GroupModal";
-import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
-import { NotificationSettingsSheet } from "@/components/NotificationSettingsSheet";
-import { triggerOnboarding } from "@/app/_layout";
+import ScreenHeader from "@/components/ScreenHeader";
 import { loadSettings, rescheduleAllReminders } from "@/lib/notifications";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -457,10 +454,9 @@ const pillStyles = StyleSheet.create({
 });
 
 export default function TasksScreen() {
-    const { user, logOut } = useAuth();
+    const { user } = useAuth();
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
-    const router = useRouter();
     useAutoUrgent(user?.uid, tasks);
 
     // Auto-reschedule notifications whenever tasks change
@@ -489,9 +485,6 @@ export default function TasksScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
-    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-    const [calFeedOpen, setCalFeedOpen] = useState(false);
-    const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
@@ -599,131 +592,7 @@ export default function TasksScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Tasks</Text>
-                <TouchableOpacity
-                    onPress={() => setAccountMenuOpen(!accountMenuOpen)}
-                    style={styles.profileBtn}
-                >
-                    <Ionicons
-                        name={user ? "person-circle" : "person-circle-outline"}
-                        size={28}
-                        color={user ? Colors.light.accent : Colors.light.textSecondary}
-                    />
-                    {!user && (
-                        <View style={styles.alertBadge}>
-                            <Text style={styles.alertBadgeText}>!</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            {/* Account Dropdown */}
-            {accountMenuOpen && (
-                <>
-                    <Pressable
-                        style={styles.dropdownBackdrop}
-                        onPress={() => setAccountMenuOpen(false)}
-                    />
-                    <View style={styles.accountDropdown}>
-                        {/* Stats link — always visible */}
-                        <TouchableOpacity
-                            style={styles.dropdownBtn}
-                            onPress={() => {
-                                setAccountMenuOpen(false);
-                                router.push("/(tabs)/stats");
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="stats-chart-outline" size={18} color={Colors.light.textPrimary} />
-                            <Text style={styles.dropdownBtnText}>View Stats</Text>
-                        </TouchableOpacity>
-
-                        {user && (
-                            <TouchableOpacity
-                                style={styles.dropdownBtn}
-                                onPress={() => {
-                                    setAccountMenuOpen(false);
-                                    setCalFeedOpen(true);
-                                }}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="calendar-outline" size={18} color={Colors.light.textPrimary} />
-                                <Text style={styles.dropdownBtnText}>Calendar Feed</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.dropdownBtn}
-                            onPress={() => {
-                                setAccountMenuOpen(false);
-                                setNotifSettingsOpen(true);
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="notifications-outline" size={18} color={Colors.light.textPrimary} />
-                            <Text style={styles.dropdownBtnText}>Settings</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.dropdownBtn}
-                            onPress={() => {
-                                setAccountMenuOpen(false);
-                                triggerOnboarding();
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="help-circle-outline" size={18} color={Colors.light.textPrimary} />
-                            <Text style={styles.dropdownBtnText}>Learn More</Text>
-                        </TouchableOpacity>
-
-                        <View style={{ height: 1, backgroundColor: Colors.light.borderLight, marginVertical: 4 }} />
-
-                        {user ? (
-                            <>
-                                <Text style={styles.dropdownEmail} numberOfLines={1}>
-                                    {user.email}
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.dropdownBtn}
-                                    onPress={() => {
-                                        setAccountMenuOpen(false);
-                                        logOut();
-                                    }}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="log-out-outline" size={18} color={Colors.light.danger} />
-                                    <Text style={[styles.dropdownBtnText, { color: Colors.light.danger }]}>Sign Out</Text>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <>
-                                <View style={styles.dropdownMessage}>
-                                    <Ionicons name="cloud-offline-outline" size={18} color={Colors.light.textSecondary} />
-                                    <Text style={styles.dropdownMessageText}>
-                                        Sign in to sync across devices
-                                    </Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.dropdownSignInBtn}
-                                    onPress={() => {
-                                        setAccountMenuOpen(false);
-                                        router.push("/(auth)/login");
-                                    }}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="log-in-outline" size={18} color="#fff" />
-                                    <Text style={styles.dropdownSignInText}>Sign In</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                    </View>
-                </>
-            )}
-
-            {/* Calendar Feed Sheet */}
-            <CalendarFeedSheet visible={calFeedOpen} onClose={() => setCalFeedOpen(false)} />
-            <NotificationSettingsSheet visible={notifSettingsOpen} onClose={() => setNotifSettingsOpen(false)} />
+            <ScreenHeader title="Tasks" />
 
             {/* Filter Bar */}
             <View style={styles.filterBar}>

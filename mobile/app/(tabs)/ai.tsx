@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
+import ScreenHeader from "@/components/ScreenHeader";
 import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
@@ -239,8 +240,8 @@ export default function AiScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>AI Reminder</Text>
+            <ScreenHeader title="AI Reminder" />
+            <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm, backgroundColor: Colors.light.bgCard }}>
                 <Text style={styles.headerSub}>
                     Type a reminder in plain English and turn it into a task.
                 </Text>

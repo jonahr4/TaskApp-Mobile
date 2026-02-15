@@ -17,6 +17,7 @@ import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
+import ScreenHeader from "@/components/ScreenHeader";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -189,9 +190,7 @@ export default function CalendarScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Calendar</Text>
-            </View>
+            <ScreenHeader title="Calendar" />
 
             {/* Filter Bar */}
             <View style={styles.filterBar}>

@@ -17,6 +17,7 @@ import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
+import ScreenHeader from "@/components/ScreenHeader";
 
 // ── Date parsing ─────────────────────────────────────────────
 const MONTH_NAMES: Record<string, number> = {
@@ -204,9 +205,7 @@ export default function SearchScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Search</Text>
-            </View>
+            <ScreenHeader title="Search" />
 
             {/* Search bar */}
             <View style={styles.searchWrap}>
