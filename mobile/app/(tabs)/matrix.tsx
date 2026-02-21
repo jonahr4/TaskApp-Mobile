@@ -16,6 +16,7 @@ import Animated, {
     useAnimatedStyle,
     withSpring,
     withTiming,
+    Easing,
 } from "react-native-reanimated";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
@@ -32,6 +33,7 @@ import ScreenHeader from "@/components/ScreenHeader";
 const EXPANDED = 0.75;
 const DEFAULT = 0.5;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.8 };
+const TRAY_TIMING = { duration: 300, easing: Easing.out(Easing.cubic) };
 const TRAY_HANDLE_HEIGHT = 52;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TRAY_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -121,6 +123,8 @@ export default function MatrixScreen() {
     const [defaultUrgent, setDefaultUrgent] = useState<boolean>(false);
     const [defaultImportant, setDefaultImportant] = useState<boolean>(false);
     const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+    const containerW = useSharedValue(0);
+    const containerH = useSharedValue(0);
     const [expandedQIdx, setExpandedQIdx] = useState(-1);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
@@ -282,7 +286,7 @@ export default function MatrixScreen() {
 
         // Close tray when expanding a quadrant
         if (trayOpen) {
-            trayHeight.value = withSpring(0, SPRING_CFG);
+            trayHeight.value = withTiming(0, TRAY_TIMING);
             setTrayOpen(false);
         }
 
@@ -303,7 +307,7 @@ export default function MatrixScreen() {
     const toggleTray = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         if (trayOpen) {
-            trayHeight.value = withSpring(0, SPRING_CFG);
+            trayHeight.value = withTiming(0, TRAY_TIMING);
             setTrayOpen(false);
         } else {
             // Reset quadrant expansion when opening tray
@@ -312,7 +316,7 @@ export default function MatrixScreen() {
                 splitY.value = withSpring(DEFAULT, SPRING_CFG);
                 setExpandedQIdx(-1);
             }
-            trayHeight.value = withSpring(TRAY_EXPANDED_HEIGHT, SPRING_CFG);
+            trayHeight.value = withTiming(TRAY_EXPANDED_HEIGHT, TRAY_TIMING);
             setTrayOpen(true);
         }
     }, [trayOpen, trayHeight, expandedQIdx, splitX, splitY]);
@@ -392,20 +396,20 @@ export default function MatrixScreen() {
 
     // Animated styles for each quadrant
     const doStyle = useAnimatedStyle(() => ({
-        width: splitX.value * containerSize.w,
-        height: splitY.value * containerSize.h,
+        width: splitX.value * containerW.value,
+        height: splitY.value * containerH.value,
     }));
     const scheduleStyle = useAnimatedStyle(() => ({
-        width: (1 - splitX.value) * containerSize.w,
-        height: splitY.value * containerSize.h,
+        width: (1 - splitX.value) * containerW.value,
+        height: splitY.value * containerH.value,
     }));
     const delegateStyle = useAnimatedStyle(() => ({
-        width: splitX.value * containerSize.w,
-        height: (1 - splitY.value) * containerSize.h,
+        width: splitX.value * containerW.value,
+        height: (1 - splitY.value) * containerH.value,
     }));
     const deleteStyle = useAnimatedStyle(() => ({
-        width: (1 - splitX.value) * containerSize.w,
-        height: (1 - splitY.value) * containerSize.h,
+        width: (1 - splitX.value) * containerW.value,
+        height: (1 - splitY.value) * containerH.value,
     }));
 
     const animatedStyles: Record<Quadrant, any> = {
@@ -558,7 +562,9 @@ export default function MatrixScreen() {
                 style={styles.grid}
                 onLayout={(e) => {
                     const { width, height } = e.nativeEvent.layout;
-                    setContainerSize({ w: width, h: height });
+                    containerW.value = width;
+                    containerH.value = height;
+                    if (containerSize.w === 0) setContainerSize({ w: width, h: height });
                     // Measure absolute position for hit-testing
                     setTimeout(measureContainer, 100);
                 }}

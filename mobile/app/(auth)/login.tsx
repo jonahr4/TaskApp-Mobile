@@ -16,7 +16,7 @@ import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
-    const { signInEmail, signUpEmail } = useAuth();
+    const { signInEmail, signUpEmail, signInGoogle } = useAuth();
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -49,6 +49,23 @@ export default function LoginScreen() {
                 setError("Invalid email address.");
             } else {
                 setError(err?.message || "Something went wrong.");
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setError(null);
+        setSubmitting(true);
+        try {
+            await signInGoogle();
+            router.back();
+        } catch (err: any) {
+            const msg = err?.message || "Google Sign-In failed.";
+            // Don't show error for user cancellation
+            if (!msg.includes("cancelled") && !msg.includes("canceled")) {
+                setError(msg);
             }
         } finally {
             setSubmitting(false);
@@ -111,7 +128,12 @@ export default function LoginScreen() {
                     </Text>
 
                     {/* Google Sign-In */}
-                    <TouchableOpacity style={styles.googleBtn} activeOpacity={0.8}>
+                    <TouchableOpacity
+                        style={styles.googleBtn}
+                        activeOpacity={0.8}
+                        onPress={handleGoogleSignIn}
+                        disabled={submitting}
+                    >
                         <Ionicons name="logo-google" size={18} color={Colors.light.textPrimary} />
                         <Text style={styles.googleBtnText}>Continue with Google</Text>
                     </TouchableOpacity>
