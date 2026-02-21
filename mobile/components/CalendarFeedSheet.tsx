@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     countPillText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: "600",
         color: Colors.light.textTertiary,
     },

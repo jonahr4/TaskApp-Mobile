@@ -7,11 +7,12 @@ import {
     StyleSheet,
     Modal,
     ScrollView,
-    KeyboardAvoidingView,
     Platform,
     Alert,
+    KeyboardAvoidingView,
     Switch,
     Dimensions,
+    Keyboard,
 } from "react-native";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import MapView, { Marker, Region } from "react-native-maps";
@@ -268,6 +269,9 @@ export default function TaskModal({
                             onChangeText={setTitle}
                             autoFocus={!isEdit}
                             multiline
+                            blurOnSubmit
+                            returnKeyType="done"
+                            onSubmitEditing={() => Keyboard.dismiss()}
                         />
                         {isEdit && (
                             <TouchableOpacity
@@ -302,6 +306,9 @@ export default function TaskModal({
                         onChangeText={setNotes}
                         multiline
                         numberOfLines={3}
+                        blurOnSubmit
+                        returnKeyType="done"
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
                     {/* List (Group) */}
@@ -398,6 +405,7 @@ export default function TaskModal({
                                 mode="date"
                                 display="inline"
                                 onChange={onDateChange}
+                                themeVariant="light"
                                 style={styles.picker}
                             />
                         )}
@@ -435,6 +443,7 @@ export default function TaskModal({
                                     mode="time"
                                     display="spinner"
                                     onChange={onTimeChange}
+                                    themeVariant="light"
                                     style={styles.picker}
                                 />
                             )}
@@ -902,6 +911,7 @@ const styles = StyleSheet.create({
     },
     picker: {
         marginTop: Spacing.sm,
+        alignSelf: "center",
     },
     toggleRow: {
         flexDirection: "row",

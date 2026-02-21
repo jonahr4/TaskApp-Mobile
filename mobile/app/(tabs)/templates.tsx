@@ -13,7 +13,7 @@ import Fuse from "fuse.js";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -356,14 +356,13 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === "ios" ? 60 : 48,
         paddingBottom: Spacing.sm,
         backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        ...Shadows.sm,
     },
     headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
+        fontSize: FontSize.title,
+        fontWeight: "800",
         color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
     searchWrap: {
         flexDirection: "row",
@@ -371,10 +370,11 @@ const styles = StyleSheet.create({
         marginHorizontal: Spacing.lg,
         marginTop: Spacing.md,
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
         paddingHorizontal: Spacing.md,
+        ...Shadows.sm,
     },
     searchInput: {
         flex: 1,
@@ -390,8 +390,8 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.sm,
     },
     chip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
         borderRadius: Radius.full,
         backgroundColor: Colors.light.bgCard,
         borderWidth: 1,
@@ -438,19 +438,19 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "flex-start",
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        padding: Spacing.md,
-        marginBottom: 8,
+        borderRadius: Radius.lg,
+        borderWidth: 0,
+        padding: Spacing.lg,
+        marginBottom: Spacing.sm,
+        ...Shadows.sm,
     },
     statusDot: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         justifyContent: "center",
         alignItems: "center",
-        marginRight: Spacing.sm,
+        marginRight: Spacing.md,
         marginTop: 1,
     },
     statusDotActive: {
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
         borderRadius: 3,
     },
     priorityText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: "600",
     },
     notesPreview: {

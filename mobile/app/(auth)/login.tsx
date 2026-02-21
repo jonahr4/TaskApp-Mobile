@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
@@ -204,17 +204,20 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xxl,
     },
     logoBox: {
-        width: 56,
-        height: 56,
-        borderRadius: Radius.md,
+        width: 64,
+        height: 64,
+        borderRadius: Radius.lg,
         backgroundColor: Colors.light.accent,
         justifyContent: "center",
         alignItems: "center",
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.lg,
+        ...Shadows.md,
+        shadowColor: Colors.light.accent,
+        shadowOpacity: 0.3,
     },
     appName: {
-        fontSize: FontSize.title,
-        fontWeight: "700",
+        fontSize: 32,
+        fontWeight: "800",
         color: Colors.light.textPrimary,
         letterSpacing: -0.5,
     },
@@ -248,19 +251,14 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
+        borderRadius: Radius.xl,
         padding: Spacing.xxl,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
+        borderWidth: 0,
+        ...Shadows.lg,
     },
     cardTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
+        fontSize: FontSize.xl,
+        fontWeight: "700",
         color: Colors.light.textPrimary,
     },
     cardSubtitle: {
@@ -321,7 +319,10 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderRadius: Radius.md,
         alignItems: "center",
-        marginTop: Spacing.sm,
+        marginTop: Spacing.md,
+        ...Shadows.sm,
+        shadowColor: Colors.light.accent,
+        shadowOpacity: 0.25,
     },
     buttonDisabled: {
         opacity: 0.6,

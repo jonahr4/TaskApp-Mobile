@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { triggerOnboarding } from "@/app/_layout";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
 import { NotificationSettingsSheet } from "@/components/NotificationSettingsSheet";
@@ -37,11 +37,16 @@ export default function ScreenHeader({ title }: Props) {
                     onPress={() => setMenuOpen(!menuOpen)}
                     style={styles.profileBtn}
                 >
-                    <Ionicons
-                        name={user ? "person-circle" : "person-circle-outline"}
-                        size={28}
-                        color={user ? Colors.light.accent : Colors.light.textSecondary}
-                    />
+                    <View style={[
+                        styles.profileCircle,
+                        user && styles.profileCircleActive,
+                    ]}>
+                        <Ionicons
+                            name={user ? "person" : "person-outline"}
+                            size={16}
+                            color={user ? "#fff" : Colors.light.textTertiary}
+                        />
+                    </View>
                     {!user && (
                         <View style={styles.alertBadge}>
                             <Text style={styles.alertBadgeText}>!</Text>
@@ -59,9 +64,11 @@ export default function ScreenHeader({ title }: Props) {
                         <TouchableOpacity
                             style={styles.menuBtn}
                             onPress={() => { close(); router.push("/(tabs)/stats"); }}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                         >
-                            <Ionicons name="stats-chart-outline" size={18} color={Colors.light.textPrimary} />
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name="stats-chart-outline" size={16} color={Colors.light.textSecondary} />
+                            </View>
                             <Text style={styles.menuBtnText}>View Stats</Text>
                         </TouchableOpacity>
 
@@ -70,9 +77,11 @@ export default function ScreenHeader({ title }: Props) {
                             <TouchableOpacity
                                 style={styles.menuBtn}
                                 onPress={() => { close(); setCalFeedOpen(true); }}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <Ionicons name="calendar-outline" size={18} color={Colors.light.textPrimary} />
+                                <View style={styles.menuIconWrap}>
+                                    <Ionicons name="calendar-outline" size={16} color={Colors.light.textSecondary} />
+                                </View>
                                 <Text style={styles.menuBtnText}>Calendar Feed</Text>
                             </TouchableOpacity>
                         )}
@@ -81,9 +90,11 @@ export default function ScreenHeader({ title }: Props) {
                         <TouchableOpacity
                             style={styles.menuBtn}
                             onPress={() => { close(); setNotifOpen(true); }}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                         >
-                            <Ionicons name="notifications-outline" size={18} color={Colors.light.textPrimary} />
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name="notifications-outline" size={16} color={Colors.light.textSecondary} />
+                            </View>
                             <Text style={styles.menuBtnText}>Settings</Text>
                         </TouchableOpacity>
 
@@ -91,9 +102,11 @@ export default function ScreenHeader({ title }: Props) {
                         <TouchableOpacity
                             style={styles.menuBtn}
                             onPress={() => { close(); triggerOnboarding(); }}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                         >
-                            <Ionicons name="help-circle-outline" size={18} color={Colors.light.textPrimary} />
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name="help-circle-outline" size={16} color={Colors.light.textSecondary} />
+                            </View>
                             <Text style={styles.menuBtnText}>Learn More</Text>
                         </TouchableOpacity>
 
@@ -107,16 +120,18 @@ export default function ScreenHeader({ title }: Props) {
                                 <TouchableOpacity
                                     style={styles.menuBtn}
                                     onPress={() => { close(); logOut(); }}
-                                    activeOpacity={0.8}
+                                    activeOpacity={0.7}
                                 >
-                                    <Ionicons name="log-out-outline" size={18} color={Colors.light.danger} />
+                                    <View style={[styles.menuIconWrap, { backgroundColor: "rgba(239,68,68,0.08)" }]}>
+                                        <Ionicons name="log-out-outline" size={16} color={Colors.light.danger} />
+                                    </View>
                                     <Text style={[styles.menuBtnText, { color: Colors.light.danger }]}>Sign Out</Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
                             <>
                                 <View style={styles.message}>
-                                    <Ionicons name="cloud-offline-outline" size={18} color={Colors.light.textSecondary} />
+                                    <Ionicons name="cloud-offline-outline" size={16} color={Colors.light.textTertiary} />
                                     <Text style={styles.messageText}>
                                         Sign in to sync across devices
                                     </Text>
@@ -126,7 +141,7 @@ export default function ScreenHeader({ title }: Props) {
                                     onPress={() => { close(); router.push("/(auth)/login"); }}
                                     activeOpacity={0.8}
                                 >
-                                    <Ionicons name="log-in-outline" size={18} color="#fff" />
+                                    <Ionicons name="log-in-outline" size={16} color="#fff" />
                                     <Text style={styles.signInText}>Sign In</Text>
                                 </TouchableOpacity>
                             </>
@@ -148,26 +163,38 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 60 : 48,
-        paddingBottom: Spacing.md,
+        paddingTop: Platform.OS === "ios" ? 62 : 48,
+        paddingBottom: Spacing.lg,
         backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        ...Shadows.sm,
     },
     headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
+        fontSize: FontSize.title,
+        fontWeight: "800",
         color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
     profileBtn: {
-        padding: 4,
         position: "relative",
+    },
+    profileCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: Colors.light.bg,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    profileCircleActive: {
+        backgroundColor: Colors.light.accent,
+        borderColor: Colors.light.accent,
     },
     alertBadge: {
         position: "absolute",
-        top: 0,
-        right: 0,
+        top: -2,
+        right: -2,
         width: 16,
         height: 16,
         borderRadius: 8,
@@ -178,7 +205,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.light.bgCard,
     },
     alertBadgeText: {
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: "800",
         color: "#fff",
     },
@@ -188,49 +215,56 @@ const styles = StyleSheet.create({
     },
     dropdown: {
         position: "absolute",
-        top: Platform.OS === "ios" ? 100 : 88,
+        top: Platform.OS === "ios" ? 108 : 96,
         right: Spacing.lg,
-        width: 240,
+        width: 248,
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
+        borderRadius: Radius.xl,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        padding: Spacing.md,
+        ...Shadows.xl,
+        padding: Spacing.sm,
         zIndex: 31,
     },
     divider: {
         height: 1,
         backgroundColor: Colors.light.borderLight,
-        marginVertical: 4,
+        marginVertical: Spacing.xs,
+        marginHorizontal: Spacing.sm,
     },
     email: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        marginBottom: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+        marginBottom: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        marginTop: Spacing.xs,
     },
     menuBtn: {
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
-        paddingVertical: Spacing.sm,
+        paddingVertical: 10,
         paddingHorizontal: Spacing.sm,
         borderRadius: Radius.md,
+    },
+    menuIconWrap: {
+        width: 30,
+        height: 30,
+        borderRadius: Radius.sm,
+        backgroundColor: Colors.light.bg,
+        justifyContent: "center",
+        alignItems: "center",
     },
     menuBtnText: {
         fontSize: FontSize.md,
         fontWeight: "500",
+        color: Colors.light.textPrimary,
     },
     message: {
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
+        paddingHorizontal: Spacing.md,
         marginBottom: Spacing.md,
     },
     messageText: {
@@ -244,8 +278,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         gap: Spacing.sm,
         backgroundColor: Colors.light.accent,
-        paddingVertical: Spacing.sm,
+        paddingVertical: 12,
         borderRadius: Radius.md,
+        marginHorizontal: Spacing.sm,
+        marginBottom: Spacing.xs,
     },
     signInText: {
         fontSize: FontSize.md,

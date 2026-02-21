@@ -20,7 +20,7 @@ import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import ScreenHeader from "@/components/ScreenHeader";
 import { createTaskUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
 import type { Quadrant } from "@/lib/types";
 
@@ -611,14 +611,13 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: Spacing.md,
         backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        ...Shadows.sm,
     },
     headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
+        fontSize: FontSize.title,
+        fontWeight: "800",
         color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
     headerSub: {
         fontSize: FontSize.sm,
@@ -632,18 +631,13 @@ const styles = StyleSheet.create({
     // ── Input card ──
     inputCard: {
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        padding: Spacing.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        borderRadius: Radius.xl,
+        padding: Spacing.xl,
+        borderWidth: 0,
+        ...Shadows.md,
     },
     fieldLabel: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: "600",
         color: Colors.light.textSecondary,
         letterSpacing: 0.8,
@@ -675,9 +669,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         gap: 6,
         backgroundColor: Colors.light.accent,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
         borderRadius: Radius.md,
+        ...Shadows.sm,
     },
     parseBtnText: {
         color: "#fff",
@@ -691,7 +686,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     tzLabel: {
-        fontSize: 10,
+        fontSize: 11,
         color: Colors.light.textTertiary,
     },
     successBanner: {
@@ -731,18 +726,18 @@ const styles = StyleSheet.create({
         borderRadius: Radius.full,
     },
     guessedBadgeText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: "600",
         color: "#059669",
     },
     // ── Task Card ──
     taskCard: {
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        padding: Spacing.lg,
+        borderRadius: Radius.lg,
+        padding: Spacing.xl,
         marginBottom: Spacing.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
+        borderWidth: 0,
+        ...Shadows.sm,
     },
     taskCardHeader: {
         flexDirection: "row",
@@ -766,7 +761,7 @@ const styles = StyleSheet.create({
         borderRadius: Radius.full,
     },
     guessedPillText: {
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: "600",
         color: "#059669",
     },
@@ -820,7 +815,7 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     clearBtnText: {
-        fontSize: 10,
+        fontSize: 11,
         color: Colors.light.textTertiary,
     },
     pickerInline: {
@@ -859,14 +854,10 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        elevation: 10,
+        ...Shadows.lg,
         zIndex: 100,
     },
     pickerOption: {
@@ -912,9 +903,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         gap: 6,
         backgroundColor: Colors.light.accent,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
         borderRadius: Radius.md,
+        ...Shadows.sm,
     },
     createBtnText: {
         color: "#fff",

@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     wipBadgeText: {
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: "700",
         color: "#d97706",
         textTransform: "uppercase",

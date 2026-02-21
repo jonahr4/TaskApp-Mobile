@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -44,7 +44,7 @@ function formatDateStr(year: number, month: number, day: number) {
     return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-const MAX_DOT_ROWS = 4;
+const MAX_DOT_ROWS = 2;
 const DOTS_PER_ROW = 3;
 
 export default function CalendarScreen() {
@@ -267,26 +267,26 @@ export default function CalendarScreen() {
             )}
 
             {/* Month Nav */}
-            <View style={styles.monthNav}>
-                <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-                    <Ionicons name="chevron-back" size={20} color={Colors.light.textPrimary} />
+            <View style={styles.monthRow}>
+                <TouchableOpacity onPress={prevMonth} style={styles.monthNavBtn}>
+                    <Ionicons name="chevron-back" size={18} color={Colors.light.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.monthLabel}>
                     {MONTHS[month]} {year}
                 </Text>
-                <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-                    <Ionicons name="chevron-forward" size={20} color={Colors.light.textPrimary} />
+                <TouchableOpacity onPress={nextMonth} style={styles.monthNavBtn}>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.light.textPrimary} />
                 </TouchableOpacity>
             </View>
 
-            {/* Day Headers */}
-            <View style={styles.dayHeaders}>
+            <View style={styles.dayHeaderRow}>
                 {DAYS.map((d) => (
-                    <Text key={d} style={styles.dayHeader}>{d}</Text>
+                    <View key={d} style={styles.dayHeader}>
+                        <Text style={styles.dayHeaderText}>{d}</Text>
+                    </View>
                 ))}
             </View>
 
-            {/* Calendar Grid */}
             <View style={styles.calGrid}>
                 {calendarDays.map((day, i) => {
                     if (day === null) {
@@ -308,27 +308,31 @@ export default function CalendarScreen() {
                     return (
                         <TouchableOpacity
                             key={dateStr}
-                            style={[
-                                styles.calCell,
-                                isToday && styles.calCellToday,
-                                isSelected && styles.calCellSelected,
-                            ]}
+                            style={styles.calCell}
                             onPress={() => setSelectedDate(dateStr)}
                             activeOpacity={0.7}
                         >
-                            <Text
+                            <View
                                 style={[
-                                    styles.calDay,
-                                    isToday && styles.calDayToday,
-                                    isSelected && styles.calDaySelected,
+                                    styles.calCellInner,
+                                    isToday && styles.calCellToday,
+                                    isSelected && styles.calCellSelected,
                                 ]}
                             >
-                                {day}
-                            </Text>
+                                <Text
+                                    style={[
+                                        styles.calCellText,
+                                        isToday && styles.calCellTextToday,
+                                        isSelected && styles.calCellTextSelected,
+                                    ]}
+                                >
+                                    {day}
+                                </Text>
+                            </View>
                             {dotRows.length > 0 && (
-                                <View style={styles.dotGrid}>
+                                <View style={{ alignItems: "center", gap: 1, marginTop: 2 }}>
                                     {dotRows.map((row, rIdx) => (
-                                        <View key={rIdx} style={styles.dotRow}>
+                                        <View key={rIdx} style={styles.dotsRow}>
                                             {row.map((c, cIdx) => (
                                                 <View key={cIdx} style={[styles.taskDot, { backgroundColor: c }]} />
                                             ))}
@@ -452,32 +456,71 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: Spacing.md,
         backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        ...Shadows.sm,
     },
     headerTitle: {
-        fontSize: FontSize.xxl,
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: Colors.light.textPrimary,
+        letterSpacing: -0.5,
+    },
+    monthRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.md,
+    },
+    monthLabel: {
+        fontSize: FontSize.xl,
         fontWeight: "700",
         color: Colors.light.textPrimary,
         letterSpacing: -0.3,
     },
-    // ── Filter bar ──
+    monthNav: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+    },
+    monthNavBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: Colors.light.bg,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    todayBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        backgroundColor: Colors.light.accentLight,
+        flexShrink: 0,
+    },
+    todayBtnText: {
+        fontSize: FontSize.xs,
+        fontWeight: "700",
+        color: Colors.light.accent,
+    },
     filterBar: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingTop: 6,
-        paddingBottom: 2,
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: Spacing.sm,
         zIndex: 20,
-        backgroundColor: Colors.light.bgCard,
     },
     filterChip: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
         borderRadius: Radius.full,
         backgroundColor: Colors.light.bgCard,
         borderWidth: 1,
@@ -489,7 +532,7 @@ const styles = StyleSheet.create({
     },
     filterChipText: {
         fontSize: FontSize.xs,
-        fontWeight: "500" as const,
+        fontWeight: "500",
         color: Colors.light.textSecondary,
     },
     filterChipTextActive: {
@@ -497,26 +540,23 @@ const styles = StyleSheet.create({
     },
     filterDropdown: {
         position: "absolute",
-        top: 32,
+        top: 38,
         left: 0,
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        elevation: 6,
-        zIndex: 999,
-        minWidth: 140,
+        ...Shadows.lg,
+        zIndex: 30,
+        minWidth: 160,
+        overflow: "hidden",
     },
     filterOption: {
         flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     filterOptionActive: {
         backgroundColor: Colors.light.accentLight,
@@ -527,120 +567,92 @@ const styles = StyleSheet.create({
     },
     filterOptionTextActive: {
         color: Colors.light.accent,
-        fontWeight: "600",
-    },
-    // ── Month nav ──
-    monthNav: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingVertical: Spacing.sm,
-        backgroundColor: Colors.light.bgCard,
-    },
-    navBtn: {
-        padding: Spacing.sm,
-    },
-    monthLabel: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    todayBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.accentLight,
-        borderWidth: 1,
-        borderColor: Colors.light.accent,
-    },
-    todayBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    // ── Day headers / grid ──
-    dayHeaders: {
-        flexDirection: "row",
-        paddingHorizontal: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        paddingBottom: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    dayHeader: {
-        flex: 1,
-        textAlign: "center",
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-        textTransform: "uppercase",
+        fontWeight: "600" as const,
     },
     calGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
         paddingHorizontal: Spacing.md,
-        paddingTop: Spacing.sm,
-        backgroundColor: Colors.light.bgCard,
+    },
+    dayHeaderRow: {
+        flexDirection: "row",
+        marginBottom: Spacing.xs,
+    },
+    dayHeader: {
+        width: `${100 / 7}%` as any,
+        alignItems: "center",
+        paddingVertical: 6,
+    },
+    dayHeaderText: {
+        fontSize: FontSize.xs,
+        fontWeight: "700",
+        color: Colors.light.textTertiary,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    calRow: {
+        flexDirection: "row",
     },
     calCell: {
         width: `${100 / 7}%` as any,
         alignItems: "center",
-        paddingVertical: 4,
-        minHeight: 44,
+        paddingVertical: 5,
+        minHeight: 48,
     },
-    calCellToday: {
-        backgroundColor: Colors.light.accentLight,
-        borderRadius: Radius.md,
+    calCellInner: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: "center",
+        alignItems: "center",
     },
     calCellSelected: {
         backgroundColor: Colors.light.accent,
-        borderRadius: Radius.md,
     },
-    calDay: {
-        fontSize: FontSize.md,
+    calCellToday: {
+        backgroundColor: Colors.light.accentLight,
+    },
+    calCellText: {
+        fontSize: FontSize.sm,
         fontWeight: "500",
         color: Colors.light.textPrimary,
     },
-    calDayToday: {
-        color: Colors.light.accent,
-        fontWeight: "700",
-    },
-    calDaySelected: {
+    calCellTextSelected: {
         color: "#fff",
         fontWeight: "700",
     },
-    dotGrid: {
-        marginTop: 2,
-        alignItems: "center",
+    calCellTextToday: {
+        color: Colors.light.accent,
+        fontWeight: "700",
     },
-    dotRow: {
+    calCellTextOther: {
+        color: Colors.light.textTertiary,
+    },
+    dotsRow: {
         flexDirection: "row",
-        gap: 2,
-        marginTop: 1,
+        justifyContent: "center",
+        gap: 3,
+        marginTop: 3,
     },
     taskDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
+        width: 5,
+        height: 5,
+        borderRadius: 3,
     },
-    // ── Selected date section ──
     selectedSection: {
         flex: 1,
-        padding: Spacing.lg,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.lg,
     },
     selectedHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.lg,
     },
     selectedDateLabel: {
         fontSize: FontSize.lg,
-        fontWeight: "600",
+        fontWeight: "700",
         color: Colors.light.textPrimary,
     },
     addTaskBtn: {
@@ -670,11 +682,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         marginBottom: Spacing.sm,
         overflow: "hidden",
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
+        borderWidth: 0,
+        ...Shadows.sm,
     },
     taskColorBar: {
         width: 4,

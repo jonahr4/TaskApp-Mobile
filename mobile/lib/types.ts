@@ -40,8 +40,8 @@ export const QUADRANT_META: Record<
     Quadrant,
     { label: string; sublabel: string; color: string; bg: string; border: string; urgent: boolean; important: boolean }
 > = {
-    DO: { label: "Important & Urgent", sublabel: "Do First", color: "#ef4444", bg: "#fef2f2", border: "#fecaca", urgent: true, important: true },
-    SCHEDULE: { label: "Important & Not Urgent", sublabel: "Schedule", color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe", urgent: false, important: true },
-    DELEGATE: { label: "Urgent & Not Important", sublabel: "Delegate", color: "#f59e0b", bg: "#fffbeb", border: "#fed7aa", urgent: true, important: false },
-    DELETE: { label: "Not Important or Urgent", sublabel: "Eliminate", color: "#9ca3af", bg: "#f9fafb", border: "#e5e7eb", urgent: false, important: false },
+    DO: { label: "Important & Urgent", sublabel: "Do First", color: "#dc2626", bg: "#fef2f2", border: "#fca5a5", urgent: true, important: true },
+    SCHEDULE: { label: "Important & Not Urgent", sublabel: "Schedule", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd", urgent: false, important: true },
+    DELEGATE: { label: "Urgent & Not Important", sublabel: "Delegate", color: "#d97706", bg: "#fffbeb", border: "#fbbf24", urgent: true, important: false },
+    DELETE: { label: "Not Important or Urgent", sublabel: "Eliminate", color: "#6b7280", bg: "#f3f4f6", border: "#d1d5db", urgent: false, important: false },
 };

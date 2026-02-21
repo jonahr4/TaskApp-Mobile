@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, Quadrant } from "@/lib/types";
 import ScreenHeader from "@/components/ScreenHeader";
@@ -230,14 +230,13 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: Spacing.md,
         backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
+        ...Shadows.sm,
     },
     headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
+        fontSize: FontSize.title,
+        fontWeight: "800",
         color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
     body: {
         flex: 1,
@@ -252,21 +251,16 @@ const styles = StyleSheet.create({
     statCard: {
         width: "47%",
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         padding: Spacing.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderLeftWidth: 3,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
-        elevation: 1,
+        borderWidth: 0,
+        borderLeftWidth: 4,
+        ...Shadows.md,
     },
     statIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: "center",
         alignItems: "center",
         marginBottom: Spacing.sm,
@@ -289,11 +283,11 @@ const styles = StyleSheet.create({
     },
     sectionCard: {
         backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        padding: Spacing.lg,
+        borderRadius: Radius.xl,
+        padding: Spacing.xl,
         marginBottom: Spacing.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
+        borderWidth: 0,
+        ...Shadows.md,
     },
     sectionTitle: {
         fontSize: FontSize.lg,
@@ -325,14 +319,14 @@ const styles = StyleSheet.create({
     },
     barTrack: {
         flex: 1,
-        height: 8,
+        height: 10,
         backgroundColor: Colors.light.bg,
-        borderRadius: 4,
+        borderRadius: 5,
         overflow: "hidden",
     },
     barFill: {
         height: "100%",
-        borderRadius: 4,
+        borderRadius: 5,
     },
     barCount: {
         fontSize: FontSize.sm,
