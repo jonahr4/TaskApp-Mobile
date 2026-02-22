@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
@@ -70,25 +71,56 @@ function formatTime(t: string | null): string {
     return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
+// Simple markdown renderer: supports **bold**
+function renderMarkdown(text: string, baseStyle: any) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/);
+    return parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+            return (
+                <Text key={i} style={[baseStyle, { fontWeight: "800" }]}>
+                    {part.slice(2, -2)}
+                </Text>
+            );
+        }
+        return <Text key={i} style={baseStyle}>{part}</Text>;
+    });
+}
+
 // ── Task Carousel ───────────────────────────────────────────
+const PRIORITIES: Quadrant[] = ["DO", "SCHEDULE", "DELEGATE", "DELETE"];
+
 function TaskCarousel({
     tasks,
     onAddOne,
     onAddAll,
+    onUpdateTask,
     addingAll,
 }: {
     tasks: AiTask[];
     onAddOne: (idx: number) => void;
     onAddAll: () => void;
+    onUpdateTask: (idx: number, updates: Partial<AiTask>) => void;
     addingAll: boolean;
 }) {
     const [page, setPage] = useState(0);
     const scrollRef = useRef<ScrollView>(null);
+    const [pickerTarget, setPickerTarget] = useState<{ idx: number; mode: "date" | "time" } | null>(null);
 
     const goTo = (idx: number) => {
         const clamped = Math.max(0, Math.min(idx, tasks.length - 1));
         setPage(clamped);
         scrollRef.current?.scrollTo({ x: clamped * (CARD_WIDTH + 12), animated: true });
+    };
+
+    const cyclePriority = (idx: number) => {
+        const current = PRIORITIES.indexOf(tasks[idx].priority);
+        const next = PRIORITIES[(current + 1) % PRIORITIES.length];
+        onUpdateTask(idx, { priority: next });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const clearDate = (idx: number) => {
+        onUpdateTask(idx, { dueDate: null, dueTime: null });
     };
 
     return (
@@ -110,8 +142,16 @@ function TaskCarousel({
                     const meta = QUADRANT_META[task.priority];
                     return (
                         <View key={idx} style={[s.carouselCard, { width: CARD_WIDTH }]}>
+                            {/* Title row + add button */}
                             <View style={s.cardHeader}>
-                                <Text style={s.cardTitle} numberOfLines={2}>{task.title || "Untitled"}</Text>
+                                <TextInput
+                                    style={s.cardTitleInput}
+                                    value={task.title}
+                                    onChangeText={(v) => onUpdateTask(idx, { title: v })}
+                                    placeholder="Task title..."
+                                    placeholderTextColor={Colors.light.textTertiary}
+                                    multiline
+                                />
                                 <TouchableOpacity
                                     style={[s.addOneBtn, { backgroundColor: meta.color }]}
                                     onPress={() => onAddOne(idx)}
@@ -120,24 +160,150 @@ function TaskCarousel({
                                     <Ionicons name="add" size={16} color="#fff" />
                                 </TouchableOpacity>
                             </View>
-                            {task.notes ? <Text style={s.cardNotes} numberOfLines={1}>{task.notes}</Text> : null}
-                            <View style={s.cardMeta}>
-                                <View style={[s.cardPill, { backgroundColor: meta.bg, borderColor: meta.border }]}>
-                                    <Text style={[s.cardPillText, { color: meta.color }]}>{meta.sublabel}</Text>
+
+                            {/* Editable description */}
+                            <TextInput
+                                style={s.cardNotesInput}
+                                value={task.notes}
+                                onChangeText={(v) => onUpdateTask(idx, { notes: v })}
+                                placeholder="Add description..."
+                                placeholderTextColor={Colors.light.textTertiary}
+                                multiline
+                                numberOfLines={2}
+                            />
+
+                            {/* Priority picker row */}
+                            <View style={s.priorityRow}>
+                                <Text style={s.fieldLabel}>Priority</Text>
+                                <View style={s.priorityPills}>
+                                    {PRIORITIES.map((p) => {
+                                        const pm = QUADRANT_META[p];
+                                        const active = task.priority === p;
+                                        return (
+                                            <TouchableOpacity
+                                                key={p}
+                                                style={[
+                                                    s.priorityPill,
+                                                    active
+                                                        ? { backgroundColor: pm.color, borderColor: pm.color }
+                                                        : { backgroundColor: Colors.light.bg, borderColor: Colors.light.borderLight },
+                                                ]}
+                                                onPress={() => {
+                                                    onUpdateTask(idx, { priority: p });
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={[
+                                                    s.priorityPillText,
+                                                    { color: active ? "#fff" : Colors.light.textSecondary },
+                                                ]}>{pm.sublabel}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                                 </View>
+                            </View>
+
+                            {/* Date + Time row */}
+                            <View style={s.dateTimeRow}>
+                                {/* Date */}
+                                <TouchableOpacity
+                                    style={s.dateTimeItem}
+                                    onPress={() => {
+                                        if (!task.dueDate) {
+                                            const today = new Date().toISOString().split("T")[0];
+                                            onUpdateTask(idx, { dueDate: today });
+                                        }
+                                        setPickerTarget(
+                                            pickerTarget?.idx === idx && pickerTarget?.mode === "date"
+                                                ? null
+                                                : { idx, mode: "date" }
+                                        );
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="calendar-outline" size={16} color={task.dueDate ? Colors.light.accent : Colors.light.textTertiary} />
+                                    <Text style={task.dueDate ? s.dateTimeText : s.dateTimePlaceholder}>
+                                        {task.dueDate ? formatDate(task.dueDate) : "Add date"}
+                                    </Text>
+                                </TouchableOpacity>
                                 {task.dueDate && (
-                                    <View style={s.cardDateRow}>
-                                        <Ionicons name="calendar-outline" size={12} color={Colors.light.textTertiary} />
-                                        <Text style={s.cardDateText}>
-                                            {formatDate(task.dueDate)}
-                                            {task.dueTime ? ` at ${formatTime(task.dueTime)}` : ""}
-                                        </Text>
-                                    </View>
+                                    <TouchableOpacity onPress={() => onUpdateTask(idx, { dueDate: null, dueTime: null })} hitSlop={8} style={s.clearBtn}>
+                                        <Ionicons name="close-circle" size={16} color={Colors.light.textTertiary} />
+                                    </TouchableOpacity>
                                 )}
-                                {task.timeSource === "guessed" && (
-                                    <Text style={s.guessedText}>⏱ AI guessed time</Text>
+
+                                {/* Time — only if date exists */}
+                                {task.dueDate && (
+                                    <>
+                                        <TouchableOpacity
+                                            style={s.dateTimeItem}
+                                            onPress={() => {
+                                                if (!task.dueTime) {
+                                                    onUpdateTask(idx, { dueTime: "12:00" });
+                                                }
+                                                setPickerTarget(
+                                                    pickerTarget?.idx === idx && pickerTarget?.mode === "time"
+                                                        ? null
+                                                        : { idx, mode: "time" }
+                                                );
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="time-outline" size={16} color={task.dueTime ? Colors.light.accent : Colors.light.textTertiary} />
+                                            <Text style={task.dueTime ? s.dateTimeText : s.dateTimePlaceholder}>
+                                                {task.dueTime ? formatTime(task.dueTime) : "Add time"}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        {task.dueTime && (
+                                            <TouchableOpacity onPress={() => onUpdateTask(idx, { dueTime: null })} hitSlop={8} style={s.clearBtn}>
+                                                <Ionicons name="close-circle" size={16} color={Colors.light.textTertiary} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </>
                                 )}
                             </View>
+
+                            {/* Inline picker — expands card downward */}
+                            {pickerTarget?.idx === idx && (
+                                <View style={s.inlinePicker}>
+                                    <DateTimePicker
+                                        value={(() => {
+                                            if (pickerTarget.mode === "date" && task.dueDate) {
+                                                return new Date(task.dueDate + "T12:00:00");
+                                            }
+                                            if (pickerTarget.mode === "time" && task.dueTime) {
+                                                const [h, m] = task.dueTime.split(":").map(Number);
+                                                const d = new Date(); d.setHours(h, m, 0, 0);
+                                                return d;
+                                            }
+                                            return new Date();
+                                        })()}
+                                        mode={pickerTarget.mode}
+                                        display="spinner"
+                                        style={{ height: 150 }}
+                                        onChange={(_ev, selectedDate) => {
+                                            if (!selectedDate) return;
+                                            if (pickerTarget.mode === "date") {
+                                                const y = selectedDate.getFullYear();
+                                                const mo = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                                                const d = String(selectedDate.getDate()).padStart(2, "0");
+                                                onUpdateTask(idx, { dueDate: `${y}-${mo}-${d}` });
+                                            } else {
+                                                const h = String(selectedDate.getHours()).padStart(2, "0");
+                                                const mi = String(selectedDate.getMinutes()).padStart(2, "0");
+                                                onUpdateTask(idx, { dueTime: `${h}:${mi}` });
+                                            }
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        style={s.pickerDoneBtn}
+                                        onPress={() => setPickerTarget(null)}
+                                    >
+                                        <Text style={s.pickerDoneText}>Done</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
                     );
                 })}
@@ -444,6 +610,15 @@ export default function AiFab() {
         }
     }, [messages, user?.uid, groups, tasks.length]);
 
+    const handleUpdateTask = useCallback((msgIdx: number, taskIdx: number, updates: Partial<AiTask>) => {
+        setMessages((prev) => prev.map((msg, i) => {
+            if (i !== msgIdx || msg.role !== "assistant") return msg;
+            const newTasks = [...msg.tasks];
+            newTasks[taskIdx] = { ...newTasks[taskIdx], ...updates };
+            return { ...msg, tasks: newTasks };
+        }));
+    }, []);
+
     return (
         <>
             {/* FAB Button */}
@@ -485,9 +660,19 @@ export default function AiFab() {
                                 </View>
                                 <Text style={s.sheetTitle}>AI Assistant</Text>
                             </View>
-                            <TouchableOpacity onPress={handleClose} hitSlop={12}>
-                                <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                {messages.length > 0 && (
+                                    <TouchableOpacity
+                                        onPress={() => { setMessages([]); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                                        hitSlop={12}
+                                    >
+                                        <Ionicons name="trash-outline" size={22} color={Colors.light.textTertiary} />
+                                    </TouchableOpacity>
+                                )}
+                                <TouchableOpacity onPress={handleClose} hitSlop={12}>
+                                    <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
@@ -547,7 +732,7 @@ export default function AiFab() {
                                             <Ionicons name="sparkles" size={14} color="#fff" />
                                         </View>
                                         <View style={s.assistantTextBubble}>
-                                            <Text selectable style={s.assistantText}>{msg.text}</Text>
+                                            <Text selectable style={s.assistantText}>{renderMarkdown(msg.text, s.assistantText)}</Text>
                                         </View>
                                     </View>
                                 );
@@ -564,6 +749,7 @@ export default function AiFab() {
                                                 tasks={msg.tasks}
                                                 onAddOne={(tIdx) => handleAddOne(mIdx, tIdx)}
                                                 onAddAll={() => handleAddAll(mIdx)}
+                                                onUpdateTask={(tIdx, updates) => handleUpdateTask(mIdx, tIdx, updates)}
                                                 addingAll={creating}
                                             />
                                         </View>
@@ -916,11 +1102,11 @@ const s = StyleSheet.create({
     carouselCard: {
         backgroundColor: Colors.light.bgCard,
         borderRadius: Radius.lg,
-        padding: 14,
+        padding: 16,
         borderWidth: 1,
         borderColor: Colors.light.borderLight,
         ...Shadows.sm,
-        gap: 6,
+        gap: 10,
     },
     cardHeader: {
         flexDirection: "row",
@@ -935,6 +1121,19 @@ const s = StyleSheet.create({
         flex: 1,
         lineHeight: 20,
     },
+    cardTitleInput: {
+        fontSize: FontSize.md,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+        flex: 1,
+        lineHeight: 20,
+        backgroundColor: Colors.light.bg,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
     addOneBtn: {
         width: 28,
         height: 28,
@@ -946,6 +1145,92 @@ const s = StyleSheet.create({
         fontSize: FontSize.sm,
         color: Colors.light.textSecondary,
         lineHeight: 18,
+    },
+    cardNotesInput: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        lineHeight: 18,
+        backgroundColor: Colors.light.bg,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        minHeight: 60,
+    },
+    // Priority picker
+    priorityRow: {
+        gap: 4,
+    },
+    fieldLabel: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: Colors.light.textTertiary,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    priorityPills: {
+        flexDirection: "row",
+        gap: 6,
+    },
+    priorityPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+    },
+    priorityPillText: {
+        fontSize: 11,
+        fontWeight: "700",
+    },
+    // Date/time row
+    dateTimeRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+    },
+    dateTimeItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        backgroundColor: Colors.light.bg,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+    },
+    dateTimeText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: Colors.light.textPrimary,
+    },
+    dateTimePlaceholder: {
+        fontSize: 13,
+        color: Colors.light.accent,
+        fontWeight: "600",
+    },
+    clearBtn: {
+        marginLeft: -4,
+    },
+    inlinePicker: {
+        borderTopWidth: 1,
+        borderTopColor: Colors.light.borderLight,
+        paddingTop: 4,
+        alignItems: "center",
+    },
+    pickerDoneBtn: {
+        alignSelf: "flex-end",
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        backgroundColor: Colors.light.accent,
+        borderRadius: Radius.md,
+        marginBottom: 4,
+    },
+    pickerDoneText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "700",
     },
     cardMeta: {
         flexDirection: "row",
