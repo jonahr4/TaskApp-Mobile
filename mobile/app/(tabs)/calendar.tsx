@@ -572,11 +572,12 @@ const styles = StyleSheet.create({
     calGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: Spacing.sm,
     },
     dayHeaderRow: {
         flexDirection: "row",
         marginBottom: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
     },
     dayHeader: {
         width: `${100 / 7}%` as any,

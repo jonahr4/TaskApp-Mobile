@@ -36,7 +36,7 @@ try {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_WIDTH - 100; // carousel card width
+const CARD_WIDTH = SCREEN_WIDTH - 64; // carousel card width
 
 // ── Types ───────────────────────────────────────────────────
 type AiTask = {
@@ -629,7 +629,7 @@ export default function AiFab() {
                         {
                             opacity: fabGlow.interpolate({
                                 inputRange: [0, 1],
-                                outputRange: [0.3, 0.7],
+                                outputRange: [0.03, 0.075],
                             }),
                         },
                     ]}
@@ -848,6 +848,8 @@ const s = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },
+        borderWidth: 3,
+        borderColor: "rgba(255,255,255,0.3)",
         elevation: 8,
     },
 
@@ -1171,10 +1173,11 @@ const s = StyleSheet.create({
     },
     priorityPills: {
         flexDirection: "row",
-        gap: 6,
+        flexWrap: "wrap",
+        gap: 5,
     },
     priorityPill: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: Radius.full,
         borderWidth: 1,
@@ -1187,7 +1190,8 @@ const s = StyleSheet.create({
     dateTimeRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 16,
+        flexWrap: "wrap",
+        gap: 8,
     },
     dateTimeItem: {
         flexDirection: "row",
