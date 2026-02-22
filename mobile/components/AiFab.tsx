@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import {
     View,
     Text,
@@ -10,7 +10,6 @@ import {
     Modal,
     Keyboard,
     Platform,
-    KeyboardAvoidingView,
     Dimensions,
     Animated,
 } from "react-native";
@@ -23,6 +22,17 @@ import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
 import type { Quadrant } from "@/lib/types";
+
+// Lazy-load speech recognition (native module, fails in Expo Go)
+let SpeechModule: any = null;
+let useSpeechEvent: any = null;
+try {
+    const sr = require("expo-speech-recognition");
+    SpeechModule = sr.ExpoSpeechRecognitionModule;
+    useSpeechEvent = sr.useSpeechRecognitionEvent;
+} catch {
+    // Not available in Expo Go
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 100; // carousel card width
@@ -42,6 +52,7 @@ type AiTask = {
 type ChatMessage =
     | { role: "user"; text: string }
     | { role: "assistant"; tasks: AiTask[]; text?: string }
+    | { role: "assistant-text"; text: string }
     | { role: "system"; text: string };
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -196,10 +207,65 @@ export default function AiFab() {
     const [parsing, setParsing] = useState(false);
     const [creating, setCreating] = useState(false);
     const scrollRef = useRef<ScrollView>(null);
+    const inputRef = useRef<TextInput>(null);
+    const [listening, setListening] = useState(false);
+
+    // Speech recognition event handlers
+    useEffect(() => {
+        if (!SpeechModule) return;
+        const resultSub = SpeechModule.addListener?.("result", (ev: any) => {
+            if (ev?.results?.[0]?.transcript) {
+                setInput((prev) => prev + ev.results[0].transcript);
+            }
+        });
+        const endSub = SpeechModule.addListener?.("end", () => setListening(false));
+        const errorSub = SpeechModule.addListener?.("error", () => setListening(false));
+        return () => {
+            resultSub?.remove?.();
+            endSub?.remove?.();
+            errorSub?.remove?.();
+        };
+    }, []);
+
+    const toggleMic = async () => {
+        if (!SpeechModule) {
+            // Fallback: just focus input so user can use keyboard dictation
+            inputRef.current?.focus();
+            return;
+        }
+        if (listening) {
+            SpeechModule.stop();
+            setListening(false);
+        } else {
+            try {
+                const perm = await SpeechModule.requestPermissionsAsync();
+                if (!perm.granted) return;
+                SpeechModule.start({ lang: "en-US", interimResults: false });
+                setListening(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {
+                inputRef.current?.focus();
+            }
+        }
+    };
 
     // FAB animation
     const fabScale = useRef(new Animated.Value(1)).current;
     const fabGlow = useRef(new Animated.Value(0)).current;
+
+    // Keyboard height tracking for pageSheet modal
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+            (e) => setKeyboardHeight(e.endCoordinates.height)
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+            () => setKeyboardHeight(0)
+        );
+        return () => { showSub.remove(); hideSub.remove(); };
+    }, []);
 
     // Pulse glow loop
     useMemo(() => {
@@ -240,8 +306,22 @@ export default function AiFab() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
         try {
-            const apiUrl = process.env.EXPO_PUBLIC_AI_API_URL || "https://the-task-app.vercel.app/api/ai/parse";
-            const res = await fetch(apiUrl, {
+            // Use the chat endpoint which handles both queries and task creation
+            const baseUrl = (process.env.EXPO_PUBLIC_AI_API_URL || "https://the-task-app.vercel.app/api/ai/parse").replace(/\/parse$/, "/chat");
+
+            // Build existing tasks context
+            const existingTasks = tasks
+                .filter((t: { completed: boolean }) => !t.completed)
+                .slice(0, 50)
+                .map((t: { title: string; dueDate?: string | null; dueTime?: string | null; groupId?: string | null; completed: boolean }) => ({
+                    title: t.title,
+                    dueDate: t.dueDate || null,
+                    dueTime: t.dueTime || null,
+                    group: t.groupId ? groups.find((g: { id: string; name: string }) => g.id === t.groupId)?.name || null : null,
+                    completed: t.completed,
+                }));
+
+            const res = await fetch(baseUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -249,13 +329,18 @@ export default function AiFab() {
                     today,
                     timezone,
                     groups: groups.map((g: { name: string }) => g.name),
+                    existingTasks,
                 }),
             });
 
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.error || "AI request failed");
 
-            if (data?.tasks && Array.isArray(data.tasks)) {
+            if (data?.type === "answer") {
+                // Text-only answer about existing tasks
+                setMessages((prev) => [...prev, { role: "assistant-text" as const, text: data.message || "I'm not sure how to answer that." }]);
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else if (data?.type === "tasks" && Array.isArray(data.tasks)) {
                 const mappedTasks: AiTask[] = data.tasks.map((t: AiTask) => {
                     let groupId: string | null = null;
                     if (t.group) {
@@ -268,14 +353,15 @@ export default function AiFab() {
                 const assistantMsg: ChatMessage = {
                     role: "assistant",
                     tasks: mappedTasks,
-                    text: mappedTasks.length === 1
-                        ? "I found 1 task from that:"
-                        : `I found ${mappedTasks.length} tasks from that:`,
+                    text: data.message || (mappedTasks.length === 1
+                        ? "Here's a task for you:"
+                        : `Here are ${mappedTasks.length} tasks:`),
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
-                throw new Error("No tasks returned");
+                // Fallback: treat as text answer
+                setMessages((prev) => [...prev, { role: "assistant-text" as const, text: data?.message || "Something went wrong." }]);
             }
         } catch (err) {
             const errMsg: ChatMessage = {
@@ -382,150 +468,164 @@ export default function AiFab() {
                 </TouchableOpacity>
             </Animated.View>
 
-            {/* Chat Sheet Modal */}
             <Modal
                 visible={open}
                 animationType="slide"
-                transparent
+                presentationStyle="pageSheet"
                 onRequestClose={handleClose}
             >
-                <View style={s.overlay}>
-                    <TouchableOpacity style={s.overlayDismiss} onPress={handleClose} activeOpacity={1} />
-                    <KeyboardAvoidingView
-                        style={s.sheet}
-                        behavior={Platform.OS === "ios" ? "padding" : undefined}
-                        keyboardVerticalOffset={0}
-                    >
-                        {/* Sheet Header */}
-                        <View style={s.sheetHeader}>
-                            <View style={s.sheetHandle} />
-                            <View style={s.sheetTitleRow}>
-                                <View style={s.sheetTitleLeft}>
-                                    <View style={s.sheetIconBg}>
-                                        <Ionicons name="sparkles" size={16} color="#fff" />
-                                    </View>
-                                    <Text style={s.sheetTitle}>AI Assistant</Text>
+                <View style={s.sheet}>
+                    {/* Sheet Header */}
+                    <View style={s.sheetHeader}>
+                        <View style={s.sheetHandle} />
+                        <View style={s.sheetTitleRow}>
+                            <View style={s.sheetTitleLeft}>
+                                <View style={s.sheetIconBg}>
+                                    <Ionicons name="sparkles" size={16} color="#fff" />
                                 </View>
-                                <TouchableOpacity onPress={handleClose} hitSlop={12}>
-                                    <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
-                                </TouchableOpacity>
+                                <Text style={s.sheetTitle}>AI Assistant</Text>
                             </View>
-                        </View>
-
-                        {/* Messages */}
-                        <ScrollView
-                            ref={scrollRef}
-                            style={s.messageList}
-                            contentContainerStyle={s.messageListContent}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            {/* Welcome message if empty */}
-                            {messages.length === 0 && (
-                                <View style={s.welcomeContainer}>
-                                    <View style={s.welcomeIcon}>
-                                        <Ionicons name="sparkles" size={32} color={Colors.light.accent} />
-                                    </View>
-                                    <Text style={s.welcomeTitle}>Hi! I'm your task assistant</Text>
-                                    <Text style={s.welcomeSub}>
-                                        Type a reminder in plain English and I'll turn it into tasks for you.
-                                    </Text>
-                                    <View style={s.suggestions}>
-                                        {[
-                                            "I have a CS exam next Friday",
-                                            "Buy groceries and call mom today",
-                                            "Submit report by end of week",
-                                        ].map((sug, i) => (
-                                            <TouchableOpacity
-                                                key={i}
-                                                style={s.suggestionChip}
-                                                onPress={() => { setInput(sug); }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Ionicons name="chatbubble-outline" size={12} color={Colors.light.accent} />
-                                                <Text style={s.suggestionText}>{sug}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* Chat messages */}
-                            {messages.map((msg, mIdx) => {
-                                if (msg.role === "user") {
-                                    return (
-                                        <View key={mIdx} style={s.userBubbleRow}>
-                                            <View style={s.userBubble}>
-                                                <Text style={s.userBubbleText}>{msg.text}</Text>
-                                            </View>
-                                        </View>
-                                    );
-                                }
-                                if (msg.role === "assistant") {
-                                    return (
-                                        <View key={mIdx} style={s.assistantBubbleRow}>
-                                            <View style={s.assistantAvatar}>
-                                                <Ionicons name="sparkles" size={14} color="#fff" />
-                                            </View>
-                                            <View style={s.assistantContent}>
-                                                {msg.text && <Text style={s.assistantText}>{msg.text}</Text>}
-                                                <TaskCarousel
-                                                    tasks={msg.tasks}
-                                                    onAddOne={(tIdx) => handleAddOne(mIdx, tIdx)}
-                                                    onAddAll={() => handleAddAll(mIdx)}
-                                                    addingAll={creating}
-                                                />
-                                            </View>
-                                        </View>
-                                    );
-                                }
-                                // system message
-                                return (
-                                    <View key={mIdx} style={s.systemRow}>
-                                        <Text style={s.systemText}>{msg.text}</Text>
-                                    </View>
-                                );
-                            })}
-
-                            {/* Typing indicator */}
-                            {parsing && (
-                                <View style={s.assistantBubbleRow}>
-                                    <View style={s.assistantAvatar}>
-                                        <Ionicons name="sparkles" size={14} color="#fff" />
-                                    </View>
-                                    <View style={s.typingBubble}>
-                                        <ActivityIndicator size="small" color={Colors.light.accent} />
-                                        <Text style={s.typingText}>Thinking...</Text>
-                                    </View>
-                                </View>
-                            )}
-                        </ScrollView>
-
-                        {/* Input Bar */}
-                        <View style={s.inputBar}>
-                            <TextInput
-                                style={s.inputField}
-                                placeholder="Describe your tasks..."
-                                placeholderTextColor={Colors.light.textTertiary}
-                                value={input}
-                                onChangeText={setInput}
-                                multiline
-                                maxLength={500}
-                                returnKeyType="default"
-                            />
-                            <TouchableOpacity
-                                style={[s.sendBtn, (!input.trim() || parsing) && s.sendBtnDisabled]}
-                                onPress={handleSend}
-                                disabled={!input.trim() || parsing}
-                                activeOpacity={0.85}
-                            >
-                                <Ionicons
-                                    name="arrow-up"
-                                    size={20}
-                                    color={(!input.trim() || parsing) ? Colors.light.textTertiary : "#fff"}
-                                />
+                            <TouchableOpacity onPress={handleClose} hitSlop={12}>
+                                <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
                             </TouchableOpacity>
                         </View>
-                    </KeyboardAvoidingView>
+                    </View>
+
+                    {/* Messages */}
+                    <ScrollView
+                        ref={scrollRef}
+                        style={s.messageList}
+                        contentContainerStyle={s.messageListContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {/* Welcome message if empty */}
+                        {messages.length === 0 && (
+                            <View style={s.welcomeContainer}>
+                                <View style={s.welcomeIcon}>
+                                    <Ionicons name="sparkles" size={32} color={Colors.light.accent} />
+                                </View>
+                                <Text style={s.welcomeTitle}>Hi! I'm your task assistant</Text>
+                                <Text style={s.welcomeSub}>
+                                    Ask me about your schedule, or describe tasks and I'll create them for you.
+                                </Text>
+                                <View style={s.suggestions}>
+                                    {[
+                                        "What do I have due tomorrow?",
+                                        "I have a CS exam next Friday",
+                                        "What's my busiest day this week?",
+                                        "Buy groceries and call mom today",
+                                    ].map((sug, i) => (
+                                        <TouchableOpacity
+                                            key={i}
+                                            style={s.suggestionChip}
+                                            onPress={() => { setInput(sug); }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="chatbubble-outline" size={12} color={Colors.light.accent} />
+                                            <Text style={s.suggestionText}>{sug}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Chat messages */}
+                        {messages.map((msg, mIdx) => {
+                            if (msg.role === "user") {
+                                return (
+                                    <View key={mIdx} style={s.userBubbleRow}>
+                                        <View style={s.userBubble}>
+                                            <Text selectable style={s.userBubbleText}>{msg.text}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            }
+                            if (msg.role === "assistant-text") {
+                                return (
+                                    <View key={mIdx} style={s.assistantBubbleRow}>
+                                        <View style={s.assistantAvatar}>
+                                            <Ionicons name="sparkles" size={14} color="#fff" />
+                                        </View>
+                                        <View style={s.assistantTextBubble}>
+                                            <Text selectable style={s.assistantText}>{msg.text}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            }
+                            if (msg.role === "assistant") {
+                                return (
+                                    <View key={mIdx} style={s.assistantBubbleRow}>
+                                        <View style={s.assistantAvatar}>
+                                            <Ionicons name="sparkles" size={14} color="#fff" />
+                                        </View>
+                                        <View style={s.assistantContent}>
+                                            {msg.text && <Text style={s.assistantText}>{msg.text}</Text>}
+                                            <TaskCarousel
+                                                tasks={msg.tasks}
+                                                onAddOne={(tIdx) => handleAddOne(mIdx, tIdx)}
+                                                onAddAll={() => handleAddAll(mIdx)}
+                                                addingAll={creating}
+                                            />
+                                        </View>
+                                    </View>
+                                );
+                            }
+                            // system message
+                            return (
+                                <View key={mIdx} style={s.systemRow}>
+                                    <Text style={s.systemText}>{msg.text}</Text>
+                                </View>
+                            );
+                        })}
+
+                        {/* Typing indicator */}
+                        {parsing && (
+                            <View style={s.assistantBubbleRow}>
+                                <View style={s.assistantAvatar}>
+                                    <Ionicons name="sparkles" size={14} color="#fff" />
+                                </View>
+                                <View style={s.typingBubble}>
+                                    <ActivityIndicator size="small" color={Colors.light.accent} />
+                                    <Text style={s.typingText}>Thinking...</Text>
+                                </View>
+                            </View>
+                        )}
+                    </ScrollView>
+
+                    {/* Input Bar */}
+                    <View style={[s.inputBar, { paddingBottom: keyboardHeight > 0 ? 8 : (Platform.OS === "ios" ? 32 : 12) }]}>
+                        <TouchableOpacity
+                            style={[s.micBtn, listening && s.micBtnActive]}
+                            onPress={toggleMic}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name={listening ? "mic" : "mic-outline"} size={22} color={listening ? "#fff" : Colors.light.accent} />
+                        </TouchableOpacity>
+                        <TextInput
+                            ref={inputRef}
+                            style={s.inputField}
+                            placeholder="Ask about tasks or add new ones..."
+                            placeholderTextColor={Colors.light.textTertiary}
+                            value={input}
+                            onChangeText={setInput}
+                            multiline
+                            maxLength={500}
+                            returnKeyType="default"
+                        />
+                        <TouchableOpacity
+                            style={[s.sendBtn, (!input.trim() || parsing) && s.sendBtnDisabled]}
+                            onPress={handleSend}
+                            disabled={!input.trim() || parsing}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons
+                                name="arrow-up"
+                                size={20}
+                                color={(!input.trim() || parsing) ? Colors.light.textTertiary : "#fff"}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {keyboardHeight > 0 && <View style={{ height: keyboardHeight }} />}
                 </View>
             </Modal>
         </>
@@ -578,8 +678,7 @@ const s = StyleSheet.create({
         backgroundColor: Colors.light.bgCard,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        maxHeight: "80%",
-        minHeight: "50%",
+        flex: 1,
         ...Shadows.lg,
     },
     sheetHeader: {
@@ -726,6 +825,14 @@ const s = StyleSheet.create({
         lineHeight: 20,
         fontWeight: "500",
     },
+    assistantTextBubble: {
+        flex: 1,
+        backgroundColor: Colors.light.bg,
+        borderRadius: 18,
+        borderBottomLeftRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+    },
 
     // Typing indicator
     typingBubble: {
@@ -769,6 +876,17 @@ const s = StyleSheet.create({
         borderTopColor: Colors.light.borderLight,
         backgroundColor: Colors.light.bgCard,
         gap: 8,
+    },
+    micBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: Colors.light.accentLight,
+    },
+    micBtnActive: {
+        backgroundColor: Colors.light.accent,
     },
     inputField: {
         flex: 1,
