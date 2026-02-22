@@ -1,0 +1,916 @@
+import { useState, useRef, useMemo, useCallback } from "react";
+import {
+    View,
+    Text,
+    TextInput,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
+    ActivityIndicator,
+    Modal,
+    Keyboard,
+    Platform,
+    KeyboardAvoidingView,
+    Dimensions,
+    Animated,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { createTaskUnified } from "@/lib/crud";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { QUADRANT_META } from "@/lib/types";
+import type { Quadrant } from "@/lib/types";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = SCREEN_WIDTH - 100; // carousel card width
+
+// ── Types ───────────────────────────────────────────────────
+type AiTask = {
+    title: string;
+    notes: string;
+    dueDate: string | null;
+    dueTime: string | null;
+    priority: Quadrant;
+    group: string | null;
+    groupId: string | null;
+    timeSource: "explicit" | "guessed" | "none";
+};
+
+type ChatMessage =
+    | { role: "user"; text: string }
+    | { role: "assistant"; tasks: AiTask[]; text?: string }
+    | { role: "system"; text: string };
+
+// ── Helpers ─────────────────────────────────────────────────
+function formatDate(d: string | null): string {
+    if (!d) return "No date";
+    const [y, m, day] = d.split("-");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${months[parseInt(m) - 1]} ${parseInt(day)}`;
+}
+
+function formatTime(t: string | null): string {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// ── Task Carousel ───────────────────────────────────────────
+function TaskCarousel({
+    tasks,
+    onAddOne,
+    onAddAll,
+    addingAll,
+}: {
+    tasks: AiTask[];
+    onAddOne: (idx: number) => void;
+    onAddAll: () => void;
+    addingAll: boolean;
+}) {
+    const [page, setPage] = useState(0);
+    const scrollRef = useRef<ScrollView>(null);
+
+    const goTo = (idx: number) => {
+        const clamped = Math.max(0, Math.min(idx, tasks.length - 1));
+        setPage(clamped);
+        scrollRef.current?.scrollTo({ x: clamped * (CARD_WIDTH + 12), animated: true });
+    };
+
+    return (
+        <View>
+            <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled={false}
+                snapToInterval={CARD_WIDTH + 12}
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 6, gap: 12 }}
+                onMomentumScrollEnd={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.x / (CARD_WIDTH + 12));
+                    setPage(Math.max(0, Math.min(idx, tasks.length - 1)));
+                }}
+            >
+                {tasks.map((task, idx) => {
+                    const meta = QUADRANT_META[task.priority];
+                    return (
+                        <View key={idx} style={[s.carouselCard, { width: CARD_WIDTH }]}>
+                            <View style={s.cardHeader}>
+                                <Text style={s.cardTitle} numberOfLines={2}>{task.title || "Untitled"}</Text>
+                                <TouchableOpacity
+                                    style={[s.addOneBtn, { backgroundColor: meta.color }]}
+                                    onPress={() => onAddOne(idx)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="add" size={16} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                            {task.notes ? <Text style={s.cardNotes} numberOfLines={1}>{task.notes}</Text> : null}
+                            <View style={s.cardMeta}>
+                                <View style={[s.cardPill, { backgroundColor: meta.bg, borderColor: meta.border }]}>
+                                    <Text style={[s.cardPillText, { color: meta.color }]}>{meta.sublabel}</Text>
+                                </View>
+                                {task.dueDate && (
+                                    <View style={s.cardDateRow}>
+                                        <Ionicons name="calendar-outline" size={12} color={Colors.light.textTertiary} />
+                                        <Text style={s.cardDateText}>
+                                            {formatDate(task.dueDate)}
+                                            {task.dueTime ? ` at ${formatTime(task.dueTime)}` : ""}
+                                        </Text>
+                                    </View>
+                                )}
+                                {task.timeSource === "guessed" && (
+                                    <Text style={s.guessedText}>⏱ AI guessed time</Text>
+                                )}
+                            </View>
+                        </View>
+                    );
+                })}
+            </ScrollView>
+
+            {/* Navigation: arrows + dots */}
+            {tasks.length > 1 && (
+                <View style={s.carouselNav}>
+                    <TouchableOpacity
+                        onPress={() => goTo(page - 1)}
+                        disabled={page === 0}
+                        style={[s.arrowBtn, page === 0 && s.arrowDisabled]}
+                    >
+                        <Ionicons name="chevron-back" size={18} color={page === 0 ? Colors.light.borderLight : Colors.light.textSecondary} />
+                    </TouchableOpacity>
+
+                    <View style={s.dots}>
+                        {tasks.map((_, i) => (
+                            <View
+                                key={i}
+                                style={[s.dot, i === page && s.dotActive]}
+                            />
+                        ))}
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={() => goTo(page + 1)}
+                        disabled={page === tasks.length - 1}
+                        style={[s.arrowBtn, page === tasks.length - 1 && s.arrowDisabled]}
+                    >
+                        <Ionicons name="chevron-forward" size={18} color={page === tasks.length - 1 ? Colors.light.borderLight : Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Add All */}
+            <TouchableOpacity
+                style={s.addAllBtn}
+                onPress={onAddAll}
+                activeOpacity={0.85}
+                disabled={addingAll}
+            >
+                {addingAll ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                    <>
+                        <Ionicons name="checkmark-done" size={16} color="#fff" />
+                        <Text style={s.addAllText}>
+                            Add {tasks.length === 1 ? "Task" : `All ${tasks.length} Tasks`}
+                        </Text>
+                    </>
+                )}
+            </TouchableOpacity>
+        </View>
+    );
+}
+
+// ── Main AiFab Component ────────────────────────────────────
+export default function AiFab() {
+    const { user } = useAuth();
+    const { groups } = useTaskGroups(user?.uid);
+    const { tasks } = useTasks(user?.uid);
+
+    const [open, setOpen] = useState(false);
+    const [input, setInput] = useState("");
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [parsing, setParsing] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const scrollRef = useRef<ScrollView>(null);
+
+    // FAB animation
+    const fabScale = useRef(new Animated.Value(1)).current;
+    const fabGlow = useRef(new Animated.Value(0)).current;
+
+    // Pulse glow loop
+    useMemo(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(fabGlow, { toValue: 1, duration: 1500, useNativeDriver: true }),
+                Animated.timing(fabGlow, { toValue: 0, duration: 1500, useNativeDriver: true }),
+            ])
+        ).start();
+    }, []);
+
+    const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+
+    const handleOpen = () => {
+        setOpen(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Animated.spring(fabScale, { toValue: 0.85, useNativeDriver: true, friction: 5 }).start();
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        Animated.spring(fabScale, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+    };
+
+    const handleSend = async () => {
+        const trimmed = input.trim();
+        if (!trimmed || parsing) return;
+        Keyboard.dismiss();
+
+        // Add user message
+        const userMsg: ChatMessage = { role: "user", text: trimmed };
+        setMessages((prev) => [...prev, userMsg]);
+        setInput("");
+        setParsing(true);
+
+        // Scroll to bottom
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
+        try {
+            const apiUrl = process.env.EXPO_PUBLIC_AI_API_URL || "https://the-task-app.vercel.app/api/ai/parse";
+            const res = await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    text: trimmed,
+                    today,
+                    timezone,
+                    groups: groups.map((g: { name: string }) => g.name),
+                }),
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.error || "AI request failed");
+
+            if (data?.tasks && Array.isArray(data.tasks)) {
+                const mappedTasks: AiTask[] = data.tasks.map((t: AiTask) => {
+                    let groupId: string | null = null;
+                    if (t.group) {
+                        const match = groups.find((g: { name: string; id: string }) => g.name.toLowerCase() === t.group!.toLowerCase());
+                        if (match) groupId = match.id;
+                    }
+                    return { ...t, groupId };
+                });
+
+                const assistantMsg: ChatMessage = {
+                    role: "assistant",
+                    tasks: mappedTasks,
+                    text: mappedTasks.length === 1
+                        ? "I found 1 task from that:"
+                        : `I found ${mappedTasks.length} tasks from that:`,
+                };
+                setMessages((prev) => [...prev, assistantMsg]);
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+                throw new Error("No tasks returned");
+            }
+        } catch (err) {
+            const errMsg: ChatMessage = {
+                role: "system",
+                text: `⚠️ ${err instanceof Error ? err.message : "Failed to parse. Try again."}`,
+            };
+            setMessages((prev) => [...prev, errMsg]);
+        } finally {
+            setParsing(false);
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+        }
+    };
+
+    const handleAddOne = useCallback(async (msgIdx: number, taskIdx: number) => {
+        const msg = messages[msgIdx];
+        if (msg.role !== "assistant") return;
+        const task = msg.tasks[taskIdx];
+        if (!task) return;
+
+        try {
+            const meta = QUADRANT_META[task.priority];
+            await createTaskUnified(user?.uid, {
+                title: task.title.trim(),
+                notes: task.notes?.trim() || undefined,
+                dueDate: task.dueDate || null,
+                dueTime: task.dueTime || null,
+                urgent: meta.urgent,
+                important: meta.important,
+                groupId: task.groupId || groups[0]?.id || null,
+                completed: false,
+                order: tasks.length,
+                autoUrgentDays: null,
+                reminder: false,
+            });
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            // Add success message
+            setMessages((prev) => [...prev, { role: "system", text: `✅ Added "${task.title}"` }]);
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+        } catch {
+            setMessages((prev) => [...prev, { role: "system", text: "❌ Failed to add task" }]);
+        }
+    }, [messages, user?.uid, groups, tasks.length]);
+
+    const handleAddAll = useCallback(async (msgIdx: number) => {
+        const msg = messages[msgIdx];
+        if (msg.role !== "assistant") return;
+
+        setCreating(true);
+        try {
+            let created = 0;
+            for (const task of msg.tasks) {
+                if (!task.title.trim()) continue;
+                const meta = QUADRANT_META[task.priority];
+                await createTaskUnified(user?.uid, {
+                    title: task.title.trim(),
+                    notes: task.notes?.trim() || undefined,
+                    dueDate: task.dueDate || null,
+                    dueTime: task.dueTime || null,
+                    urgent: meta.urgent,
+                    important: meta.important,
+                    groupId: task.groupId || groups[0]?.id || null,
+                    completed: false,
+                    order: tasks.length + created,
+                    autoUrgentDays: null,
+                    reminder: false,
+                });
+                created++;
+            }
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setMessages((prev) => [
+                ...prev,
+                { role: "system", text: `✅ Added ${created} task${created > 1 ? "s" : ""}!` },
+            ]);
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+        } catch {
+            setMessages((prev) => [...prev, { role: "system", text: "❌ Failed to create tasks" }]);
+        } finally {
+            setCreating(false);
+        }
+    }, [messages, user?.uid, groups, tasks.length]);
+
+    return (
+        <>
+            {/* FAB Button */}
+            <Animated.View style={[s.fabWrapper, { transform: [{ scale: fabScale }] }]}>
+                <Animated.View
+                    style={[
+                        s.fabGlow,
+                        {
+                            opacity: fabGlow.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.3, 0.7],
+                            }),
+                        },
+                    ]}
+                />
+                <TouchableOpacity
+                    style={s.fab}
+                    onPress={handleOpen}
+                    activeOpacity={0.85}
+                >
+                    <Ionicons name="sparkles" size={24} color="#fff" />
+                </TouchableOpacity>
+            </Animated.View>
+
+            {/* Chat Sheet Modal */}
+            <Modal
+                visible={open}
+                animationType="slide"
+                transparent
+                onRequestClose={handleClose}
+            >
+                <View style={s.overlay}>
+                    <TouchableOpacity style={s.overlayDismiss} onPress={handleClose} activeOpacity={1} />
+                    <KeyboardAvoidingView
+                        style={s.sheet}
+                        behavior={Platform.OS === "ios" ? "padding" : undefined}
+                        keyboardVerticalOffset={0}
+                    >
+                        {/* Sheet Header */}
+                        <View style={s.sheetHeader}>
+                            <View style={s.sheetHandle} />
+                            <View style={s.sheetTitleRow}>
+                                <View style={s.sheetTitleLeft}>
+                                    <View style={s.sheetIconBg}>
+                                        <Ionicons name="sparkles" size={16} color="#fff" />
+                                    </View>
+                                    <Text style={s.sheetTitle}>AI Assistant</Text>
+                                </View>
+                                <TouchableOpacity onPress={handleClose} hitSlop={12}>
+                                    <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Messages */}
+                        <ScrollView
+                            ref={scrollRef}
+                            style={s.messageList}
+                            contentContainerStyle={s.messageListContent}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {/* Welcome message if empty */}
+                            {messages.length === 0 && (
+                                <View style={s.welcomeContainer}>
+                                    <View style={s.welcomeIcon}>
+                                        <Ionicons name="sparkles" size={32} color={Colors.light.accent} />
+                                    </View>
+                                    <Text style={s.welcomeTitle}>Hi! I'm your task assistant</Text>
+                                    <Text style={s.welcomeSub}>
+                                        Type a reminder in plain English and I'll turn it into tasks for you.
+                                    </Text>
+                                    <View style={s.suggestions}>
+                                        {[
+                                            "I have a CS exam next Friday",
+                                            "Buy groceries and call mom today",
+                                            "Submit report by end of week",
+                                        ].map((sug, i) => (
+                                            <TouchableOpacity
+                                                key={i}
+                                                style={s.suggestionChip}
+                                                onPress={() => { setInput(sug); }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ionicons name="chatbubble-outline" size={12} color={Colors.light.accent} />
+                                                <Text style={s.suggestionText}>{sug}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Chat messages */}
+                            {messages.map((msg, mIdx) => {
+                                if (msg.role === "user") {
+                                    return (
+                                        <View key={mIdx} style={s.userBubbleRow}>
+                                            <View style={s.userBubble}>
+                                                <Text style={s.userBubbleText}>{msg.text}</Text>
+                                            </View>
+                                        </View>
+                                    );
+                                }
+                                if (msg.role === "assistant") {
+                                    return (
+                                        <View key={mIdx} style={s.assistantBubbleRow}>
+                                            <View style={s.assistantAvatar}>
+                                                <Ionicons name="sparkles" size={14} color="#fff" />
+                                            </View>
+                                            <View style={s.assistantContent}>
+                                                {msg.text && <Text style={s.assistantText}>{msg.text}</Text>}
+                                                <TaskCarousel
+                                                    tasks={msg.tasks}
+                                                    onAddOne={(tIdx) => handleAddOne(mIdx, tIdx)}
+                                                    onAddAll={() => handleAddAll(mIdx)}
+                                                    addingAll={creating}
+                                                />
+                                            </View>
+                                        </View>
+                                    );
+                                }
+                                // system message
+                                return (
+                                    <View key={mIdx} style={s.systemRow}>
+                                        <Text style={s.systemText}>{msg.text}</Text>
+                                    </View>
+                                );
+                            })}
+
+                            {/* Typing indicator */}
+                            {parsing && (
+                                <View style={s.assistantBubbleRow}>
+                                    <View style={s.assistantAvatar}>
+                                        <Ionicons name="sparkles" size={14} color="#fff" />
+                                    </View>
+                                    <View style={s.typingBubble}>
+                                        <ActivityIndicator size="small" color={Colors.light.accent} />
+                                        <Text style={s.typingText}>Thinking...</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        {/* Input Bar */}
+                        <View style={s.inputBar}>
+                            <TextInput
+                                style={s.inputField}
+                                placeholder="Describe your tasks..."
+                                placeholderTextColor={Colors.light.textTertiary}
+                                value={input}
+                                onChangeText={setInput}
+                                multiline
+                                maxLength={500}
+                                returnKeyType="default"
+                            />
+                            <TouchableOpacity
+                                style={[s.sendBtn, (!input.trim() || parsing) && s.sendBtnDisabled]}
+                                onPress={handleSend}
+                                disabled={!input.trim() || parsing}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons
+                                    name="arrow-up"
+                                    size={20}
+                                    color={(!input.trim() || parsing) ? Colors.light.textTertiary : "#fff"}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
+        </>
+    );
+}
+
+// ── Styles ──────────────────────────────────────────────────
+const s = StyleSheet.create({
+    // FAB
+    fabWrapper: {
+        position: "absolute",
+        bottom: Platform.OS === "ios" ? 110 : 80,
+        right: 20,
+        zIndex: 999,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    fabGlow: {
+        position: "absolute",
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: Colors.light.accent,
+    },
+    fab: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.light.accent,
+        alignItems: "center",
+        justifyContent: "center",
+        ...Shadows.lg,
+        shadowColor: Colors.light.accent,
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
+    },
+
+    // Overlay & Sheet
+    overlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "flex-end",
+    },
+    overlayDismiss: {
+        flex: 1,
+    },
+    sheet: {
+        backgroundColor: Colors.light.bgCard,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: "80%",
+        minHeight: "50%",
+        ...Shadows.lg,
+    },
+    sheetHeader: {
+        alignItems: "center",
+        paddingTop: 8,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.light.borderLight,
+    },
+    sheetHandle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: Colors.light.borderLight,
+        marginBottom: 12,
+    },
+    sheetTitleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.lg,
+        width: "100%",
+    },
+    sheetTitleLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    sheetIconBg: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: Colors.light.accent,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    sheetTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+    },
+
+    // Messages
+    messageList: {
+        flex: 1,
+    },
+    messageListContent: {
+        padding: Spacing.lg,
+        paddingBottom: Spacing.xl,
+        gap: 16,
+    },
+
+    // Welcome
+    welcomeContainer: {
+        alignItems: "center",
+        paddingVertical: 24,
+        gap: 8,
+    },
+    welcomeIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.light.accentLight,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 4,
+    },
+    welcomeTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+    },
+    welcomeSub: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        textAlign: "center",
+        paddingHorizontal: 20,
+        lineHeight: 20,
+    },
+    suggestions: {
+        marginTop: 12,
+        gap: 8,
+        width: "100%",
+    },
+    suggestionChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: Colors.light.accentLight,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: "rgba(79, 70, 229, 0.12)",
+    },
+    suggestionText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.accent,
+        fontWeight: "500",
+        flex: 1,
+    },
+
+    // User bubble
+    userBubbleRow: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+    },
+    userBubble: {
+        backgroundColor: Colors.light.accent,
+        borderRadius: 18,
+        borderBottomRightRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        maxWidth: "80%",
+    },
+    userBubbleText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        lineHeight: 20,
+    },
+
+    // Assistant bubble
+    assistantBubbleRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+    },
+    assistantAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: Colors.light.accent,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 2,
+    },
+    assistantContent: {
+        flex: 1,
+        gap: 8,
+    },
+    assistantText: {
+        fontSize: FontSize.md,
+        color: Colors.light.textPrimary,
+        lineHeight: 20,
+        fontWeight: "500",
+    },
+
+    // Typing indicator
+    typingBubble: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: Colors.light.bg,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 18,
+        borderBottomLeftRadius: 4,
+    },
+    typingText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textTertiary,
+    },
+
+    // System message
+    systemRow: {
+        alignItems: "center",
+    },
+    systemText: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        backgroundColor: Colors.light.bg,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        overflow: "hidden",
+        fontWeight: "500",
+    },
+
+    // Input bar
+    inputBar: {
+        flexDirection: "row",
+        alignItems: "flex-end",
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        paddingBottom: Platform.OS === "ios" ? 32 : Spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: Colors.light.borderLight,
+        backgroundColor: Colors.light.bgCard,
+        gap: 8,
+    },
+    inputField: {
+        flex: 1,
+        backgroundColor: Colors.light.bg,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: Platform.OS === "ios" ? 10 : 8,
+        fontSize: FontSize.md,
+        color: Colors.light.textPrimary,
+        maxHeight: 100,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+    },
+    sendBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: Colors.light.accent,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    sendBtnDisabled: {
+        backgroundColor: Colors.light.bg,
+    },
+
+    // Carousel card
+    carouselCard: {
+        backgroundColor: Colors.light.bgCard,
+        borderRadius: Radius.lg,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
+        ...Shadows.sm,
+        gap: 6,
+    },
+    cardHeader: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 8,
+    },
+    cardTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "700",
+        color: Colors.light.textPrimary,
+        flex: 1,
+        lineHeight: 20,
+    },
+    addOneBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cardNotes: {
+        fontSize: FontSize.sm,
+        color: Colors.light.textSecondary,
+        lineHeight: 18,
+    },
+    cardMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 2,
+    },
+    cardPill: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+    },
+    cardPillText: {
+        fontSize: 11,
+        fontWeight: "700",
+    },
+    cardDateRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+    cardDateText: {
+        fontSize: 11,
+        color: Colors.light.textTertiary,
+        fontWeight: "500",
+    },
+    guessedText: {
+        fontSize: 10,
+        color: Colors.light.textTertiary,
+        fontStyle: "italic",
+    },
+
+    // Carousel navigation
+    carouselNav: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        paddingVertical: 8,
+    },
+    arrowBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: Colors.light.bg,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    arrowDisabled: {
+        opacity: 0.4,
+    },
+    dots: {
+        flexDirection: "row",
+        gap: 6,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: Colors.light.borderLight,
+    },
+    dotActive: {
+        backgroundColor: Colors.light.accent,
+        width: 18,
+        borderRadius: 3,
+    },
+
+    // Add All
+    addAllBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: Colors.light.accent,
+        borderRadius: Radius.lg,
+        paddingVertical: 10,
+        marginTop: 4,
+    },
+    addAllText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "700",
+    },
+});
