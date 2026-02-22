@@ -9,6 +9,7 @@ import { Colors } from "@/lib/theme";
 import { configureForegroundHandler } from "@/lib/notifications";
 import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import AiFab from "@/components/AiFab";
 
 // Configure notification display while app is in foreground
 configureForegroundHandler();
@@ -58,6 +59,7 @@ function AppShell() {
   return (
     <>
       <Slot />
+      <AiFab />
       {/* Merge prompt shown after sign-in when both local and cloud data exist */}
       <MergePrompt
         visible={syncScenario === "merge_needed"}

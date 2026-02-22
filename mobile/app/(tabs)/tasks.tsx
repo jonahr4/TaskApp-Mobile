@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
     fab: {
         position: "absolute",
         right: Spacing.xl,
-        bottom: 18,
+        bottom: 78,
         width: 60,
         height: 60,
         borderRadius: 30,
@@ -1290,7 +1290,7 @@ const styles = StyleSheet.create({
     fabMini: {
         position: "absolute",
         right: Spacing.xl,
-        bottom: 18,
+        bottom: 78,
         flexDirection: "row",
         alignItems: "center",
         gap: Spacing.sm,
