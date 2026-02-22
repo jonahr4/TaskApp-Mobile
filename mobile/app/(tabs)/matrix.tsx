@@ -23,6 +23,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { updateTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { FilterStyles } from "@/lib/sharedStyles";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -1245,6 +1246,7 @@ const styles = StyleSheet.create({
         borderRadius: Radius.lg,
         borderWidth: 1,
         overflow: "hidden",
+        ...Shadows.sm,
     },
     qHeader: {
         flexDirection: "row",
@@ -1380,38 +1382,11 @@ const styles = StyleSheet.create({
         fontSize: FontSize.xs,
         fontWeight: "600",
     },
-    filterBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: 8,
-        paddingBottom: 4,
-        zIndex: 20,
-    },
-    filterChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    filterChipActive: {
-        backgroundColor: Colors.light.accentLight,
-        borderColor: Colors.light.accent,
-    },
-    filterChipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "500" as const,
-        color: Colors.light.textSecondary,
-    },
-    filterChipTextActive: {
-        color: Colors.light.accent,
-    },
+    filterBar: FilterStyles.filterBar,
+    filterChip: FilterStyles.filterChip,
+    filterChipActive: FilterStyles.filterChipActive,
+    filterChipText: FilterStyles.filterChipText,
+    filterChipTextActive: FilterStyles.filterChipTextActive,
     filterDropdown: {
         position: "absolute",
         top: 38,

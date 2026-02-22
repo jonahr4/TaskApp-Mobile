@@ -28,7 +28,8 @@ import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 import { updateTaskUnified, deleteTaskUnified, createGroupUnified, updateGroupUnified, createTaskUnified, reorderGroupsUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows, SCREEN } from "@/lib/theme";
+import { FilterStyles } from "@/lib/sharedStyles";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -1099,7 +1100,8 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.light.bgCard,
         borderRadius: Radius.xl,
-        borderWidth: 0,
+        borderWidth: 1,
+        borderColor: Colors.light.borderLight,
         ...Shadows.lg,
         overflow: "hidden",
     },
@@ -1347,38 +1349,11 @@ const styles = StyleSheet.create({
         color: Colors.light.accent,
         fontWeight: "500",
     },
-    filterBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: 8,
-        paddingBottom: 4,
-        zIndex: 20,
-    },
-    filterChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    filterChipActive: {
-        backgroundColor: Colors.light.accentLight,
-        borderColor: Colors.light.accent,
-    },
-    filterChipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "500" as const,
-        color: Colors.light.textSecondary,
-    },
-    filterChipTextActive: {
-        color: Colors.light.accent,
-    },
+    filterBar: FilterStyles.filterBar,
+    filterChip: FilterStyles.filterChip,
+    filterChipActive: FilterStyles.filterChipActive,
+    filterChipText: FilterStyles.filterChipText,
+    filterChipTextActive: FilterStyles.filterChipTextActive,
     filterDropdown: {
         position: "absolute",
         top: 38,

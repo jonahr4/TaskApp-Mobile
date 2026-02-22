@@ -11,7 +11,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors.light.textTertiary,
         tabBarStyle: {
           backgroundColor: Colors.light.bgCard,
-          borderTopColor: "transparent",
+          borderTopColor: "rgba(79, 70, 229, 0.1)",
+          borderTopWidth: 1.5,
           height: Platform.OS === "ios" ? 92 : 64,
           paddingTop: 10,
           ...Shadows.md,

@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { FilterStyles } from "@/lib/sharedStyles";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -203,11 +204,11 @@ export default function CalendarScreen() {
                         onPress={() => setShowFilterMenu(!showFilterMenu)}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="filter-outline" size={12} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
                         <Text style={[styles.filterChipText, statusFilter !== "all" && styles.filterChipTextActive]}>
                             {STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label ?? "All"}
                         </Text>
-                        <Ionicons name="chevron-down" size={10} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu && (
                         <View style={styles.filterDropdown}>
@@ -507,37 +508,11 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         color: Colors.light.accent,
     },
-    filterBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.lg,
-        paddingBottom: Spacing.sm,
-        zIndex: 20,
-    },
-    filterChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    filterChipActive: {
-        backgroundColor: Colors.light.accentLight,
-        borderColor: Colors.light.accent,
-    },
-    filterChipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "500",
-        color: Colors.light.textSecondary,
-    },
-    filterChipTextActive: {
-        color: Colors.light.accent,
-    },
+    filterBar: FilterStyles.filterBar,
+    filterChip: FilterStyles.filterChip,
+    filterChipActive: FilterStyles.filterChipActive,
+    filterChipText: FilterStyles.filterChipText,
+    filterChipTextActive: FilterStyles.filterChipTextActive,
     filterDropdown: {
         position: "absolute",
         top: 38,

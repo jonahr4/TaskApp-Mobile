@@ -55,6 +55,9 @@ export default function ScreenHeader({ title }: Props) {
                 </TouchableOpacity>
             </View>
 
+            {/* Subtle accent line under header */}
+            <View style={styles.accentLine} />
+
             {/* Account dropdown */}
             {menuOpen && (
                 <>
@@ -166,7 +169,11 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === "ios" ? 62 : 48,
         paddingBottom: Spacing.lg,
         backgroundColor: Colors.light.bgCard,
-        ...Shadows.sm,
+    },
+    accentLine: {
+        height: 2.5,
+        backgroundColor: Colors.light.accent,
+        opacity: 0.12,
     },
     headerTitle: {
         fontSize: FontSize.title,
