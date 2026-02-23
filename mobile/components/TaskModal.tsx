@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
     View,
     Text,
@@ -19,6 +19,7 @@ import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { createTaskUnified, updateTaskUnified, deleteTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import { QUADRANT_META } from "@/lib/types";
@@ -83,6 +84,346 @@ function displayTime(s: string | null): string {
 
 /* ── component ───────────────────────────── */
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    headerSideBtn: {
+        minWidth: 64,
+    },
+    cancelText: {
+        fontSize: FontSize.md,
+        color: C.textSecondary,
+    },
+    headerTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: C.textPrimary,
+        textAlign: "center",
+    },
+    saveText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.accent,
+    },
+    saveTextDisabled: {
+        opacity: 0.4,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.xl,
+    },
+    titleRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: Spacing.sm,
+    },
+    titleInput: {
+        flex: 1,
+        fontSize: FontSize.xl,
+        fontWeight: "600",
+        color: C.textPrimary,
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        minHeight: 48,
+    },
+    completedBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: Radius.md,
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        marginTop: Spacing.md,
+    },
+    completedBadgeActive: {
+        backgroundColor: "#f0fdf4",
+        borderColor: "#bbf7d0",
+    },
+    completedBadgeText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textTertiary,
+    },
+    completedBadgeTextActive: {
+        color: "#22c55e",
+    },
+    notesInput: {
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+        paddingVertical: Spacing.md,
+        marginTop: Spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        minHeight: 60,
+        textAlignVertical: "top",
+    },
+    section: {
+        marginTop: Spacing.xxl,
+    },
+    sectionLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textSecondary,
+        marginBottom: Spacing.sm,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    fieldRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 14,
+    },
+    fieldText: {
+        flex: 1,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+    },
+    fieldPlaceholder: {
+        color: C.textTertiary,
+    },
+    picker: {
+        marginTop: Spacing.sm,
+        alignSelf: "center",
+    },
+    toggleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 12,
+    },
+    toggleLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        flex: 1,
+    },
+    toggleLabel: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.textPrimary,
+    },
+    toggleSub: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        marginTop: 1,
+    },
+    daysRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginTop: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+    },
+    daysLabel: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+    },
+    daysStepper: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.md,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+    },
+    stepperBtn: {
+        padding: 4,
+    },
+    daysValue: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textPrimary,
+        minWidth: 24,
+        textAlign: "center",
+    },
+    priorityGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: Spacing.sm,
+    },
+    priorityBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 10,
+        borderRadius: Radius.md,
+        borderWidth: 1.5,
+        minWidth: "45%",
+        flex: 1,
+    },
+    priBtnDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    priBtnText: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+    },
+    groupChips: {
+        flexDirection: "row",
+        gap: Spacing.sm,
+    },
+    groupChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 8,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    chipDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    chipText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        fontWeight: "500",
+    },
+    mapPreview: {
+        marginTop: Spacing.sm,
+        borderRadius: Radius.md,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    miniMap: {
+        height: 140,
+        width: "100%",
+    },
+    deleteBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        marginTop: Spacing.xxxl,
+        paddingVertical: Spacing.lg,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: "#fecaca",
+        backgroundColor: "#fef2f2",
+    },
+    deleteText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.danger,
+    },
+});
+}
+
+function makeMapStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    cancelText: {
+        fontSize: FontSize.md,
+        color: C.textSecondary,
+    },
+    headerTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    doneText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.accent,
+    },
+    searchBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        margin: Spacing.md,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 10,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+        padding: 0,
+    },
+    map: {
+        flex: 1,
+    },
+    selectedBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+        backgroundColor: C.bgCard,
+        borderTopWidth: 1,
+        borderTopColor: C.borderLight,
+        minHeight: 56,
+    },
+    selectedText: {
+        flex: 1,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+    },
+    hintText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        textAlign: "center",
+        flex: 1,
+    },
+});
+}
+
 export default function TaskModal({
     visible,
     onClose,
@@ -94,6 +435,7 @@ export default function TaskModal({
     groups,
 }: Props) {
     const { user } = useAuth();
+    const { colors: C, isDark } = useTheme();
     const isEdit = !!task;
 
     const [title, setTitle] = useState("");
@@ -221,6 +563,8 @@ export default function TaskModal({
         ]);
     };
 
+    const styles = useMemo(() => makeStyles(C), [C]);
+
     return (
         <Modal
             visible={visible}
@@ -264,7 +608,7 @@ export default function TaskModal({
                         <TextInput
                             style={styles.titleInput}
                             placeholder="Task title"
-                            placeholderTextColor={Colors.light.textTertiary}
+                            placeholderTextColor={C.textTertiary}
                             value={title}
                             onChangeText={setTitle}
                             autoFocus={!isEdit}
@@ -285,7 +629,7 @@ export default function TaskModal({
                                 <Ionicons
                                     name={completed ? "checkmark-circle" : "ellipse-outline"}
                                     size={16}
-                                    color={completed ? "#22c55e" : Colors.light.textTertiary}
+                                    color={completed ? "#22c55e" : C.textTertiary}
                                 />
                                 <Text style={[
                                     styles.completedBadgeText,
@@ -301,7 +645,7 @@ export default function TaskModal({
                     <TextInput
                         style={styles.notesInput}
                         placeholder="Notes (optional)"
-                        placeholderTextColor={Colors.light.textTertiary}
+                        placeholderTextColor={C.textTertiary}
                         value={notes}
                         onChangeText={setNotes}
                         multiline
@@ -321,8 +665,8 @@ export default function TaskModal({
                                     style={[
                                         styles.groupChip,
                                         groupId === null && {
-                                            backgroundColor: Colors.light.accentLight,
-                                            borderColor: Colors.light.accent,
+                                            backgroundColor: C.accentLight,
+                                            borderColor: C.accent,
                                         },
                                     ]}
                                     onPress={() => setGroupId(null)}
@@ -330,13 +674,13 @@ export default function TaskModal({
                                     <View
                                         style={[
                                             styles.chipDot,
-                                            { backgroundColor: Colors.light.textTertiary },
+                                            { backgroundColor: C.textTertiary },
                                         ]}
                                     />
                                     <Text
                                         style={[
                                             styles.chipText,
-                                            groupId === null && { color: Colors.light.textPrimary },
+                                            groupId === null && { color: C.textPrimary },
                                         ]}
                                     >
                                         General Tasks
@@ -348,8 +692,8 @@ export default function TaskModal({
                                         style={[
                                             styles.groupChip,
                                             groupId === g.id && {
-                                                backgroundColor: g.color ? `${g.color}15` : Colors.light.accentLight,
-                                                borderColor: g.color || Colors.light.accent,
+                                                backgroundColor: g.color ? `${g.color}15` : C.accentLight,
+                                                borderColor: g.color || C.accent,
                                             },
                                         ]}
                                         onPress={() => setGroupId(g.id)}
@@ -357,13 +701,13 @@ export default function TaskModal({
                                         <View
                                             style={[
                                                 styles.chipDot,
-                                                { backgroundColor: g.color || Colors.light.textTertiary },
+                                                { backgroundColor: g.color || C.textTertiary },
                                             ]}
                                         />
                                         <Text
                                             style={[
                                                 styles.chipText,
-                                                groupId === g.id && { color: Colors.light.textPrimary },
+                                                groupId === g.id && { color: C.textPrimary },
                                             ]}
                                         >
                                             {g.name}
@@ -386,7 +730,7 @@ export default function TaskModal({
                             }}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name="calendar-outline" size={20} color={Colors.light.accent} />
+                            <Ionicons name="calendar-outline" size={20} color={C.accent} />
                             <Text style={[styles.fieldText, !dueDate && styles.fieldPlaceholder]}>
                                 {dueDate ? displayDate(dueDate) : "Add due date"}
                             </Text>
@@ -395,7 +739,7 @@ export default function TaskModal({
                                     onPress={() => { setDueDate(null); setDueTime(null); setShowDatePicker(false); setShowTimePicker(false); }}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
-                                    <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
+                                    <Ionicons name="close-circle" size={18} color={C.textTertiary} />
                                 </TouchableOpacity>
                             )}
                         </TouchableOpacity>
@@ -405,7 +749,7 @@ export default function TaskModal({
                                 mode="date"
                                 display="inline"
                                 onChange={onDateChange}
-                                themeVariant="light"
+                                themeVariant={isDark ? "dark" : "light"}
                                 style={styles.picker}
                             />
                         )}
@@ -424,7 +768,7 @@ export default function TaskModal({
                                 }}
                                 activeOpacity={0.7}
                             >
-                                <Ionicons name="time-outline" size={20} color={Colors.light.accent} />
+                                <Ionicons name="time-outline" size={20} color={C.accent} />
                                 <Text style={[styles.fieldText, !dueTime && styles.fieldPlaceholder]}>
                                     {dueTime ? displayTime(dueTime) : "Add due time"}
                                 </Text>
@@ -433,7 +777,7 @@ export default function TaskModal({
                                         onPress={() => { setDueTime(null); setShowTimePicker(false); }}
                                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                     >
-                                        <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
+                                        <Ionicons name="close-circle" size={18} color={C.textTertiary} />
                                     </TouchableOpacity>
                                 )}
                             </TouchableOpacity>
@@ -443,7 +787,7 @@ export default function TaskModal({
                                     mode="time"
                                     display="spinner"
                                     onChange={onTimeChange}
-                                    themeVariant="light"
+                                    themeVariant={isDark ? "dark" : "light"}
                                     style={styles.picker}
                                 />
                             )}
@@ -467,7 +811,7 @@ export default function TaskModal({
                                 }
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                                <Ionicons name="information-circle-outline" size={18} color={Colors.light.textTertiary} />
+                                <Ionicons name="information-circle-outline" size={18} color={C.textTertiary} />
                             </TouchableOpacity>
                         </View>
                         <View style={styles.priorityGrid}>
@@ -480,8 +824,8 @@ export default function TaskModal({
                                         style={[
                                             styles.priorityBtn,
                                             {
-                                                borderColor: isSelected ? meta.color : Colors.light.borderLight,
-                                                backgroundColor: isSelected ? meta.bg : Colors.light.bgCard,
+                                                borderColor: isSelected ? meta.color : C.borderLight,
+                                                backgroundColor: isSelected ? meta.bg : C.bgCard,
                                             },
                                         ]}
                                         onPress={() => selectPriority(opt.key)}
@@ -491,7 +835,7 @@ export default function TaskModal({
                                         <Text
                                             style={[
                                                 styles.priBtnText,
-                                                { color: isSelected ? meta.color : Colors.light.textSecondary },
+                                                { color: isSelected ? meta.color : C.textSecondary },
                                             ]}
                                         >
                                             {opt.label}
@@ -519,7 +863,7 @@ export default function TaskModal({
                             <Switch
                                 value={autoUrgentEnabled}
                                 onValueChange={setAutoUrgentEnabled}
-                                trackColor={{ false: Colors.light.borderLight, true: "#fbbf24" }}
+                                trackColor={{ false: C.borderLight, true: "#fbbf24" }}
                                 thumbColor="#fff"
                             />
                         </View>
@@ -531,14 +875,14 @@ export default function TaskModal({
                                         onPress={() => setAutoUrgentDays(Math.max(1, autoUrgentDays - 1))}
                                         style={styles.stepperBtn}
                                     >
-                                        <Ionicons name="remove" size={16} color={Colors.light.textPrimary} />
+                                        <Ionicons name="remove" size={16} color={C.textPrimary} />
                                     </TouchableOpacity>
                                     <Text style={styles.daysValue}>{autoUrgentDays}</Text>
                                     <TouchableOpacity
                                         onPress={() => setAutoUrgentDays(Math.min(30, autoUrgentDays + 1))}
                                         style={styles.stepperBtn}
                                     >
-                                        <Ionicons name="add" size={16} color={Colors.light.textPrimary} />
+                                        <Ionicons name="add" size={16} color={C.textPrimary} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -553,7 +897,7 @@ export default function TaskModal({
                             onPress={() => setShowMapPicker(true)}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name="location-outline" size={20} color={Colors.light.accent} />
+                            <Ionicons name="location-outline" size={20} color={C.accent} />
                             <Text style={[styles.fieldText, !location && styles.fieldPlaceholder]}>
                                 {location || "Add location"}
                             </Text>
@@ -562,7 +906,7 @@ export default function TaskModal({
                                     onPress={() => { setLocation(""); setLocationCoords(null); }}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
-                                    <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
+                                    <Ionicons name="close-circle" size={18} color={C.textTertiary} />
                                 </TouchableOpacity>
                             )}
                         </TouchableOpacity>
@@ -596,7 +940,7 @@ export default function TaskModal({
                     {/* Delete */}
                     {isEdit && (
                         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-                            <Ionicons name="trash-outline" size={18} color={Colors.light.danger} />
+                            <Ionicons name="trash-outline" size={18} color={C.danger} />
                             <Text style={styles.deleteText}>Delete Task</Text>
                         </TouchableOpacity>
                     )}
@@ -631,6 +975,8 @@ function MapPickerModal({
     onSelect: (name: string, coords: { lat: number; lng: number }) => void;
     initialCoords: { lat: number; lng: number } | null;
 }) {
+    const { colors: C } = useTheme();
+    const mapStyles = useMemo(() => makeMapStyles(C), [C]);
     const [region, setRegion] = useState<Region>({
         latitude: initialCoords?.lat ?? 37.7749,
         longitude: initialCoords?.lng ?? -122.4194,
@@ -740,11 +1086,11 @@ function MapPickerModal({
 
                 {/* Search */}
                 <View style={mapStyles.searchBar}>
-                    <Ionicons name="search" size={18} color={Colors.light.textTertiary} />
+                    <Ionicons name="search" size={18} color={C.textTertiary} />
                     <TextInput
                         style={mapStyles.searchInput}
                         placeholder="Search for a place..."
-                        placeholderTextColor={Colors.light.textTertiary}
+                        placeholderTextColor={C.textTertiary}
                         value={searchText}
                         onChangeText={setSearchText}
                         onSubmitEditing={handleSearch}
@@ -772,7 +1118,7 @@ function MapPickerModal({
                 {/* Selected location bar */}
                 {pin && resolvedName ? (
                     <View style={mapStyles.selectedBar}>
-                        <Ionicons name="location" size={18} color={Colors.light.accent} />
+                        <Ionicons name="location" size={18} color={C.accent} />
                         <Text style={mapStyles.selectedText} numberOfLines={2}>
                             {resolvedName}
                         </Text>
@@ -788,341 +1134,3 @@ function MapPickerModal({
 }
 
 /* ── Styles ──────────────────────────────── */
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    headerSideBtn: {
-        minWidth: 64,
-    },
-    cancelText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textSecondary,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-        textAlign: "center",
-    },
-    saveText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    saveTextDisabled: {
-        opacity: 0.4,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.xl,
-    },
-    titleRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: Spacing.sm,
-    },
-    titleInput: {
-        flex: 1,
-        fontSize: FontSize.xl,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-        paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        minHeight: 48,
-    },
-    completedBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.md,
-        backgroundColor: "#fff",
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        marginTop: Spacing.md,
-    },
-    completedBadgeActive: {
-        backgroundColor: "#f0fdf4",
-        borderColor: "#bbf7d0",
-    },
-    completedBadgeText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-    },
-    completedBadgeTextActive: {
-        color: "#22c55e",
-    },
-    notesInput: {
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-        paddingVertical: Spacing.md,
-        marginTop: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        minHeight: 60,
-        textAlignVertical: "top",
-    },
-    section: {
-        marginTop: Spacing.xxl,
-    },
-    sectionLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-        marginBottom: Spacing.sm,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    fieldRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-    },
-    fieldText: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    fieldPlaceholder: {
-        color: Colors.light.textTertiary,
-    },
-    picker: {
-        marginTop: Spacing.sm,
-        alignSelf: "center",
-    },
-    toggleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 12,
-    },
-    toggleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        flex: 1,
-    },
-    toggleLabel: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-    },
-    toggleSub: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        marginTop: 1,
-    },
-    daysRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-    },
-    daysLabel: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-    },
-    daysStepper: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-    },
-    stepperBtn: {
-        padding: 4,
-    },
-    daysValue: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-        minWidth: 24,
-        textAlign: "center",
-    },
-    priorityGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: Spacing.sm,
-    },
-    priorityBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        borderRadius: Radius.md,
-        borderWidth: 1.5,
-        minWidth: "45%",
-        flex: 1,
-    },
-    priBtnDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    priBtnText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-    },
-    groupChips: {
-        flexDirection: "row",
-        gap: Spacing.sm,
-    },
-    groupChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 8,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    chipDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    chipText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        fontWeight: "500",
-    },
-    mapPreview: {
-        marginTop: Spacing.sm,
-        borderRadius: Radius.md,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    miniMap: {
-        height: 140,
-        width: "100%",
-    },
-    deleteBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        marginTop: Spacing.xxxl,
-        paddingVertical: Spacing.lg,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#fecaca",
-        backgroundColor: "#fef2f2",
-    },
-    deleteText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.danger,
-    },
-});
-
-const mapStyles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    cancelText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textSecondary,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    doneText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    searchBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        margin: Spacing.md,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-        padding: 0,
-    },
-    map: {
-        flex: 1,
-    },
-    selectedBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        borderTopWidth: 1,
-        borderTopColor: Colors.light.borderLight,
-        minHeight: 56,
-    },
-    selectedText: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    hintText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        textAlign: "center",
-        flex: 1,
-    },
-});

@@ -21,6 +21,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { useTheme } from "@/hooks/useTheme";
 import { QUADRANT_META } from "@/lib/types";
 import type { Quadrant } from "@/lib/types";
 
@@ -89,6 +90,510 @@ function renderMarkdown(text: string, baseStyle: any) {
 // ── Task Carousel ───────────────────────────────────────────
 const PRIORITIES: Quadrant[] = ["DO", "SCHEDULE", "DELEGATE", "DELETE"];
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    // FAB
+    fabWrapper: {
+        position: "absolute",
+        bottom: Platform.OS === "ios" ? 110 : 80,
+        right: 20,
+        zIndex: 999,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    fabGlow: {
+        position: "absolute",
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: C.accent,
+    },
+    fab: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: C.accent,
+        alignItems: "center",
+        justifyContent: "center",
+        ...Shadows.lg,
+        shadowColor: C.accent,
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        borderWidth: 3,
+        borderColor: "rgba(255,255,255,0.3)",
+        elevation: 8,
+    },
+
+    // Overlay & Sheet
+    overlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "flex-end",
+    },
+    overlayDismiss: {
+        flex: 1,
+    },
+    sheet: {
+        backgroundColor: C.bgCard,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        flex: 1,
+        ...Shadows.lg,
+    },
+    sheetHeader: {
+        alignItems: "center",
+        paddingTop: 8,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+    },
+    sheetHandle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: C.borderLight,
+        marginBottom: 12,
+    },
+    sheetTitleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.lg,
+        width: "100%",
+    },
+    sheetTitleLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    sheetIconBg: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: C.accent,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    sheetTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+
+    // Messages
+    messageList: {
+        flex: 1,
+    },
+    messageListContent: {
+        padding: Spacing.lg,
+        paddingBottom: Spacing.xl,
+        gap: 16,
+    },
+
+    // Welcome
+    welcomeContainer: {
+        alignItems: "center",
+        paddingVertical: 24,
+        gap: 8,
+    },
+    welcomeIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: C.accentLight,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 4,
+    },
+    welcomeTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+    welcomeSub: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        textAlign: "center",
+        paddingHorizontal: 20,
+        lineHeight: 20,
+    },
+    suggestions: {
+        marginTop: 12,
+        gap: 8,
+        width: "100%",
+    },
+    suggestionChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: C.accentLight,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: "rgba(79, 70, 229, 0.12)",
+    },
+    suggestionText: {
+        fontSize: FontSize.sm,
+        color: C.accent,
+        fontWeight: "500",
+        flex: 1,
+    },
+
+    // User bubble
+    userBubbleRow: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+    },
+    userBubble: {
+        backgroundColor: C.accent,
+        borderRadius: 18,
+        borderBottomRightRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        maxWidth: "80%",
+    },
+    userBubbleText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        lineHeight: 20,
+    },
+
+    // Assistant bubble
+    assistantBubbleRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+    },
+    assistantAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: C.accent,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 2,
+    },
+    assistantContent: {
+        flex: 1,
+        gap: 8,
+    },
+    assistantText: {
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+        lineHeight: 20,
+        fontWeight: "500",
+    },
+    assistantTextBubble: {
+        flex: 1,
+        backgroundColor: C.bg,
+        borderRadius: 18,
+        borderBottomLeftRadius: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+    },
+
+    // Typing indicator
+    typingBubble: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: C.bg,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 18,
+        borderBottomLeftRadius: 4,
+    },
+    typingText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+    },
+
+    // System message
+    systemRow: {
+        alignItems: "center",
+    },
+    systemText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        backgroundColor: C.bg,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        overflow: "hidden",
+        fontWeight: "500",
+    },
+
+    // Input bar
+    inputBar: {
+        flexDirection: "row",
+        alignItems: "flex-end",
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        paddingBottom: Platform.OS === "ios" ? 32 : Spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: C.borderLight,
+        backgroundColor: C.bgCard,
+        gap: 8,
+    },
+    micBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: C.accentLight,
+    },
+    micBtnActive: {
+        backgroundColor: C.accent,
+    },
+    inputField: {
+        flex: 1,
+        backgroundColor: C.bg,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: Platform.OS === "ios" ? 10 : 8,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+        maxHeight: 100,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    sendBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: C.accent,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    sendBtnDisabled: {
+        backgroundColor: C.bg,
+    },
+
+    // Carousel card
+    carouselCard: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.sm,
+        gap: 10,
+    },
+    cardHeader: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 8,
+    },
+    cardTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "700",
+        color: C.textPrimary,
+        flex: 1,
+        lineHeight: 20,
+    },
+    cardTitleInput: {
+        fontSize: FontSize.md,
+        fontWeight: "700",
+        color: C.textPrimary,
+        flex: 1,
+        lineHeight: 20,
+        backgroundColor: C.bg,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    addOneBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cardNotes: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        lineHeight: 18,
+    },
+    cardNotesInput: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        lineHeight: 18,
+        backgroundColor: C.bg,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        minHeight: 60,
+    },
+    // Priority picker
+    priorityRow: {
+        gap: 4,
+    },
+    fieldLabel: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: C.textTertiary,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    priorityPills: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 5,
+    },
+    priorityPill: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+    },
+    priorityPillText: {
+        fontSize: 11,
+        fontWeight: "700",
+    },
+    // Date/time row
+    dateTimeRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 8,
+    },
+    dateTimeItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        backgroundColor: C.bg,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    dateTimeText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    dateTimePlaceholder: {
+        fontSize: 13,
+        color: C.accent,
+        fontWeight: "600",
+    },
+    clearBtn: {
+        marginLeft: -4,
+    },
+    inlinePicker: {
+        borderTopWidth: 1,
+        borderTopColor: C.borderLight,
+        paddingTop: 4,
+        alignItems: "center",
+    },
+    pickerDoneBtn: {
+        alignSelf: "flex-end",
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        backgroundColor: C.accent,
+        borderRadius: Radius.md,
+        marginBottom: 4,
+    },
+    pickerDoneText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "700",
+    },
+    cardMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 2,
+    },
+    cardPill: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+    },
+    cardPillText: {
+        fontSize: 11,
+        fontWeight: "700",
+    },
+    cardDateRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+    cardDateText: {
+        fontSize: 11,
+        color: C.textTertiary,
+        fontWeight: "500",
+    },
+    guessedText: {
+        fontSize: 10,
+        color: C.textTertiary,
+        fontStyle: "italic",
+    },
+
+    // Carousel navigation
+    carouselNav: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        paddingVertical: 8,
+    },
+    arrowBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: C.bg,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    arrowDisabled: {
+        opacity: 0.4,
+    },
+    dots: {
+        flexDirection: "row",
+        gap: 6,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: C.borderLight,
+    },
+    dotActive: {
+        backgroundColor: C.accent,
+        width: 18,
+        borderRadius: 3,
+    },
+
+    // Add All
+    addAllBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: C.accent,
+        borderRadius: Radius.lg,
+        paddingVertical: 10,
+        marginTop: 4,
+    },
+    addAllText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "700",
+    },
+});
+}
+
 function TaskCarousel({
     tasks,
     onAddOne,
@@ -102,6 +607,8 @@ function TaskCarousel({
     onUpdateTask: (idx: number, updates: Partial<AiTask>) => void;
     addingAll: boolean;
 }) {
+    const { colors: C, isDark } = useTheme();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const [page, setPage] = useState(0);
     const scrollRef = useRef<ScrollView>(null);
     const [pickerTarget, setPickerTarget] = useState<{ idx: number; mode: "date" | "time" } | null>(null);
@@ -141,19 +648,19 @@ function TaskCarousel({
                 {tasks.map((task, idx) => {
                     const meta = QUADRANT_META[task.priority];
                     return (
-                        <View key={idx} style={[s.carouselCard, { width: CARD_WIDTH }]}>
+                        <View key={idx} style={[styles.carouselCard, { width: CARD_WIDTH }]}>
                             {/* Title row + add button */}
-                            <View style={s.cardHeader}>
+                            <View style={styles.cardHeader}>
                                 <TextInput
-                                    style={s.cardTitleInput}
+                                    style={styles.cardTitleInput}
                                     value={task.title}
                                     onChangeText={(v) => onUpdateTask(idx, { title: v })}
                                     placeholder="Task title..."
-                                    placeholderTextColor={Colors.light.textTertiary}
+                                    placeholderTextColor={C.textTertiary}
                                     multiline
                                 />
                                 <TouchableOpacity
-                                    style={[s.addOneBtn, { backgroundColor: meta.color }]}
+                                    style={[styles.addOneBtn, { backgroundColor: meta.color }]}
                                     onPress={() => onAddOne(idx)}
                                     activeOpacity={0.8}
                                 >
@@ -163,19 +670,19 @@ function TaskCarousel({
 
                             {/* Editable description */}
                             <TextInput
-                                style={s.cardNotesInput}
+                                style={styles.cardNotesInput}
                                 value={task.notes}
                                 onChangeText={(v) => onUpdateTask(idx, { notes: v })}
                                 placeholder="Add description..."
-                                placeholderTextColor={Colors.light.textTertiary}
+                                placeholderTextColor={C.textTertiary}
                                 multiline
                                 numberOfLines={2}
                             />
 
                             {/* Priority picker row */}
-                            <View style={s.priorityRow}>
-                                <Text style={s.fieldLabel}>Priority</Text>
-                                <View style={s.priorityPills}>
+                            <View style={styles.priorityRow}>
+                                <Text style={styles.fieldLabel}>Priority</Text>
+                                <View style={styles.priorityPills}>
                                     {PRIORITIES.map((p) => {
                                         const pm = QUADRANT_META[p];
                                         const active = task.priority === p;
@@ -183,10 +690,10 @@ function TaskCarousel({
                                             <TouchableOpacity
                                                 key={p}
                                                 style={[
-                                                    s.priorityPill,
+                                                    styles.priorityPill,
                                                     active
                                                         ? { backgroundColor: pm.color, borderColor: pm.color }
-                                                        : { backgroundColor: Colors.light.bg, borderColor: Colors.light.borderLight },
+                                                        : { backgroundColor: C.bg, borderColor: C.borderLight },
                                                 ]}
                                                 onPress={() => {
                                                     onUpdateTask(idx, { priority: p });
@@ -195,8 +702,8 @@ function TaskCarousel({
                                                 activeOpacity={0.7}
                                             >
                                                 <Text style={[
-                                                    s.priorityPillText,
-                                                    { color: active ? "#fff" : Colors.light.textSecondary },
+                                                    styles.priorityPillText,
+                                                    { color: active ? "#fff" : C.textSecondary },
                                                 ]}>{pm.sublabel}</Text>
                                             </TouchableOpacity>
                                         );
@@ -205,10 +712,10 @@ function TaskCarousel({
                             </View>
 
                             {/* Date + Time row */}
-                            <View style={s.dateTimeRow}>
+                            <View style={styles.dateTimeRow}>
                                 {/* Date */}
                                 <TouchableOpacity
-                                    style={s.dateTimeItem}
+                                    style={styles.dateTimeItem}
                                     onPress={() => {
                                         if (!task.dueDate) {
                                             const today = new Date().toISOString().split("T")[0];
@@ -222,14 +729,14 @@ function TaskCarousel({
                                     }}
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons name="calendar-outline" size={16} color={task.dueDate ? Colors.light.accent : Colors.light.textTertiary} />
-                                    <Text style={task.dueDate ? s.dateTimeText : s.dateTimePlaceholder}>
+                                    <Ionicons name="calendar-outline" size={16} color={task.dueDate ? C.accent : C.textTertiary} />
+                                    <Text style={task.dueDate ? styles.dateTimeText : styles.dateTimePlaceholder}>
                                         {task.dueDate ? formatDate(task.dueDate) : "Add date"}
                                     </Text>
                                 </TouchableOpacity>
                                 {task.dueDate && (
-                                    <TouchableOpacity onPress={() => onUpdateTask(idx, { dueDate: null, dueTime: null })} hitSlop={8} style={s.clearBtn}>
-                                        <Ionicons name="close-circle" size={16} color={Colors.light.textTertiary} />
+                                    <TouchableOpacity onPress={() => onUpdateTask(idx, { dueDate: null, dueTime: null })} hitSlop={8} style={styles.clearBtn}>
+                                        <Ionicons name="close-circle" size={16} color={C.textTertiary} />
                                     </TouchableOpacity>
                                 )}
 
@@ -237,7 +744,7 @@ function TaskCarousel({
                                 {task.dueDate && (
                                     <>
                                         <TouchableOpacity
-                                            style={s.dateTimeItem}
+                                            style={styles.dateTimeItem}
                                             onPress={() => {
                                                 if (!task.dueTime) {
                                                     onUpdateTask(idx, { dueTime: "12:00" });
@@ -250,14 +757,14 @@ function TaskCarousel({
                                             }}
                                             activeOpacity={0.7}
                                         >
-                                            <Ionicons name="time-outline" size={16} color={task.dueTime ? Colors.light.accent : Colors.light.textTertiary} />
-                                            <Text style={task.dueTime ? s.dateTimeText : s.dateTimePlaceholder}>
+                                            <Ionicons name="time-outline" size={16} color={task.dueTime ? C.accent : C.textTertiary} />
+                                            <Text style={task.dueTime ? styles.dateTimeText : styles.dateTimePlaceholder}>
                                                 {task.dueTime ? formatTime(task.dueTime) : "Add time"}
                                             </Text>
                                         </TouchableOpacity>
                                         {task.dueTime && (
-                                            <TouchableOpacity onPress={() => onUpdateTask(idx, { dueTime: null })} hitSlop={8} style={s.clearBtn}>
-                                                <Ionicons name="close-circle" size={16} color={Colors.light.textTertiary} />
+                                            <TouchableOpacity onPress={() => onUpdateTask(idx, { dueTime: null })} hitSlop={8} style={styles.clearBtn}>
+                                                <Ionicons name="close-circle" size={16} color={C.textTertiary} />
                                             </TouchableOpacity>
                                         )}
                                     </>
@@ -266,7 +773,7 @@ function TaskCarousel({
 
                             {/* Inline picker — expands card downward */}
                             {pickerTarget?.idx === idx && (
-                                <View style={s.inlinePicker}>
+                                <View style={styles.inlinePicker}>
                                     <DateTimePicker
                                         value={(() => {
                                             if (pickerTarget.mode === "date" && task.dueDate) {
@@ -281,6 +788,7 @@ function TaskCarousel({
                                         })()}
                                         mode={pickerTarget.mode}
                                         display="spinner"
+                                        themeVariant={isDark ? "dark" : "light"}
                                         style={{ height: 150 }}
                                         onChange={(_ev, selectedDate) => {
                                             if (!selectedDate) return;
@@ -297,10 +805,10 @@ function TaskCarousel({
                                         }}
                                     />
                                     <TouchableOpacity
-                                        style={s.pickerDoneBtn}
+                                        style={styles.pickerDoneBtn}
                                         onPress={() => setPickerTarget(null)}
                                     >
-                                        <Text style={s.pickerDoneText}>Done</Text>
+                                        <Text style={styles.pickerDoneText}>Done</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -311,20 +819,20 @@ function TaskCarousel({
 
             {/* Navigation: arrows + dots */}
             {tasks.length > 1 && (
-                <View style={s.carouselNav}>
+                <View style={styles.carouselNav}>
                     <TouchableOpacity
                         onPress={() => goTo(page - 1)}
                         disabled={page === 0}
-                        style={[s.arrowBtn, page === 0 && s.arrowDisabled]}
+                        style={[styles.arrowBtn, page === 0 && styles.arrowDisabled]}
                     >
-                        <Ionicons name="chevron-back" size={18} color={page === 0 ? Colors.light.borderLight : Colors.light.textSecondary} />
+                        <Ionicons name="chevron-back" size={18} color={page === 0 ? C.borderLight : C.textSecondary} />
                     </TouchableOpacity>
 
-                    <View style={s.dots}>
+                    <View style={styles.dots}>
                         {tasks.map((_, i) => (
                             <View
                                 key={i}
-                                style={[s.dot, i === page && s.dotActive]}
+                                style={[styles.dot, i === page && styles.dotActive]}
                             />
                         ))}
                     </View>
@@ -332,16 +840,16 @@ function TaskCarousel({
                     <TouchableOpacity
                         onPress={() => goTo(page + 1)}
                         disabled={page === tasks.length - 1}
-                        style={[s.arrowBtn, page === tasks.length - 1 && s.arrowDisabled]}
+                        style={[styles.arrowBtn, page === tasks.length - 1 && styles.arrowDisabled]}
                     >
-                        <Ionicons name="chevron-forward" size={18} color={page === tasks.length - 1 ? Colors.light.borderLight : Colors.light.textSecondary} />
+                        <Ionicons name="chevron-forward" size={18} color={page === tasks.length - 1 ? C.borderLight : C.textSecondary} />
                     </TouchableOpacity>
                 </View>
             )}
 
             {/* Add All */}
             <TouchableOpacity
-                style={s.addAllBtn}
+                style={styles.addAllBtn}
                 onPress={onAddAll}
                 activeOpacity={0.85}
                 disabled={addingAll}
@@ -351,7 +859,7 @@ function TaskCarousel({
                 ) : (
                     <>
                         <Ionicons name="checkmark-done" size={16} color="#fff" />
-                        <Text style={s.addAllText}>
+                        <Text style={styles.addAllText}>
                             Add {tasks.length === 1 ? "Task" : `All ${tasks.length} Tasks`}
                         </Text>
                     </>
@@ -363,6 +871,8 @@ function TaskCarousel({
 
 // ── Main AiFab Component ────────────────────────────────────
 export default function AiFab() {
+    const { colors: C, isDark } = useTheme();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
     const { groups } = useTaskGroups(user?.uid);
     const { tasks } = useTasks(user?.uid);
@@ -622,10 +1132,10 @@ export default function AiFab() {
     return (
         <>
             {/* FAB Button */}
-            <Animated.View style={[s.fabWrapper, { transform: [{ scale: fabScale }] }]}>
+            <Animated.View style={[styles.fabWrapper, { transform: [{ scale: fabScale }] }]}>
                 <Animated.View
                     style={[
-                        s.fabGlow,
+                        styles.fabGlow,
                         {
                             opacity: fabGlow.interpolate({
                                 inputRange: [0, 1],
@@ -635,7 +1145,7 @@ export default function AiFab() {
                     ]}
                 />
                 <TouchableOpacity
-                    style={s.fab}
+                    style={styles.fab}
                     onPress={handleOpen}
                     activeOpacity={0.85}
                 >
@@ -649,16 +1159,16 @@ export default function AiFab() {
                 presentationStyle="pageSheet"
                 onRequestClose={handleClose}
             >
-                <View style={s.sheet}>
+                <View style={styles.sheet}>
                     {/* Sheet Header */}
-                    <View style={s.sheetHeader}>
-                        <View style={s.sheetHandle} />
-                        <View style={s.sheetTitleRow}>
-                            <View style={s.sheetTitleLeft}>
-                                <View style={s.sheetIconBg}>
+                    <View style={styles.sheetHeader}>
+                        <View style={styles.sheetHandle} />
+                        <View style={styles.sheetTitleRow}>
+                            <View style={styles.sheetTitleLeft}>
+                                <View style={styles.sheetIconBg}>
                                     <Ionicons name="sparkles" size={16} color="#fff" />
                                 </View>
-                                <Text style={s.sheetTitle}>AI Assistant</Text>
+                                <Text style={styles.sheetTitle}>AI Assistant</Text>
                             </View>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                                 {messages.length > 0 && (
@@ -666,11 +1176,11 @@ export default function AiFab() {
                                         onPress={() => { setMessages([]); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                                         hitSlop={12}
                                     >
-                                        <Ionicons name="trash-outline" size={22} color={Colors.light.textTertiary} />
+                                        <Ionicons name="trash-outline" size={22} color={C.textTertiary} />
                                     </TouchableOpacity>
                                 )}
                                 <TouchableOpacity onPress={handleClose} hitSlop={12}>
-                                    <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
+                                    <Ionicons name="close-circle" size={28} color={C.textTertiary} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -679,21 +1189,21 @@ export default function AiFab() {
                     {/* Messages */}
                     <ScrollView
                         ref={scrollRef}
-                        style={s.messageList}
-                        contentContainerStyle={s.messageListContent}
+                        style={styles.messageList}
+                        contentContainerStyle={styles.messageListContent}
                         keyboardShouldPersistTaps="handled"
                     >
                         {/* Welcome message if empty */}
                         {messages.length === 0 && (
-                            <View style={s.welcomeContainer}>
-                                <View style={s.welcomeIcon}>
-                                    <Ionicons name="sparkles" size={32} color={Colors.light.accent} />
+                            <View style={styles.welcomeContainer}>
+                                <View style={styles.welcomeIcon}>
+                                    <Ionicons name="sparkles" size={32} color={C.accent} />
                                 </View>
-                                <Text style={s.welcomeTitle}>Hi! I'm your task assistant</Text>
-                                <Text style={s.welcomeSub}>
+                                <Text style={styles.welcomeTitle}>Hi! I'm your task assistant</Text>
+                                <Text style={styles.welcomeSub}>
                                     Ask me about your schedule, or describe tasks and I'll create them for you.
                                 </Text>
-                                <View style={s.suggestions}>
+                                <View style={styles.suggestions}>
                                     {[
                                         "What do I have due tomorrow?",
                                         "I have a CS exam next Friday",
@@ -702,12 +1212,12 @@ export default function AiFab() {
                                     ].map((sug, i) => (
                                         <TouchableOpacity
                                             key={i}
-                                            style={s.suggestionChip}
+                                            style={styles.suggestionChip}
                                             onPress={() => { setInput(sug); }}
                                             activeOpacity={0.7}
                                         >
-                                            <Ionicons name="chatbubble-outline" size={12} color={Colors.light.accent} />
-                                            <Text style={s.suggestionText}>{sug}</Text>
+                                            <Ionicons name="chatbubble-outline" size={12} color={C.accent} />
+                                            <Text style={styles.suggestionText}>{sug}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -718,33 +1228,33 @@ export default function AiFab() {
                         {messages.map((msg, mIdx) => {
                             if (msg.role === "user") {
                                 return (
-                                    <View key={mIdx} style={s.userBubbleRow}>
-                                        <View style={s.userBubble}>
-                                            <Text selectable style={s.userBubbleText}>{msg.text}</Text>
+                                    <View key={mIdx} style={styles.userBubbleRow}>
+                                        <View style={styles.userBubble}>
+                                            <Text selectable style={styles.userBubbleText}>{msg.text}</Text>
                                         </View>
                                     </View>
                                 );
                             }
                             if (msg.role === "assistant-text") {
                                 return (
-                                    <View key={mIdx} style={s.assistantBubbleRow}>
-                                        <View style={s.assistantAvatar}>
+                                    <View key={mIdx} style={styles.assistantBubbleRow}>
+                                        <View style={styles.assistantAvatar}>
                                             <Ionicons name="sparkles" size={14} color="#fff" />
                                         </View>
-                                        <View style={s.assistantTextBubble}>
-                                            <Text selectable style={s.assistantText}>{renderMarkdown(msg.text, s.assistantText)}</Text>
+                                        <View style={styles.assistantTextBubble}>
+                                            <Text selectable style={styles.assistantText}>{renderMarkdown(msg.text, styles.assistantText)}</Text>
                                         </View>
                                     </View>
                                 );
                             }
                             if (msg.role === "assistant") {
                                 return (
-                                    <View key={mIdx} style={s.assistantBubbleRow}>
-                                        <View style={s.assistantAvatar}>
+                                    <View key={mIdx} style={styles.assistantBubbleRow}>
+                                        <View style={styles.assistantAvatar}>
                                             <Ionicons name="sparkles" size={14} color="#fff" />
                                         </View>
-                                        <View style={s.assistantContent}>
-                                            {msg.text && <Text style={s.assistantText}>{msg.text}</Text>}
+                                        <View style={styles.assistantContent}>
+                                            {msg.text && <Text style={styles.assistantText}>{msg.text}</Text>}
                                             <TaskCarousel
                                                 tasks={msg.tasks}
                                                 onAddOne={(tIdx) => handleAddOne(mIdx, tIdx)}
@@ -758,40 +1268,40 @@ export default function AiFab() {
                             }
                             // system message
                             return (
-                                <View key={mIdx} style={s.systemRow}>
-                                    <Text style={s.systemText}>{msg.text}</Text>
+                                <View key={mIdx} style={styles.systemRow}>
+                                    <Text style={styles.systemText}>{msg.text}</Text>
                                 </View>
                             );
                         })}
 
                         {/* Typing indicator */}
                         {parsing && (
-                            <View style={s.assistantBubbleRow}>
-                                <View style={s.assistantAvatar}>
+                            <View style={styles.assistantBubbleRow}>
+                                <View style={styles.assistantAvatar}>
                                     <Ionicons name="sparkles" size={14} color="#fff" />
                                 </View>
-                                <View style={s.typingBubble}>
-                                    <ActivityIndicator size="small" color={Colors.light.accent} />
-                                    <Text style={s.typingText}>Thinking...</Text>
+                                <View style={styles.typingBubble}>
+                                    <ActivityIndicator size="small" color={C.accent} />
+                                    <Text style={styles.typingText}>Thinking...</Text>
                                 </View>
                             </View>
                         )}
                     </ScrollView>
 
                     {/* Input Bar */}
-                    <View style={[s.inputBar, { paddingBottom: keyboardHeight > 0 ? 8 : (Platform.OS === "ios" ? 32 : 12) }]}>
+                    <View style={[styles.inputBar, { paddingBottom: keyboardHeight > 0 ? 8 : (Platform.OS === "ios" ? 32 : 12) }]}>
                         <TouchableOpacity
-                            style={[s.micBtn, listening && s.micBtnActive]}
+                            style={[styles.micBtn, listening && styles.micBtnActive]}
                             onPress={toggleMic}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name={listening ? "mic" : "mic-outline"} size={22} color={listening ? "#fff" : Colors.light.accent} />
+                            <Ionicons name={listening ? "mic" : "mic-outline"} size={22} color={listening ? "#fff" : C.accent} />
                         </TouchableOpacity>
                         <TextInput
                             ref={inputRef}
-                            style={s.inputField}
+                            style={styles.inputField}
                             placeholder="Ask about tasks or add new ones..."
-                            placeholderTextColor={Colors.light.textTertiary}
+                            placeholderTextColor={C.textTertiary}
                             value={input}
                             onChangeText={setInput}
                             multiline
@@ -799,7 +1309,7 @@ export default function AiFab() {
                             returnKeyType="default"
                         />
                         <TouchableOpacity
-                            style={[s.sendBtn, (!input.trim() || parsing) && s.sendBtnDisabled]}
+                            style={[styles.sendBtn, (!input.trim() || parsing) && styles.sendBtnDisabled]}
                             onPress={handleSend}
                             disabled={!input.trim() || parsing}
                             activeOpacity={0.85}
@@ -807,7 +1317,7 @@ export default function AiFab() {
                             <Ionicons
                                 name="arrow-up"
                                 size={20}
-                                color={(!input.trim() || parsing) ? Colors.light.textTertiary : "#fff"}
+                                color={(!input.trim() || parsing) ? C.textTertiary : "#fff"}
                             />
                         </TouchableOpacity>
                     </View>
@@ -819,505 +1329,3 @@ export default function AiFab() {
 }
 
 // ── Styles ──────────────────────────────────────────────────
-const s = StyleSheet.create({
-    // FAB
-    fabWrapper: {
-        position: "absolute",
-        bottom: Platform.OS === "ios" ? 110 : 80,
-        right: 20,
-        zIndex: 999,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    fabGlow: {
-        position: "absolute",
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: Colors.light.accent,
-    },
-    fab: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: Colors.light.accent,
-        alignItems: "center",
-        justifyContent: "center",
-        ...Shadows.lg,
-        shadowColor: Colors.light.accent,
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 3,
-        borderColor: "rgba(255,255,255,0.3)",
-        elevation: 8,
-    },
-
-    // Overlay & Sheet
-    overlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.4)",
-        justifyContent: "flex-end",
-    },
-    overlayDismiss: {
-        flex: 1,
-    },
-    sheet: {
-        backgroundColor: Colors.light.bgCard,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        flex: 1,
-        ...Shadows.lg,
-    },
-    sheetHeader: {
-        alignItems: "center",
-        paddingTop: 8,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    sheetHandle: {
-        width: 36,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: Colors.light.borderLight,
-        marginBottom: 12,
-    },
-    sheetTitleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.lg,
-        width: "100%",
-    },
-    sheetTitleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    sheetIconBg: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: Colors.light.accent,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    sheetTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-
-    // Messages
-    messageList: {
-        flex: 1,
-    },
-    messageListContent: {
-        padding: Spacing.lg,
-        paddingBottom: Spacing.xl,
-        gap: 16,
-    },
-
-    // Welcome
-    welcomeContainer: {
-        alignItems: "center",
-        paddingVertical: 24,
-        gap: 8,
-    },
-    welcomeIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: Colors.light.accentLight,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 4,
-    },
-    welcomeTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-    welcomeSub: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        textAlign: "center",
-        paddingHorizontal: 20,
-        lineHeight: 20,
-    },
-    suggestions: {
-        marginTop: 12,
-        gap: 8,
-        width: "100%",
-    },
-    suggestionChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: Colors.light.accentLight,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: "rgba(79, 70, 229, 0.12)",
-    },
-    suggestionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.accent,
-        fontWeight: "500",
-        flex: 1,
-    },
-
-    // User bubble
-    userBubbleRow: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
-    },
-    userBubble: {
-        backgroundColor: Colors.light.accent,
-        borderRadius: 18,
-        borderBottomRightRadius: 4,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        maxWidth: "80%",
-    },
-    userBubbleText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        lineHeight: 20,
-    },
-
-    // Assistant bubble
-    assistantBubbleRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 8,
-    },
-    assistantAvatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: Colors.light.accent,
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 2,
-    },
-    assistantContent: {
-        flex: 1,
-        gap: 8,
-    },
-    assistantText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-        lineHeight: 20,
-        fontWeight: "500",
-    },
-    assistantTextBubble: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-        borderRadius: 18,
-        borderBottomLeftRadius: 4,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-    },
-
-    // Typing indicator
-    typingBubble: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: Colors.light.bg,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 18,
-        borderBottomLeftRadius: 4,
-    },
-    typingText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-    },
-
-    // System message
-    systemRow: {
-        alignItems: "center",
-    },
-    systemText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        backgroundColor: Colors.light.bg,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        overflow: "hidden",
-        fontWeight: "500",
-    },
-
-    // Input bar
-    inputBar: {
-        flexDirection: "row",
-        alignItems: "flex-end",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        paddingBottom: Platform.OS === "ios" ? 32 : Spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-        gap: 8,
-    },
-    micBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: Colors.light.accentLight,
-    },
-    micBtnActive: {
-        backgroundColor: Colors.light.accent,
-    },
-    inputField: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: Platform.OS === "ios" ? 10 : 8,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-        maxHeight: 100,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    sendBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: Colors.light.accent,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    sendBtnDisabled: {
-        backgroundColor: Colors.light.bg,
-    },
-
-    // Carousel card
-    carouselCard: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.sm,
-        gap: 10,
-    },
-    cardHeader: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        gap: 8,
-    },
-    cardTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        flex: 1,
-        lineHeight: 20,
-    },
-    cardTitleInput: {
-        fontSize: FontSize.md,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        flex: 1,
-        lineHeight: 20,
-        backgroundColor: Colors.light.bg,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    addOneBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    cardNotes: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        lineHeight: 18,
-    },
-    cardNotesInput: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        lineHeight: 18,
-        backgroundColor: Colors.light.bg,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        minHeight: 60,
-    },
-    // Priority picker
-    priorityRow: {
-        gap: 4,
-    },
-    fieldLabel: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    priorityPills: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 5,
-    },
-    priorityPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    priorityPillText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    // Date/time row
-    dateTimeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 8,
-    },
-    dateTimeItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        backgroundColor: Colors.light.bg,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    dateTimeText: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    dateTimePlaceholder: {
-        fontSize: 13,
-        color: Colors.light.accent,
-        fontWeight: "600",
-    },
-    clearBtn: {
-        marginLeft: -4,
-    },
-    inlinePicker: {
-        borderTopWidth: 1,
-        borderTopColor: Colors.light.borderLight,
-        paddingTop: 4,
-        alignItems: "center",
-    },
-    pickerDoneBtn: {
-        alignSelf: "flex-end",
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        backgroundColor: Colors.light.accent,
-        borderRadius: Radius.md,
-        marginBottom: 4,
-    },
-    pickerDoneText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-    },
-    cardMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 6,
-        marginTop: 2,
-    },
-    cardPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    cardPillText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    cardDateRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-    },
-    cardDateText: {
-        fontSize: 11,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-    guessedText: {
-        fontSize: 10,
-        color: Colors.light.textTertiary,
-        fontStyle: "italic",
-    },
-
-    // Carousel navigation
-    carouselNav: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        paddingVertical: 8,
-    },
-    arrowBtn: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: Colors.light.bg,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    arrowDisabled: {
-        opacity: 0.4,
-    },
-    dots: {
-        flexDirection: "row",
-        gap: 6,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: Colors.light.borderLight,
-    },
-    dotActive: {
-        backgroundColor: Colors.light.accent,
-        width: 18,
-        borderRadius: 3,
-    },
-
-    // Add All
-    addAllBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        backgroundColor: Colors.light.accent,
-        borderRadius: Radius.lg,
-        paddingVertical: 10,
-        marginTop: 4,
-    },
-    addAllText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-    },
-});

@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Colors } from "@/lib/theme";
 import { configureForegroundHandler } from "@/lib/notifications";
 import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
@@ -25,6 +25,7 @@ export function triggerOnboarding() {
 function AppShell() {
   const { loading, syncScenario, syncing, syncLocalTasks, confirmMerge, discardLocal } =
     useAuth();
+  const { isDark, colors } = useTheme();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
 
@@ -50,14 +51,15 @@ function AppShell() {
 
   if (loading || !onboardingChecked) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={Colors.light.accent} />
+      <View style={[styles.loader, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
   return (
     <>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Slot />
       <AiFab />
       {/* Merge prompt shown after sign-in when both local and cloud data exist */}
@@ -77,10 +79,11 @@ function AppShell() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        <AppShell />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
@@ -90,6 +93,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.light.bg,
   },
 });
