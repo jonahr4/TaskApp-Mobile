@@ -29,7 +29,7 @@ import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 import { updateTaskUnified, deleteTaskUnified, createGroupUnified, updateGroupUnified, createTaskUnified, reorderGroupsUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows, SCREEN } from "@/lib/theme";
-import { FilterStyles } from "@/lib/sharedStyles";
+import { useColors } from "@/hooks/useTheme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -113,6 +113,8 @@ function TaskRow({
     onDelete: () => void;
     onDuplicate: () => void;
 }) {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const quadrant = getQuadrant(task);
     const meta = quadrant ? QUADRANT_META[quadrant] : null;
     const due = formatDueDateTime(task);
@@ -180,7 +182,7 @@ function TaskRow({
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.deleteBtn}
             >
-                <Ionicons name="trash-outline" size={16} color={Colors.light.textTertiary} />
+                <Ionicons name="trash-outline" size={16} color={C.textTertiary} />
             </TouchableOpacity>
         </TouchableOpacity>
     );
@@ -209,8 +211,10 @@ function GroupPage({
     sortBy: SortOption;
     onRefresh?: () => Promise<void>;
 }) {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const groupName = group?.name ?? "General Tasks";
-    const groupColor = group?.color ?? Colors.light.textTertiary;
+    const groupColor = group?.color ?? C.textTertiary;
 
     // Apply status filter
     const filteredTasks = useMemo(() => {
@@ -287,14 +291,14 @@ function GroupPage({
                                 style={styles.addBtn}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                                <Ionicons name="ellipsis-horizontal" size={20} color={Colors.light.textSecondary} />
+                                <Ionicons name="ellipsis-horizontal" size={20} color={C.textSecondary} />
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity
                             onPress={() => onAddTask(group?.id ?? null)}
                             style={styles.addBtn}
                         >
-                            <Ionicons name="add" size={22} color={Colors.light.accent} />
+                            <Ionicons name="add" size={22} color={C.accent} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -310,13 +314,13 @@ function GroupPage({
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor={Colors.light.accent}
+                            tintColor={C.accent}
                         />
                     }
                 >
                     {activeTasks.length === 0 && completedTasks.length === 0 && (
                         <View style={styles.emptyState}>
-                            <Ionicons name="checkmark-done" size={32} color={Colors.light.borderLight} />
+                            <Ionicons name="checkmark-done" size={32} color={C.borderLight} />
                             <Text style={styles.emptyText}>No tasks yet</Text>
                         </View>
                     )}
@@ -358,6 +362,8 @@ function TaskCountPill({
     pillPage: number;
     statusFilter: StatusFilter;
 }) {
+    const C = useColors();
+    const styles = useMemo(() => makePillStyles(C), [C]);
     const countForPage = useCallback((i: number) => {
         if (i < 0 || i >= pages.length) return 0;
         const t = pages[i].tasks;
@@ -389,18 +395,18 @@ function TaskCountPill({
     if (!isLast) segments.push({ value: afterCount, isCurrent: false });
 
     return (
-        <View style={pillStyles.container}>
+        <View style={styles.container}>
             {segments.map((seg, i) => (
-                <View key={i} style={pillStyles.segmentRow}>
-                    {i > 0 && <View style={pillStyles.dot} />}
+                <View key={i} style={styles.segmentRow}>
+                    {i > 0 && <View style={styles.dot} />}
                     <View style={[
-                        pillStyles.segment,
-                        seg.isCurrent && pillStyles.segmentCurrent,
+                        styles.segment,
+                        seg.isCurrent && styles.segmentCurrent,
                         seg.isCurrent && { transform: [{ scale: currentScale }] },
                     ]}>
                         <Text style={[
-                            pillStyles.segmentText,
-                            seg.isCurrent && pillStyles.segmentTextCurrent,
+                            styles.segmentText,
+                            seg.isCurrent && styles.segmentTextCurrent,
                         ]}>
                             {seg.value}
                         </Text>
@@ -411,16 +417,16 @@ function TaskCountPill({
     );
 }
 
-const pillStyles = StyleSheet.create({
+const makePillStyles = (C: typeof Colors.light) => StyleSheet.create({
     container: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: Colors.light.bg,
+        backgroundColor: C.bg,
         borderRadius: 14,
         paddingHorizontal: 3,
         paddingVertical: 2,
         borderWidth: 1,
-        borderColor: Colors.light.borderLight,
+        borderColor: C.borderLight,
     },
     segmentRow: {
         flexDirection: "row",
@@ -430,7 +436,7 @@ const pillStyles = StyleSheet.create({
         width: 2.5,
         height: 2.5,
         borderRadius: 1.25,
-        backgroundColor: Colors.light.textTertiary,
+        backgroundColor: C.textTertiary,
         marginHorizontal: 2,
     },
     segment: {
@@ -442,12 +448,12 @@ const pillStyles = StyleSheet.create({
         paddingHorizontal: 5,
     },
     segmentCurrent: {
-        backgroundColor: Colors.light.accent,
+        backgroundColor: C.accent,
     },
     segmentText: {
         fontSize: 11,
         fontWeight: "600",
-        color: Colors.light.textTertiary,
+        color: C.textTertiary,
     },
     segmentTextCurrent: {
         color: "#fff",
@@ -456,7 +462,451 @@ const pillStyles = StyleSheet.create({
     },
 });
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 60,
+        paddingBottom: Spacing.md,
+        backgroundColor: C.bgCard,
+        ...Shadows.sm,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    profileBtn: {
+        padding: 4,
+        position: "relative",
+    },
+    alertBadge: {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: "#f59e0b",
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 2,
+        borderColor: C.bgCard,
+    },
+    alertBadgeText: {
+        fontSize: 11,
+        fontWeight: "800",
+        color: "#fff",
+    },
+    dropdownBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 30,
+    },
+    accountDropdown: {
+        position: "absolute",
+        top: 100,
+        right: Spacing.lg,
+        width: 240,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.xl,
+        padding: Spacing.md,
+        zIndex: 31,
+    },
+    dropdownEmail: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        marginBottom: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+    },
+    dropdownBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        borderRadius: Radius.md,
+    },
+    dropdownBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+    },
+    dropdownMessage: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    dropdownMessageText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        flex: 1,
+    },
+    dropdownSignInBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        backgroundColor: C.accent,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.md,
+    },
+    dropdownSignInText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: "#fff",
+    },
+    pager: {
+        flex: 1,
+    },
+    pagerPage: {
+        flex: 1,
+        paddingHorizontal: PEEK_WIDTH,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.sm,
+    },
+    pageWrapper: {
+        width: CARD_WIDTH,
+        marginRight: CARD_GAP,
+    },
+    groupPage: {
+        flex: 1,
+    },
+    groupCard: {
+        flex: 1,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.lg,
+        overflow: "hidden",
+    },
+    groupHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+    },
+    groupHeaderLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        flex: 1,
+    },
+    groupHeaderRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.xs,
+    },
+    groupDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    groupName: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: C.textPrimary,
+        flexShrink: 1,
+    },
+    countBadge: {
+        backgroundColor: C.bg,
+        borderRadius: Radius.full,
+        paddingHorizontal: 9,
+        paddingVertical: 3,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    countText: {
+        fontSize: FontSize.xs,
+        fontWeight: "700",
+        color: C.textSecondary,
+    },
+    addBtn: {
+        padding: 4,
+    },
+    taskList: {
+        flex: 1,
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.sm,
+    },
+    taskRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        paddingHorizontal: Spacing.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+        gap: Spacing.md,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 7,
+        borderWidth: 2,
+        borderColor: C.border,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    checkboxChecked: {
+        backgroundColor: C.success,
+        borderColor: C.success,
+    },
+    taskContent: {
+        flex: 1,
+    },
+    taskTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.textPrimary,
+        lineHeight: 21,
+    },
+    taskTitleCompleted: {
+        textDecorationLine: "line-through",
+        color: C.textTertiary,
+    },
+    taskMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        marginTop: 4,
+        flexWrap: "wrap",
+    },
+    taskDue: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+    },
+    priorityBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+    },
+    priorityDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+    priorityText: {
+        fontSize: 11,
+        fontWeight: "600",
+    },
+    deleteBtn: {
+        padding: 6,
+    },
+    emptyState: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: 80,
+        gap: Spacing.md,
+    },
+    emptyText: {
+        fontSize: FontSize.md,
+        color: C.textTertiary,
+    },
+    completedToggle: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+        marginTop: Spacing.sm,
+    },
+    completedToggleText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        fontWeight: "500",
+    },
+    dotContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingVertical: 10,
+        gap: 7,
+        minHeight: 28,
+    },
+    dotSpacer: {
+        height: 8,
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: C.borderLight,
+    },
+    dotActive: {
+        backgroundColor: C.accent,
+        width: 24,
+        borderRadius: 4,
+    },
+    fab: {
+        position: "absolute",
+        right: 20,
+        bottom: 84,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: C.accent,
+        justifyContent: "center",
+        alignItems: "center",
+        ...Shadows.lg,
+        shadowColor: C.accent,
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        borderWidth: 3,
+        borderColor: "rgba(255,255,255,0.3)",
+        zIndex: 50,
+    },
+    fabBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.2)",
+        zIndex: 40,
+    },
+    fabMini: {
+        position: "absolute",
+        right: 20,
+        bottom: 84,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        zIndex: 45,
+    },
+    fabMiniTop: {},
+    fabMiniBottom: {},
+    fabMiniBtn: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        backgroundColor: C.accent,
+        justifyContent: "center",
+        alignItems: "center",
+        ...Shadows.md,
+    },
+    fabMiniLabel: {
+        position: "absolute",
+        right: 62,
+        backgroundColor: C.bgCard,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 10,
+        borderRadius: Radius.md,
+        ...Shadows.md,
+        fontSize: FontSize.md,
+        fontWeight: "600" as const,
+        color: C.textPrimary,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: Spacing.md,
+    },
+    emptyContainerText: {
+        fontSize: FontSize.md,
+        color: C.textTertiary,
+    },
+    syncBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
+        backgroundColor: C.accentLight,
+    },
+    syncBannerText: {
+        fontSize: FontSize.sm,
+        color: C.accent,
+        fontWeight: "500",
+    },
+    filterBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: 8,
+        paddingBottom: 8,
+        zIndex: 20,
+        backgroundColor: C.bgElevated,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    filterChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    filterChipActive: {
+        backgroundColor: C.accentLight,
+        borderColor: C.accent,
+    },
+    filterChipText: {
+        fontSize: FontSize.xs,
+        fontWeight: "500" as const,
+        color: C.textSecondary,
+    },
+    filterChipTextActive: {
+        color: C.accent,
+    },
+    filterDropdown: {
+        position: "absolute",
+        top: 38,
+        left: 0,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.lg,
+        zIndex: 30,
+        minWidth: 160,
+        overflow: "hidden",
+    },
+    filterOption: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    filterOptionActive: {
+        backgroundColor: C.accentLight,
+    },
+    filterOptionText: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    filterOptionTextActive: {
+        color: C.accent,
+        fontWeight: "600" as const,
+    },
+});
+}
+
 export default function TasksScreen() {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
@@ -609,11 +1059,11 @@ export default function TasksScreen() {
                         onPress={() => setShowFilterMenu(showFilterMenu === "status" ? null : "status")}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? C.accent : C.textSecondary} />
                         <Text style={[styles.filterChipText, statusFilter !== "all" && styles.filterChipTextActive]}>
                             {STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label ?? "All"}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu === "status" && (
                         <View style={styles.filterDropdown}>
@@ -636,7 +1086,7 @@ export default function TasksScreen() {
                                         {opt.label}
                                     </Text>
                                     {statusFilter === opt.key && (
-                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                        <Ionicons name="checkmark" size={16} color={C.accent} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -654,11 +1104,11 @@ export default function TasksScreen() {
                         onPress={() => setShowFilterMenu(showFilterMenu === "sort" ? null : "sort")}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="swap-vertical-outline" size={14} color={sortBy !== "due_date" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="swap-vertical-outline" size={14} color={sortBy !== "due_date" ? C.accent : C.textSecondary} />
                         <Text style={[styles.filterChipText, sortBy !== "due_date" && styles.filterChipTextActive]}>
                             {SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? "Due Date"}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu === "sort" && (
                         <View style={[styles.filterDropdown, { left: 0 }]}>
@@ -681,7 +1131,7 @@ export default function TasksScreen() {
                                         {opt.label}
                                     </Text>
                                     {sortBy === opt.key && (
-                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                        <Ionicons name="checkmark" size={16} color={C.accent} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -696,7 +1146,7 @@ export default function TasksScreen() {
                         onPress={() => setReorderModalOpen(true)}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="reorder-three-outline" size={14} color={Colors.light.textSecondary} />
+                        <Ionicons name="reorder-three-outline" size={14} color={C.textSecondary} />
                         <Text style={styles.filterChipText}>Order</Text>
                     </TouchableOpacity>
                 </View>
@@ -759,7 +1209,7 @@ export default function TasksScreen() {
                 </ScrollView>
             ) : (
                 <View style={styles.emptyContainer}>
-                    <Ionicons name="add-circle-outline" size={48} color={Colors.light.borderLight} />
+                    <Ionicons name="add-circle-outline" size={48} color={C.borderLight} />
                     <Text style={styles.emptyContainerText}>No task groups yet</Text>
                 </View>
             )}
@@ -786,7 +1236,7 @@ export default function TasksScreen() {
                         });
                         const dotColor = scrollOffsetAnim.interpolate({
                             inputRange,
-                            outputRange: ["#bcc1ca", Colors.light.accent, "#bcc1ca"],
+                            outputRange: ["#bcc1ca", C.accent, "#bcc1ca"],
                             extrapolate: "clamp",
                         });
                         return (
@@ -907,27 +1357,27 @@ export default function TasksScreen() {
                 presentationStyle="pageSheet"
                 onRequestClose={() => setReorderModalOpen(false)}
             >
-                <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.light.bg }}>
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
                     {/* Handle */}
                     <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
-                        <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: Colors.light.borderLight }} />
+                        <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: C.borderLight }} />
                     </View>
                     {/* Header */}
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Platform.OS === "ios" ? 10 : Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight }}>
-                        <Text style={{ fontSize: FontSize.lg, fontWeight: "700", color: Colors.light.textPrimary }}>Reorder Groups</Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Platform.OS === "ios" ? 10 : Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: C.borderLight }}>
+                        <Text style={{ fontSize: FontSize.lg, fontWeight: "700", color: C.textPrimary }}>Reorder Groups</Text>
                         <TouchableOpacity onPress={() => setReorderModalOpen(false)}>
-                            <Ionicons name="close-circle" size={28} color={Colors.light.textTertiary} />
+                            <Ionicons name="close-circle" size={28} color={C.textTertiary} />
                         </TouchableOpacity>
                     </View>
                     {/* Hint */}
                     <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xs }}>
-                        <Text style={{ fontSize: FontSize.sm, color: Colors.light.textTertiary }}>Hold and drag the ≡ handle to reorder</Text>
+                        <Text style={{ fontSize: FontSize.sm, color: C.textTertiary }}>Hold and drag the ≡ handle to reorder</Text>
                     </View>
                     {/* Draggable Group List */}
                     {groups.length === 0 ? (
                         <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-                            <Ionicons name="layers-outline" size={40} color={Colors.light.borderLight} />
-                            <Text style={{ color: Colors.light.textTertiary, fontSize: FontSize.md }}>No groups to reorder</Text>
+                            <Ionicons name="layers-outline" size={40} color={C.borderLight} />
+                            <Text style={{ color: C.textTertiary, fontSize: FontSize.md }}>No groups to reorder</Text>
                         </View>
                     ) : (
                         <DraggableFlatList
@@ -949,10 +1399,10 @@ export default function TasksScreen() {
                                         style={{
                                             flexDirection: "row",
                                             alignItems: "center",
-                                            backgroundColor: isActive ? Colors.light.accentLight : Colors.light.bgCard,
+                                            backgroundColor: isActive ? C.accentLight : C.bgCard,
                                             borderRadius: Radius.md,
                                             borderWidth: 1,
-                                            borderColor: isActive ? Colors.light.accent : Colors.light.borderLight,
+                                            borderColor: isActive ? C.accent : C.borderLight,
                                             paddingHorizontal: Spacing.md,
                                             paddingVertical: Spacing.md,
                                             shadowColor: isActive ? "#000" : "transparent",
@@ -962,9 +1412,9 @@ export default function TasksScreen() {
                                             elevation: isActive ? 6 : 0,
                                         }}
                                     >
-                                        <Ionicons name="menu" size={22} color={isActive ? Colors.light.accent : Colors.light.textTertiary} style={{ marginRight: Spacing.sm }} />
-                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: g.color || Colors.light.textTertiary, marginRight: Spacing.sm }} />
-                                        <Text style={{ flex: 1, fontSize: FontSize.md, fontWeight: "600", color: Colors.light.textPrimary }} numberOfLines={1}>{g.name}</Text>
+                                        <Ionicons name="menu" size={22} color={isActive ? C.accent : C.textTertiary} style={{ marginRight: Spacing.sm }} />
+                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: g.color || C.textTertiary, marginRight: Spacing.sm }} />
+                                        <Text style={{ flex: 1, fontSize: FontSize.md, fontWeight: "600", color: C.textPrimary }} numberOfLines={1}>{g.name}</Text>
                                     </TouchableOpacity>
                                 </ScaleDecorator>
                             )}
@@ -975,414 +1425,3 @@ export default function TasksScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.5,
-    },
-    profileBtn: {
-        padding: 4,
-        position: "relative",
-    },
-    alertBadge: {
-        position: "absolute",
-        top: 0,
-        right: 0,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: "#f59e0b",
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 2,
-        borderColor: Colors.light.bgCard,
-    },
-    alertBadgeText: {
-        fontSize: 11,
-        fontWeight: "800",
-        color: "#fff",
-    },
-    dropdownBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 30,
-    },
-    accountDropdown: {
-        position: "absolute",
-        top: 100,
-        right: Spacing.lg,
-        width: 240,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.xl,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.xl,
-        padding: Spacing.md,
-        zIndex: 31,
-    },
-    dropdownEmail: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        marginBottom: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-    },
-    dropdownBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-        borderRadius: Radius.md,
-    },
-    dropdownBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-    },
-    dropdownMessage: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-        marginBottom: Spacing.md,
-    },
-    dropdownMessageText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        flex: 1,
-    },
-    dropdownSignInBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.md,
-    },
-    dropdownSignInText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: "#fff",
-    },
-    pager: {
-        flex: 1,
-    },
-    pagerPage: {
-        flex: 1,
-        paddingHorizontal: PEEK_WIDTH,
-        paddingTop: Spacing.lg,
-        paddingBottom: Spacing.sm,
-    },
-    pageWrapper: {
-        width: CARD_WIDTH,
-        marginRight: CARD_GAP,
-    },
-    groupPage: {
-        flex: 1,
-    },
-    groupCard: {
-        flex: 1,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.xl,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.lg,
-        overflow: "hidden",
-    },
-    groupHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    groupHeaderLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        flex: 1,
-    },
-    groupHeaderRight: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.xs,
-    },
-    groupDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
-    groupName: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        flexShrink: 1,
-    },
-    countBadge: {
-        backgroundColor: Colors.light.bg,
-        borderRadius: Radius.full,
-        paddingHorizontal: 9,
-        paddingVertical: 3,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    countText: {
-        fontSize: FontSize.xs,
-        fontWeight: "700",
-        color: Colors.light.textSecondary,
-    },
-    addBtn: {
-        padding: 4,
-    },
-    taskList: {
-        flex: 1,
-        paddingHorizontal: Spacing.md,
-        paddingTop: Spacing.sm,
-    },
-    taskRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 14,
-        paddingHorizontal: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-        gap: Spacing.md,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 7,
-        borderWidth: 2,
-        borderColor: Colors.light.border,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxChecked: {
-        backgroundColor: Colors.light.success,
-        borderColor: Colors.light.success,
-    },
-    taskContent: {
-        flex: 1,
-    },
-    taskTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-        lineHeight: 21,
-    },
-    taskTitleCompleted: {
-        textDecorationLine: "line-through",
-        color: Colors.light.textTertiary,
-    },
-    taskMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        marginTop: 4,
-        flexWrap: "wrap",
-    },
-    taskDue: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-    },
-    priorityBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-    },
-    priorityDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    priorityText: {
-        fontSize: 11,
-        fontWeight: "600",
-    },
-    deleteBtn: {
-        padding: 6,
-    },
-    emptyState: {
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 80,
-        gap: Spacing.md,
-    },
-    emptyText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textTertiary,
-    },
-    completedToggle: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.sm,
-        marginTop: Spacing.sm,
-    },
-    completedToggleText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-    dotContainer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: 10,
-        gap: 7,
-        minHeight: 28,
-    },
-    dotSpacer: {
-        height: 8,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: Colors.light.borderLight,
-    },
-    dotActive: {
-        backgroundColor: Colors.light.accent,
-        width: 24,
-        borderRadius: 4,
-    },
-    fab: {
-        position: "absolute",
-        right: 20,
-        bottom: 84,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: Colors.light.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        ...Shadows.lg,
-        shadowColor: Colors.light.accent,
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 3,
-        borderColor: "rgba(255,255,255,0.3)",
-        zIndex: 50,
-    },
-    fabBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.2)",
-        zIndex: 40,
-    },
-    fabMini: {
-        position: "absolute",
-        right: 20,
-        bottom: 84,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        zIndex: 45,
-    },
-    fabMiniTop: {},
-    fabMiniBottom: {},
-    fabMiniBtn: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        backgroundColor: Colors.light.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        ...Shadows.md,
-    },
-    fabMiniLabel: {
-        position: "absolute",
-        right: 62,
-        backgroundColor: Colors.light.bgCard,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 10,
-        borderRadius: Radius.md,
-        ...Shadows.md,
-        fontSize: FontSize.md,
-        fontWeight: "600" as const,
-        color: Colors.light.textPrimary,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: Spacing.md,
-    },
-    emptyContainerText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textTertiary,
-    },
-    syncBanner: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        backgroundColor: Colors.light.accentLight,
-    },
-    syncBannerText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.accent,
-        fontWeight: "500",
-    },
-    filterBar: FilterStyles.filterBar,
-    filterChip: FilterStyles.filterChip,
-    filterChipActive: FilterStyles.filterChipActive,
-    filterChipText: FilterStyles.filterChipText,
-    filterChipTextActive: FilterStyles.filterChipTextActive,
-    filterDropdown: {
-        position: "absolute",
-        top: 38,
-        left: 0,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.lg,
-        zIndex: 30,
-        minWidth: 160,
-        overflow: "hidden",
-    },
-    filterOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    filterOptionActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    filterOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    filterOptionTextActive: {
-        color: Colors.light.accent,
-        fontWeight: "600" as const,
-    },
-});

@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
+import { useTheme } from "@/hooks/useTheme";
 import ScreenHeader from "@/components/ScreenHeader";
 import { createTaskUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
@@ -83,7 +84,333 @@ type PickerState = {
     mode: "date" | "time";
 } | null;
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 60,
+        paddingBottom: Spacing.md,
+        backgroundColor: C.bgCard,
+        ...Shadows.sm,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    headerSub: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        marginTop: 2,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.lg,
+    },
+    // ── Input card ──
+    inputCard: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        padding: Spacing.xl,
+        borderWidth: 0,
+        ...Shadows.md,
+    },
+    fieldLabel: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: C.textSecondary,
+        letterSpacing: 0.8,
+        marginBottom: 4,
+        marginTop: 10,
+    },
+    textArea: {
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.md,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+        minHeight: 90,
+        textAlignVertical: "top",
+    },
+    parseRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+        flexWrap: "wrap",
+    },
+    parseBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: C.accent,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: Radius.md,
+        ...Shadows.sm,
+    },
+    parseBtnText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+    },
+    btnDisabled: {
+        opacity: 0.4,
+    },
+    doneKeyboard: {
+        padding: 4,
+    },
+    tzLabel: {
+        fontSize: 11,
+        color: C.textTertiary,
+    },
+    successBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: Spacing.md,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        backgroundColor: C.success + "15",
+        borderRadius: Radius.md,
+    },
+    successText: {
+        fontSize: FontSize.sm,
+        color: C.success,
+        fontWeight: "600",
+    },
+    // ── Results section ──
+    resultsSection: {
+        marginTop: Spacing.xl,
+    },
+    resultsSectionHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: Spacing.md,
+    },
+    resultsLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    guessedBadge: {
+        backgroundColor: "rgba(16,185,129,0.1)",
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: Radius.full,
+    },
+    guessedBadgeText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "#059669",
+    },
+    // ── Task Card ──
+    taskCard: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        padding: Spacing.xl,
+        marginBottom: Spacing.md,
+        borderWidth: 0,
+        ...Shadows.sm,
+    },
+    taskCardHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    taskLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: "700",
+        color: C.textSecondary,
+    },
+    taskCardBadges: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    guessedPill: {
+        backgroundColor: "rgba(16,185,129,0.1)",
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: Radius.full,
+    },
+    guessedPillText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: "#059669",
+    },
+    fieldInput: {
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.sm,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 8,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    fieldTextArea: {
+        minHeight: 48,
+        textAlignVertical: "top",
+    },
+    fieldRow: {
+        flexDirection: "row",
+        gap: Spacing.sm,
+    },
+    fieldHalf: {
+        flex: 1,
+    },
+    // ── Date/Time buttons ──
+    dateBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.sm,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 9,
+    },
+    dateBtnActive: {
+        borderColor: C.accent,
+        backgroundColor: C.accentLight,
+    },
+    dateBtnText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+    },
+    dateBtnTextActive: {
+        color: C.textPrimary,
+    },
+    clearBtn: {
+        alignSelf: "flex-start",
+        marginTop: 2,
+    },
+    clearBtnText: {
+        fontSize: 11,
+        color: C.textTertiary,
+    },
+    pickerInline: {
+        marginTop: 4,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    // ── Picker dropdown ──
+    pickerBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.sm,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 8,
+    },
+    pickerDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+    },
+    pickerText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    pickerDropdown: {
+        position: "absolute",
+        top: 52,
+        left: 0,
+        right: 0,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.lg,
+        zIndex: 100,
+    },
+    pickerOption: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 10,
+    },
+    pickerOptionActive: {
+        backgroundColor: C.accentLight,
+    },
+    pickerOptionText: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    // ── Bottom actions ──
+    actionsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        flexWrap: "wrap",
+        marginTop: Spacing.sm,
+    },
+    addTaskBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    addTaskText: {
+        fontSize: FontSize.sm,
+        color: C.accent,
+        fontWeight: "500",
+    },
+    createBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: C.accent,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: Radius.md,
+        ...Shadows.sm,
+    },
+    createBtnText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+    },
+    dismissBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+    },
+    dismissText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        fontWeight: "500",
+    },
+});
+}
+
 export default function AiScreen() {
+    const { colors: C, isDark } = useTheme();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
     const { groups } = useTaskGroups(user?.uid);
     const { tasks } = useTasks(user?.uid);
@@ -241,7 +568,7 @@ export default function AiScreen() {
         <View style={styles.container}>
             {/* Header */}
             <ScreenHeader title="AI Reminder" />
-            <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm, backgroundColor: Colors.light.bgCard }}>
+            <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm, backgroundColor: C.bgCard }}>
                 <Text style={styles.headerSub}>
                     Type a reminder in plain English and turn it into a task.
                 </Text>
@@ -268,7 +595,7 @@ export default function AiScreen() {
                         <TextInput
                             style={styles.textArea}
                             placeholder="I have a CS 505 midterm on the 21st, I need to buy groceries soon, and remind me to call dad today"
-                            placeholderTextColor={Colors.light.textTertiary}
+                            placeholderTextColor={C.textTertiary}
                             value={text}
                             onChangeText={setText}
                             multiline
@@ -299,13 +626,13 @@ export default function AiScreen() {
                                 onPress={() => Keyboard.dismiss()}
                                 activeOpacity={0.7}
                             >
-                                <Ionicons name="chevron-down-circle-outline" size={22} color={Colors.light.textTertiary} />
+                                <Ionicons name="chevron-down-circle-outline" size={22} color={C.textTertiary} />
                             </TouchableOpacity>
                             <Text style={styles.tzLabel}>Timezone: {timezone}</Text>
                         </View>
                         {success !== "" && (
                             <View style={styles.successBanner}>
-                                <Ionicons name="checkmark-circle" size={16} color={Colors.light.success} />
+                                <Ionicons name="checkmark-circle" size={16} color={C.success} />
                                 <Text style={styles.successText}>{success}</Text>
                             </View>
                         )}
@@ -347,7 +674,7 @@ export default function AiScreen() {
                                                         onPress={() => removeTask(idx)}
                                                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                                     >
-                                                        <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
+                                                        <Ionicons name="close-circle" size={18} color={C.textTertiary} />
                                                     </TouchableOpacity>
                                                 )}
                                             </View>
@@ -360,7 +687,7 @@ export default function AiScreen() {
                                             value={task.title}
                                             onChangeText={(v) => updateTask(idx, { title: v })}
                                             placeholder="Task title"
-                                            placeholderTextColor={Colors.light.textTertiary}
+                                            placeholderTextColor={C.textTertiary}
                                         />
 
                                         {/* Notes */}
@@ -370,7 +697,7 @@ export default function AiScreen() {
                                             value={task.notes}
                                             onChangeText={(v) => updateTask(idx, { notes: v })}
                                             placeholder="Extra details"
-                                            placeholderTextColor={Colors.light.textTertiary}
+                                            placeholderTextColor={C.textTertiary}
                                             multiline
                                             numberOfLines={2}
                                             textAlignVertical="top"
@@ -392,7 +719,7 @@ export default function AiScreen() {
                                                     <Ionicons
                                                         name="calendar-outline"
                                                         size={14}
-                                                        color={task.dueDate ? Colors.light.accent : Colors.light.textTertiary}
+                                                        color={task.dueDate ? C.accent : C.textTertiary}
                                                     />
                                                     <Text style={[styles.dateBtnText, task.dueDate && styles.dateBtnTextActive]}>
                                                         {formatDisplayDate(task.dueDate)}
@@ -422,7 +749,7 @@ export default function AiScreen() {
                                                     <Ionicons
                                                         name="time-outline"
                                                         size={14}
-                                                        color={task.dueTime ? Colors.light.accent : Colors.light.textTertiary}
+                                                        color={task.dueTime ? C.accent : C.textTertiary}
                                                     />
                                                     <Text style={[styles.dateBtnText, task.dueTime && styles.dateBtnTextActive]}>
                                                         {formatDisplayTime(task.dueTime)}
@@ -447,7 +774,7 @@ export default function AiScreen() {
                                                     mode="date"
                                                     display="inline"
                                                     onChange={handleDateChange}
-                                                    themeVariant="light"
+                                                    themeVariant={isDark ? "dark" : "light"}
                                                 />
                                             </View>
                                         )}
@@ -458,7 +785,7 @@ export default function AiScreen() {
                                                     mode="time"
                                                     display="spinner"
                                                     onChange={handleDateChange}
-                                                    themeVariant="light"
+                                                    themeVariant={isDark ? "dark" : "light"}
                                                 />
                                             </View>
                                         )}
@@ -515,12 +842,12 @@ export default function AiScreen() {
                                                     activeOpacity={0.7}
                                                 >
                                                     {group && (
-                                                        <View style={[styles.pickerDot, { backgroundColor: group.color || Colors.light.textTertiary }]} />
+                                                        <View style={[styles.pickerDot, { backgroundColor: group.color || C.textTertiary }]} />
                                                     )}
                                                     <Text style={styles.pickerText} numberOfLines={1}>
                                                         {group?.name || "General Tasks"}
                                                     </Text>
-                                                    <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                                                    <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                                                 </TouchableOpacity>
                                                 {showGroupPicker === idx && (
                                                     <View style={styles.pickerDropdown}>
@@ -548,7 +875,7 @@ export default function AiScreen() {
                                                                     setShowGroupPicker(null);
                                                                 }}
                                                             >
-                                                                <View style={[styles.pickerDot, { backgroundColor: g.color || Colors.light.textTertiary }]} />
+                                                                <View style={[styles.pickerDot, { backgroundColor: g.color || C.textTertiary }]} />
                                                                 <Text style={styles.pickerOptionText}>{g.name}</Text>
                                                             </TouchableOpacity>
                                                         ))}
@@ -568,7 +895,7 @@ export default function AiScreen() {
                                     disabled={results.length >= 5}
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons name="add" size={16} color={Colors.light.accent} />
+                                    <Ionicons name="add" size={16} color={C.accent} />
                                     <Text style={styles.addTaskText}>Add task</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -600,326 +927,3 @@ export default function AiScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.5,
-    },
-    headerSub: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        marginTop: 2,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.lg,
-    },
-    // ── Input card ──
-    inputCard: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.xl,
-        padding: Spacing.xl,
-        borderWidth: 0,
-        ...Shadows.md,
-    },
-    fieldLabel: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-        letterSpacing: 0.8,
-        marginBottom: 4,
-        marginTop: 10,
-    },
-    textArea: {
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.md,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-        minHeight: 90,
-        textAlignVertical: "top",
-    },
-    parseRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        marginTop: Spacing.md,
-        flexWrap: "wrap",
-    },
-    parseBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: Radius.md,
-        ...Shadows.sm,
-    },
-    parseBtnText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-    },
-    btnDisabled: {
-        opacity: 0.4,
-    },
-    doneKeyboard: {
-        padding: 4,
-    },
-    tzLabel: {
-        fontSize: 11,
-        color: Colors.light.textTertiary,
-    },
-    successBanner: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: Spacing.md,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        backgroundColor: Colors.light.success + "15",
-        borderRadius: Radius.md,
-    },
-    successText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.success,
-        fontWeight: "600",
-    },
-    // ── Results section ──
-    resultsSection: {
-        marginTop: Spacing.xl,
-    },
-    resultsSectionHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: Spacing.md,
-    },
-    resultsLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    guessedBadge: {
-        backgroundColor: "rgba(16,185,129,0.1)",
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: Radius.full,
-    },
-    guessedBadgeText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: "#059669",
-    },
-    // ── Task Card ──
-    taskCard: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        padding: Spacing.xl,
-        marginBottom: Spacing.md,
-        borderWidth: 0,
-        ...Shadows.sm,
-    },
-    taskCardHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    taskLabel: {
-        fontSize: FontSize.xs,
-        fontWeight: "700",
-        color: Colors.light.textSecondary,
-    },
-    taskCardBadges: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    guessedPill: {
-        backgroundColor: "rgba(16,185,129,0.1)",
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: Radius.full,
-    },
-    guessedPillText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: "#059669",
-    },
-    fieldInput: {
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 8,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    fieldTextArea: {
-        minHeight: 48,
-        textAlignVertical: "top",
-    },
-    fieldRow: {
-        flexDirection: "row",
-        gap: Spacing.sm,
-    },
-    fieldHalf: {
-        flex: 1,
-    },
-    // ── Date/Time buttons ──
-    dateBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 9,
-    },
-    dateBtnActive: {
-        borderColor: Colors.light.accent,
-        backgroundColor: Colors.light.accentLight,
-    },
-    dateBtnText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-    },
-    dateBtnTextActive: {
-        color: Colors.light.textPrimary,
-    },
-    clearBtn: {
-        alignSelf: "flex-start",
-        marginTop: 2,
-    },
-    clearBtnText: {
-        fontSize: 11,
-        color: Colors.light.textTertiary,
-    },
-    pickerInline: {
-        marginTop: 4,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    // ── Picker dropdown ──
-    pickerBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 8,
-    },
-    pickerDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-    },
-    pickerText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    pickerDropdown: {
-        position: "absolute",
-        top: 52,
-        left: 0,
-        right: 0,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.lg,
-        zIndex: 100,
-    },
-    pickerOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-    },
-    pickerOptionActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    pickerOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    // ── Bottom actions ──
-    actionsRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        flexWrap: "wrap",
-        marginTop: Spacing.sm,
-    },
-    addTaskBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 9,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    addTaskText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.accent,
-        fontWeight: "500",
-    },
-    createBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: Radius.md,
-        ...Shadows.sm,
-    },
-    createBtnText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-    },
-    dismissBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 9,
-    },
-    dismissText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-});

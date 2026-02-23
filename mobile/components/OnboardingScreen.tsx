@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
     View,
     Text,
@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { useColors } from "@/hooks/useTheme";
 import {
     loadSettings,
     saveSettings,
@@ -40,11 +41,11 @@ type OnboardingPage = {
     interactive?: "notifications" | "calendar";
 };
 
-const PAGES: OnboardingPage[] = [
+const makePages = (C: typeof Colors.light): OnboardingPage[] => [
     {
         icon: "checkbox-outline",
-        iconColor: Colors.light.accent,
-        iconBg: Colors.light.accentLight,
+        iconColor: C.accent,
+        iconBg: C.accentLight,
         title: "Organize Your Tasks",
         subtitle: "All your tasks in one place",
         bullets: [
@@ -125,12 +126,187 @@ type Props = {
     onDone: () => void;
 };
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    skipBtn: {
+        position: "absolute",
+        top: 60,
+        right: 24,
+        zIndex: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    skipText: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textTertiary,
+    },
+    // ── Page ──
+    page: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 36,
+        paddingBottom: 100,
+    },
+    iconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 28,
+    },
+    pageTitle: {
+        fontSize: 26,
+        fontWeight: "800",
+        color: C.textPrimary,
+        textAlign: "center",
+        letterSpacing: -0.5,
+    },
+    pageSubtitle: {
+        fontSize: FontSize.md,
+        color: C.textSecondary,
+        textAlign: "center",
+        marginTop: 6,
+        marginBottom: 28,
+    },
+    bulletList: {
+        alignSelf: "stretch",
+        gap: 14,
+    },
+    bulletRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+    },
+    bulletDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginTop: 6,
+    },
+    bulletText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        lineHeight: 18,
+    },
+    // ── Interactive action area ──
+    actionArea: {
+        alignSelf: "stretch",
+        marginTop: 20,
+        gap: 10,
+    },
+    actionBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: Radius.md,
+    },
+    actionBtnText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        fontWeight: "700",
+    },
+    actionHint: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        textAlign: "center",
+        lineHeight: 16,
+    },
+    successRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: "#ecfdf5",
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: "#a7f3d0",
+    },
+    successText: {
+        flex: 1,
+        fontSize: FontSize.xs,
+        color: "#065f46",
+        lineHeight: 16,
+        fontWeight: "500",
+    },
+    // ── Bottom ──
+    bottom: {
+        paddingHorizontal: 36,
+        paddingBottom: 50,
+        gap: 24,
+    },
+    dotsRow: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 10,
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: C.textTertiary,
+    },
+    nextBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: C.accent,
+        paddingVertical: 15,
+        borderRadius: Radius.md,
+    },
+    nextBtnText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        fontWeight: "700",
+    },
+    lastPageActions: {
+        gap: 10,
+    },
+    signInBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: C.accent,
+        paddingVertical: 15,
+        borderRadius: Radius.md,
+    },
+    signInBtnText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        fontWeight: "700",
+    },
+    continueBtn: {
+        alignItems: "center",
+        paddingVertical: 12,
+    },
+    continueBtnText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        fontWeight: "500",
+    },
+});
+}
+
 export function OnboardingScreen({ visible, onDone }: Props) {
+    const C = useColors();
+    const PAGES = useMemo(() => makePages(C), [C]);
     const [currentPage, setCurrentPage] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
     const scrollRef = useRef<Animated.FlatList>(null);
     const router = useRouter();
     const isLastPage = currentPage === PAGES.length - 1;
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     // Notification setup state
     const [notifEnabled, setNotifEnabled] = useState(false);
@@ -372,7 +548,7 @@ export function OnboardingScreen({ visible, onDone }: Props) {
                                         style={[
                                             styles.dot,
                                             { opacity, transform: [{ scale }] },
-                                            i === currentPage && { backgroundColor: Colors.light.accent },
+                                            i === currentPage && { backgroundColor: C.accent },
                                         ]}
                                     />
                                 </TouchableOpacity>
@@ -402,174 +578,3 @@ export function OnboardingScreen({ visible, onDone }: Props) {
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    skipBtn: {
-        position: "absolute",
-        top: 60,
-        right: 24,
-        zIndex: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-    },
-    skipText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-    },
-    // ── Page ──
-    page: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 36,
-        paddingBottom: 100,
-    },
-    iconCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 28,
-    },
-    pageTitle: {
-        fontSize: 26,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        textAlign: "center",
-        letterSpacing: -0.5,
-    },
-    pageSubtitle: {
-        fontSize: FontSize.md,
-        color: Colors.light.textSecondary,
-        textAlign: "center",
-        marginTop: 6,
-        marginBottom: 28,
-    },
-    bulletList: {
-        alignSelf: "stretch",
-        gap: 14,
-    },
-    bulletRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 10,
-    },
-    bulletDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginTop: 6,
-    },
-    bulletText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        lineHeight: 18,
-    },
-    // ── Interactive action area ──
-    actionArea: {
-        alignSelf: "stretch",
-        marginTop: 20,
-        gap: 10,
-    },
-    actionBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: Radius.md,
-    },
-    actionBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    actionHint: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        textAlign: "center",
-        lineHeight: 16,
-    },
-    successRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: "#ecfdf5",
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#a7f3d0",
-    },
-    successText: {
-        flex: 1,
-        fontSize: FontSize.xs,
-        color: "#065f46",
-        lineHeight: 16,
-        fontWeight: "500",
-    },
-    // ── Bottom ──
-    bottom: {
-        paddingHorizontal: 36,
-        paddingBottom: 50,
-        gap: 24,
-    },
-    dotsRow: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 10,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: Colors.light.textTertiary,
-    },
-    nextBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 15,
-        borderRadius: Radius.md,
-    },
-    nextBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    lastPageActions: {
-        gap: 10,
-    },
-    signInBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 15,
-        borderRadius: Radius.md,
-    },
-    signInBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    continueBtn: {
-        alignItems: "center",
-        paddingVertical: 12,
-    },
-    continueBtnText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-});

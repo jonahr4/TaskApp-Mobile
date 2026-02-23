@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
+import { useColors } from "@/hooks/useTheme";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { getOrCreateCalendarToken } from "@/lib/firestore";
@@ -26,8 +27,191 @@ type Props = {
     onClose: () => void;
 };
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    sheet: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 20,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    headerLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    headerTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: C.textPrimary,
+        letterSpacing: -0.3,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 12,
+    },
+    loadingText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.xl,
+    },
+    // ── Sections ──
+    section: {
+        gap: 10,
+    },
+    sectionTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    sectionDesc: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        lineHeight: 18,
+    },
+    subscribeBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: C.accent,
+        paddingVertical: 13,
+        borderRadius: Radius.md,
+        marginTop: 4,
+    },
+    subscribeBtnText: {
+        color: "#fff",
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+    },
+    subscribeBtnDisabled: {
+        opacity: 0.35,
+    },
+    // ── Divider ──
+    divider: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        marginVertical: Spacing.lg,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: C.borderLight,
+    },
+    dividerText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: C.textTertiary,
+        letterSpacing: 1,
+    },
+    // ── Group list ──
+    groupList: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        overflow: "hidden",
+    },
+    groupRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    groupRowActive: {
+        backgroundColor: C.accentLight,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: C.textTertiary,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    checkboxActive: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    groupDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    groupName: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    // ── Count pills ──
+    countPills: {
+        flexDirection: "row",
+        gap: 4,
+    },
+    countPill: {
+        minWidth: 20,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 8,
+        backgroundColor: C.borderLight,
+        alignItems: "center",
+    },
+    countPillText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: C.textTertiary,
+    },
+    countPillActive: {
+        backgroundColor: "rgba(59,130,246,0.12)",
+    },
+    countPillActiveText: {
+        color: "#3b82f6",
+    },
+    countPillDone: {
+        backgroundColor: "rgba(34,197,94,0.12)",
+    },
+    countPillDoneText: {
+        color: "#22c55e",
+    },
+    // ── Info card ──
+    infoCard: {
+        flexDirection: "row",
+        gap: 10,
+        marginTop: Spacing.xl,
+        padding: Spacing.md,
+        backgroundColor: C.accentLight,
+        borderRadius: Radius.md,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: FontSize.xs,
+        color: C.textSecondary,
+        lineHeight: 16,
+    },
+});
+}
+
 export function CalendarFeedSheet({ visible, onClose }: Props) {
     const { user } = useAuth();
+    const C = useColors();
     const { groups } = useTaskGroups(user?.uid);
     const { tasks } = useTasks(user?.uid);
     const [token, setToken] = useState<string | null>(null);
@@ -121,6 +305,8 @@ export function CalendarFeedSheet({ visible, onClose }: Props) {
         openWebcal(`${BASE_URL}/api/ical/${token}?groups=${encodeURIComponent(groupsParam)}`);
     };
 
+    const styles = useMemo(() => makeStyles(C), [C]);
+
     return (
         <Modal
             visible={visible}
@@ -132,17 +318,17 @@ export function CalendarFeedSheet({ visible, onClose }: Props) {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Ionicons name="calendar-outline" size={20} color={Colors.light.accent} />
+                        <Ionicons name="calendar-outline" size={20} color={C.accent} />
                         <Text style={styles.headerTitle}>Calendar Feed</Text>
                     </View>
                     <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Ionicons name="close-circle" size={26} color={Colors.light.textTertiary} />
+                        <Ionicons name="close-circle" size={26} color={C.textTertiary} />
                     </TouchableOpacity>
                 </View>
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={Colors.light.accent} />
+                        <ActivityIndicator size="large" color={C.accent} />
                         <Text style={styles.loadingText}>Generating calendar link...</Text>
                     </View>
                 ) : (
@@ -229,7 +415,7 @@ export function CalendarFeedSheet({ visible, onClose }: Props) {
 
                         {/* ── Info note ── */}
                         <View style={styles.infoCard}>
-                            <Ionicons name="information-circle-outline" size={18} color={Colors.light.accent} />
+                            <Ionicons name="information-circle-outline" size={18} color={C.accent} />
                             <Text style={styles.infoText}>
                                 Calendar feeds auto-refresh. Completed tasks will show a ✅ checkmark. Only tasks with due dates appear in the feed.
                             </Text>
@@ -240,184 +426,3 @@ export function CalendarFeedSheet({ visible, onClose }: Props) {
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    sheet: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 20,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    headerLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 12,
-    },
-    loadingText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.xl,
-    },
-    // ── Sections ──
-    section: {
-        gap: 10,
-    },
-    sectionTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    sectionDesc: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        lineHeight: 18,
-    },
-    subscribeBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 13,
-        borderRadius: Radius.md,
-        marginTop: 4,
-    },
-    subscribeBtnText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-    },
-    subscribeBtnDisabled: {
-        opacity: 0.35,
-    },
-    // ── Divider ──
-    divider: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        marginVertical: Spacing.lg,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: Colors.light.borderLight,
-    },
-    dividerText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-        letterSpacing: 1,
-    },
-    // ── Group list ──
-    groupList: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        overflow: "hidden",
-    },
-    groupRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 12,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    groupRowActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 5,
-        borderWidth: 1.5,
-        borderColor: Colors.light.textTertiary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxActive: {
-        backgroundColor: Colors.light.accent,
-        borderColor: Colors.light.accent,
-    },
-    groupDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    groupName: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    // ── Count pills ──
-    countPills: {
-        flexDirection: "row",
-        gap: 4,
-    },
-    countPill: {
-        minWidth: 20,
-        paddingHorizontal: 5,
-        paddingVertical: 1,
-        borderRadius: 8,
-        backgroundColor: Colors.light.borderLight,
-        alignItems: "center",
-    },
-    countPillText: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: Colors.light.textTertiary,
-    },
-    countPillActive: {
-        backgroundColor: "rgba(59,130,246,0.12)",
-    },
-    countPillActiveText: {
-        color: "#3b82f6",
-    },
-    countPillDone: {
-        backgroundColor: "rgba(34,197,94,0.12)",
-    },
-    countPillDoneText: {
-        color: "#22c55e",
-    },
-    // ── Info card ──
-    infoCard: {
-        flexDirection: "row",
-        gap: 10,
-        marginTop: Spacing.xl,
-        padding: Spacing.md,
-        backgroundColor: Colors.light.accentLight,
-        borderRadius: Radius.md,
-    },
-    infoText: {
-        flex: 1,
-        fontSize: FontSize.xs,
-        color: Colors.light.textSecondary,
-        lineHeight: 16,
-    },
-});

@@ -12,8 +12,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useColors } from "@/hooks/useTheme";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { FilterStyles } from "@/lib/sharedStyles";
+import { makeFilterStyles } from "@/lib/sharedStyles";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -48,10 +49,269 @@ function formatDateStr(year: number, month: number, day: number) {
 const MAX_DOT_ROWS = 2;
 const DOTS_PER_ROW = 3;
 
+function makeStyles(C: typeof Colors.light) {
+    const filterStyles = makeFilterStyles(C);
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            paddingHorizontal: Spacing.xl,
+            paddingTop: 60,
+            paddingBottom: Spacing.md,
+            backgroundColor: C.bgCard,
+            ...Shadows.sm,
+        },
+        headerTitle: {
+            fontSize: FontSize.title,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        monthRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.xl,
+            paddingVertical: Spacing.md,
+        },
+        monthLabel: {
+            fontSize: FontSize.xl,
+            fontWeight: "700",
+            color: C.textPrimary,
+            letterSpacing: -0.3,
+        },
+        monthNav: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+        },
+        monthNavBtn: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: C.bg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        todayBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: Radius.full,
+            backgroundColor: C.accentLight,
+            flexShrink: 0,
+        },
+        todayBtnText: {
+            fontSize: FontSize.xs,
+            fontWeight: "700",
+            color: C.accent,
+        },
+        filterBar: filterStyles.filterBar,
+        filterChip: filterStyles.filterChip,
+        filterChipActive: filterStyles.filterChipActive,
+        filterChipText: filterStyles.filterChipText,
+        filterChipTextActive: filterStyles.filterChipTextActive,
+        filterDropdown: {
+            position: "absolute",
+            top: 38,
+            left: 0,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.lg,
+            zIndex: 30,
+            minWidth: 160,
+            overflow: "hidden",
+        },
+        filterOption: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+        },
+        filterOptionActive: {
+            backgroundColor: C.accentLight,
+        },
+        filterOptionText: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        filterOptionTextActive: {
+            color: C.accent,
+            fontWeight: "600" as const,
+        },
+        calGrid: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            paddingHorizontal: Spacing.sm,
+        },
+        dayHeaderRow: {
+            flexDirection: "row",
+            marginBottom: Spacing.xs,
+            paddingHorizontal: Spacing.sm,
+        },
+        dayHeader: {
+            width: `${100 / 7}%` as any,
+            alignItems: "center",
+            paddingVertical: 6,
+        },
+        dayHeaderText: {
+            fontSize: FontSize.xs,
+            fontWeight: "700",
+            color: C.textTertiary,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+        },
+        calRow: {
+            flexDirection: "row",
+        },
+        calCell: {
+            width: `${100 / 7}%` as any,
+            alignItems: "center",
+            paddingVertical: 5,
+            minHeight: 48,
+        },
+        calCellInner: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        calCellSelected: {
+            backgroundColor: C.accent,
+        },
+        calCellToday: {
+            backgroundColor: C.accentLight,
+        },
+        calCellText: {
+            fontSize: FontSize.sm,
+            fontWeight: "500",
+            color: C.textPrimary,
+        },
+        calCellTextSelected: {
+            color: "#fff",
+            fontWeight: "700",
+        },
+        calCellTextToday: {
+            color: C.accent,
+            fontWeight: "700",
+        },
+        calCellTextOther: {
+            color: C.textTertiary,
+        },
+        dotsRow: {
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 3,
+            marginTop: 3,
+        },
+        taskDot: {
+            width: 5,
+            height: 5,
+            borderRadius: 3,
+        },
+        selectedSection: {
+            flex: 1,
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Spacing.lg,
+        },
+        selectedHeader: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: Spacing.lg,
+        },
+        selectedDateLabel: {
+            fontSize: FontSize.lg,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        addTaskBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: Radius.full,
+            backgroundColor: C.accentLight,
+        },
+        addTaskBtnText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.accent,
+        },
+        selectedTaskList: {
+            flex: 1,
+        },
+        noTasks: {
+            fontSize: FontSize.md,
+            color: C.textTertiary,
+            textAlign: "center",
+            paddingTop: Spacing.xxl,
+        },
+        selectedTask: {
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            marginBottom: Spacing.sm,
+            overflow: "hidden",
+            borderWidth: 0,
+            ...Shadows.sm,
+        },
+        taskColorBar: {
+            width: 4,
+            alignSelf: "stretch",
+        },
+        taskInfo: {
+            flex: 1,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.md,
+        },
+        taskTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.textPrimary,
+        },
+        taskCompleted: {
+            textDecorationLine: "line-through",
+            color: C.textTertiary,
+        },
+        taskSubRow: {
+            flexDirection: "row",
+            gap: Spacing.sm,
+            marginTop: 2,
+        },
+        taskTime: {
+            fontSize: FontSize.xs,
+            color: C.textSecondary,
+        },
+        taskGroup: {
+            fontSize: FontSize.xs,
+            fontWeight: "500",
+        },
+        taskPriority: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+        },
+    });
+};
+
 export default function CalendarScreen() {
+    const C = useColors();
     const { user } = useAuth();
     const { tasks } = useTasks(user?.uid);
     const { groups } = useTaskGroups(user?.uid);
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -178,10 +438,10 @@ export default function CalendarScreen() {
         const dots: string[] = [];
         for (const t of dayTasks.slice(0, maxDots)) {
             const group = t.groupId ? groupMap[t.groupId] : null;
-            dots.push(group?.color || Colors.light.textTertiary);
+            dots.push(group?.color || C.textTertiary);
         }
         return dots;
-    }, [groupMap]);
+    }, [groupMap, C]);
 
     const handleAddTaskOnDate = useCallback(() => {
         setEditTask(null);
@@ -204,11 +464,11 @@ export default function CalendarScreen() {
                         onPress={() => setShowFilterMenu(!showFilterMenu)}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? C.accent : C.textSecondary} />
                         <Text style={[styles.filterChipText, statusFilter !== "all" && styles.filterChipTextActive]}>
                             {STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label ?? "All"}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu && (
                         <View style={styles.filterDropdown}>
@@ -231,7 +491,7 @@ export default function CalendarScreen() {
                                         {opt.label}
                                     </Text>
                                     {statusFilter === opt.key && (
-                                        <Ionicons name="checkmark" size={14} color={Colors.light.accent} />
+                                        <Ionicons name="checkmark" size={14} color={C.accent} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -253,7 +513,7 @@ export default function CalendarScreen() {
                 {/* Return to Today */}
                 {!isCurrentMonth && (
                     <TouchableOpacity onPress={goToToday} style={styles.todayBtn} activeOpacity={0.7}>
-                        <Ionicons name="today-outline" size={12} color={Colors.light.accent} />
+                        <Ionicons name="today-outline" size={12} color={C.accent} />
                         <Text style={styles.todayBtnText}>Today</Text>
                     </TouchableOpacity>
                 )}
@@ -270,13 +530,13 @@ export default function CalendarScreen() {
             {/* Month Nav */}
             <View style={styles.monthRow}>
                 <TouchableOpacity onPress={prevMonth} style={styles.monthNavBtn}>
-                    <Ionicons name="chevron-back" size={18} color={Colors.light.textPrimary} />
+                    <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.monthLabel}>
                     {MONTHS[month]} {year}
                 </Text>
                 <TouchableOpacity onPress={nextMonth} style={styles.monthNavBtn}>
-                    <Ionicons name="chevron-forward" size={18} color={Colors.light.textPrimary} />
+                    <Ionicons name="chevron-forward" size={18} color={C.textPrimary} />
                 </TouchableOpacity>
             </View>
 
@@ -363,7 +623,7 @@ export default function CalendarScreen() {
                                 onPress={handleAddTaskOnDate}
                                 activeOpacity={0.7}
                             >
-                                <Ionicons name="add-circle" size={20} color={Colors.light.accent} />
+                                <Ionicons name="add-circle" size={20} color={C.accent} />
                                 <Text style={styles.addTaskBtnText}>Add</Text>
                             </TouchableOpacity>
                         </View>
@@ -387,7 +647,7 @@ export default function CalendarScreen() {
                                             <View
                                                 style={[
                                                     styles.taskColorBar,
-                                                    { backgroundColor: group?.color || meta?.color || Colors.light.textTertiary },
+                                                    { backgroundColor: group?.color || meta?.color || C.textTertiary },
                                                 ]}
                                             />
                                             <View style={styles.taskInfo}>
@@ -411,7 +671,7 @@ export default function CalendarScreen() {
                                                         </Text>
                                                     )}
                                                     {group && (
-                                                        <Text style={[styles.taskGroup, { color: group.color || Colors.light.textTertiary }]}>
+                                                        <Text style={[styles.taskGroup, { color: group.color || C.textTertiary }]}>
                                                             {group.name}
                                                         </Text>
                                                     )}
@@ -423,7 +683,7 @@ export default function CalendarScreen() {
                                                 </View>
                                             </View>
                                             {task.completed && (
-                                                <Ionicons name="checkmark-circle" size={18} color={Colors.light.success} />
+                                                <Ionicons name="checkmark-circle" size={18} color={C.success} />
                                             )}
                                         </TouchableOpacity>
                                     );
@@ -446,257 +706,3 @@ export default function CalendarScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.5,
-    },
-    monthRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingVertical: Spacing.md,
-    },
-    monthLabel: {
-        fontSize: FontSize.xl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    monthNav: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-    },
-    monthNavBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    todayBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.accentLight,
-        flexShrink: 0,
-    },
-    todayBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "700",
-        color: Colors.light.accent,
-    },
-    filterBar: FilterStyles.filterBar,
-    filterChip: FilterStyles.filterChip,
-    filterChipActive: FilterStyles.filterChipActive,
-    filterChipText: FilterStyles.filterChipText,
-    filterChipTextActive: FilterStyles.filterChipTextActive,
-    filterDropdown: {
-        position: "absolute",
-        top: 38,
-        left: 0,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.lg,
-        zIndex: 30,
-        minWidth: 160,
-        overflow: "hidden",
-    },
-    filterOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    filterOptionActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    filterOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    filterOptionTextActive: {
-        color: Colors.light.accent,
-        fontWeight: "600" as const,
-    },
-    calGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        paddingHorizontal: Spacing.sm,
-    },
-    dayHeaderRow: {
-        flexDirection: "row",
-        marginBottom: Spacing.xs,
-        paddingHorizontal: Spacing.sm,
-    },
-    dayHeader: {
-        width: `${100 / 7}%` as any,
-        alignItems: "center",
-        paddingVertical: 6,
-    },
-    dayHeaderText: {
-        fontSize: FontSize.xs,
-        fontWeight: "700",
-        color: Colors.light.textTertiary,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    calRow: {
-        flexDirection: "row",
-    },
-    calCell: {
-        width: `${100 / 7}%` as any,
-        alignItems: "center",
-        paddingVertical: 5,
-        minHeight: 48,
-    },
-    calCellInner: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    calCellSelected: {
-        backgroundColor: Colors.light.accent,
-    },
-    calCellToday: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    calCellText: {
-        fontSize: FontSize.sm,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-    },
-    calCellTextSelected: {
-        color: "#fff",
-        fontWeight: "700",
-    },
-    calCellTextToday: {
-        color: Colors.light.accent,
-        fontWeight: "700",
-    },
-    calCellTextOther: {
-        color: Colors.light.textTertiary,
-    },
-    dotsRow: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 3,
-        marginTop: 3,
-    },
-    taskDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    selectedSection: {
-        flex: 1,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Spacing.lg,
-    },
-    selectedHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: Spacing.lg,
-    },
-    selectedDateLabel: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-    addTaskBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.accentLight,
-    },
-    addTaskBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    selectedTaskList: {
-        flex: 1,
-    },
-    noTasks: {
-        fontSize: FontSize.md,
-        color: Colors.light.textTertiary,
-        textAlign: "center",
-        paddingTop: Spacing.xxl,
-    },
-    selectedTask: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        marginBottom: Spacing.sm,
-        overflow: "hidden",
-        borderWidth: 0,
-        ...Shadows.sm,
-    },
-    taskColorBar: {
-        width: 4,
-        alignSelf: "stretch",
-    },
-    taskInfo: {
-        flex: 1,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.md,
-    },
-    taskTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-    },
-    taskCompleted: {
-        textDecorationLine: "line-through",
-        color: Colors.light.textTertiary,
-    },
-    taskSubRow: {
-        flexDirection: "row",
-        gap: Spacing.sm,
-        marginTop: 2,
-    },
-    taskTime: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textSecondary,
-    },
-    taskGroup: {
-        fontSize: FontSize.xs,
-        fontWeight: "500",
-    },
-    taskPriority: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-    },
-});

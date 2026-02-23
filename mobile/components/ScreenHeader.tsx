@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useColors, useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { triggerOnboarding } from "@/app/_layout";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
@@ -19,7 +20,147 @@ type Props = {
     title: string;
 };
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: Platform.OS === "ios" ? 62 : 48,
+        paddingBottom: Spacing.lg,
+        backgroundColor: C.bgCard,
+    },
+    accentLine: {
+        height: 2.5,
+        backgroundColor: C.accent,
+        opacity: 0.12,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    profileBtn: {
+        position: "relative",
+    },
+    profileCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    profileCircleActive: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    alertBadge: {
+        position: "absolute",
+        top: -2,
+        right: -2,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: "#f59e0b",
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 2,
+        borderColor: C.bgCard,
+    },
+    alertBadgeText: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: "#fff",
+    },
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 30,
+    },
+    dropdown: {
+        position: "absolute",
+        top: Platform.OS === "ios" ? 108 : 96,
+        right: Spacing.lg,
+        width: 248,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.xl,
+        padding: Spacing.sm,
+        zIndex: 31,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: C.borderLight,
+        marginVertical: Spacing.xs,
+        marginHorizontal: Spacing.sm,
+    },
+    email: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        marginBottom: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        marginTop: Spacing.xs,
+    },
+    menuBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingVertical: 10,
+        paddingHorizontal: Spacing.sm,
+        borderRadius: Radius.md,
+    },
+    menuIconWrap: {
+        width: 30,
+        height: 30,
+        borderRadius: Radius.sm,
+        backgroundColor: C.bg,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    menuBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.textPrimary,
+    },
+    message: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        marginBottom: Spacing.md,
+    },
+    messageText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        flex: 1,
+    },
+    signInBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        backgroundColor: C.accent,
+        paddingVertical: 12,
+        borderRadius: Radius.md,
+        marginHorizontal: Spacing.sm,
+        marginBottom: Spacing.xs,
+    },
+    signInText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: "#fff",
+    },
+});
+}
+
 export default function ScreenHeader({ title }: Props) {
+    const C = useColors();
+    const { isDark } = useTheme();
     const { user, logOut } = useAuth();
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -27,6 +168,8 @@ export default function ScreenHeader({ title }: Props) {
     const [notifOpen, setNotifOpen] = useState(false);
 
     const close = useCallback(() => setMenuOpen(false), []);
+
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     return (
         <>
@@ -44,7 +187,7 @@ export default function ScreenHeader({ title }: Props) {
                         <Ionicons
                             name={user ? "person" : "person-outline"}
                             size={16}
-                            color={user ? "#fff" : Colors.light.textTertiary}
+                            color={user ? "#fff" : C.textTertiary}
                         />
                     </View>
                     {!user && (
@@ -70,7 +213,7 @@ export default function ScreenHeader({ title }: Props) {
                             activeOpacity={0.7}
                         >
                             <View style={styles.menuIconWrap}>
-                                <Ionicons name="stats-chart-outline" size={16} color={Colors.light.textSecondary} />
+                                <Ionicons name="stats-chart-outline" size={16} color={C.textSecondary} />
                             </View>
                             <Text style={styles.menuBtnText}>View Stats</Text>
                         </TouchableOpacity>
@@ -83,11 +226,23 @@ export default function ScreenHeader({ title }: Props) {
                                 activeOpacity={0.7}
                             >
                                 <View style={styles.menuIconWrap}>
-                                    <Ionicons name="calendar-outline" size={16} color={Colors.light.textSecondary} />
+                                    <Ionicons name="calendar-outline" size={16} color={C.textSecondary} />
                                 </View>
                                 <Text style={styles.menuBtnText}>Calendar Feed</Text>
                             </TouchableOpacity>
                         )}
+
+                        {/* Appearance */}
+                        <TouchableOpacity
+                            style={styles.menuBtn}
+                            onPress={() => { close(); router.push("/(tabs)/settings"); }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name={isDark ? "moon" : "sunny-outline"} size={16} color={C.textSecondary} />
+                            </View>
+                            <Text style={styles.menuBtnText}>Appearance</Text>
+                        </TouchableOpacity>
 
                         {/* Notification Settings */}
                         <TouchableOpacity
@@ -96,9 +251,9 @@ export default function ScreenHeader({ title }: Props) {
                             activeOpacity={0.7}
                         >
                             <View style={styles.menuIconWrap}>
-                                <Ionicons name="notifications-outline" size={16} color={Colors.light.textSecondary} />
+                                <Ionicons name="notifications-outline" size={16} color={C.textSecondary} />
                             </View>
-                            <Text style={styles.menuBtnText}>Settings</Text>
+                            <Text style={styles.menuBtnText}>Notifications</Text>
                         </TouchableOpacity>
 
                         {/* Onboarding */}
@@ -108,7 +263,7 @@ export default function ScreenHeader({ title }: Props) {
                             activeOpacity={0.7}
                         >
                             <View style={styles.menuIconWrap}>
-                                <Ionicons name="help-circle-outline" size={16} color={Colors.light.textSecondary} />
+                                <Ionicons name="help-circle-outline" size={16} color={C.textSecondary} />
                             </View>
                             <Text style={styles.menuBtnText}>Learn More</Text>
                         </TouchableOpacity>
@@ -126,15 +281,15 @@ export default function ScreenHeader({ title }: Props) {
                                     activeOpacity={0.7}
                                 >
                                     <View style={[styles.menuIconWrap, { backgroundColor: "rgba(239,68,68,0.08)" }]}>
-                                        <Ionicons name="log-out-outline" size={16} color={Colors.light.danger} />
+                                        <Ionicons name="log-out-outline" size={16} color={C.danger} />
                                     </View>
-                                    <Text style={[styles.menuBtnText, { color: Colors.light.danger }]}>Sign Out</Text>
+                                    <Text style={[styles.menuBtnText, { color: C.danger }]}>Sign Out</Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
                             <>
                                 <View style={styles.message}>
-                                    <Ionicons name="cloud-offline-outline" size={16} color={Colors.light.textTertiary} />
+                                    <Ionicons name="cloud-offline-outline" size={16} color={C.textTertiary} />
                                     <Text style={styles.messageText}>
                                         Sign in to sync across devices
                                     </Text>
@@ -159,140 +314,3 @@ export default function ScreenHeader({ title }: Props) {
         </>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 62 : 48,
-        paddingBottom: Spacing.lg,
-        backgroundColor: Colors.light.bgCard,
-    },
-    accentLine: {
-        height: 2.5,
-        backgroundColor: Colors.light.accent,
-        opacity: 0.12,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.5,
-    },
-    profileBtn: {
-        position: "relative",
-    },
-    profileCircle: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    profileCircleActive: {
-        backgroundColor: Colors.light.accent,
-        borderColor: Colors.light.accent,
-    },
-    alertBadge: {
-        position: "absolute",
-        top: -2,
-        right: -2,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: "#f59e0b",
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 2,
-        borderColor: Colors.light.bgCard,
-    },
-    alertBadgeText: {
-        fontSize: 10,
-        fontWeight: "800",
-        color: "#fff",
-    },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 30,
-    },
-    dropdown: {
-        position: "absolute",
-        top: Platform.OS === "ios" ? 108 : 96,
-        right: Spacing.lg,
-        width: 248,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.xl,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        ...Shadows.xl,
-        padding: Spacing.sm,
-        zIndex: 31,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.light.borderLight,
-        marginVertical: Spacing.xs,
-        marginHorizontal: Spacing.sm,
-    },
-    email: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        marginBottom: Spacing.xs,
-        paddingHorizontal: Spacing.md,
-        marginTop: Spacing.xs,
-    },
-    menuBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingVertical: 10,
-        paddingHorizontal: Spacing.sm,
-        borderRadius: Radius.md,
-    },
-    menuIconWrap: {
-        width: 30,
-        height: 30,
-        borderRadius: Radius.sm,
-        backgroundColor: Colors.light.bg,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    menuBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-    },
-    message: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        marginBottom: Spacing.md,
-    },
-    messageText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        flex: 1,
-    },
-    signInBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 12,
-        borderRadius: Radius.md,
-        marginHorizontal: Spacing.sm,
-        marginBottom: Spacing.xs,
-    },
-    signInText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: "#fff",
-    },
-});
