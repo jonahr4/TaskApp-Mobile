@@ -9,17 +9,38 @@ import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
+    signInWithCredential,
+    GoogleAuthProvider,
     signOut,
     type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { deleteAllUserData } from "@/lib/firestore";
+import { clearLocalData } from "@/lib/localDb";
 import { useSync, type SyncScenario } from "@/hooks/useSync";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+
+// Google Sign-In only works in native builds, not Expo Go
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let _GoogleSignin: any = null;
+function getGoogleSignin(): typeof import("@react-native-google-signin/google-signin").GoogleSignin {
+    if (isExpoGo) {
+        throw new Error("Google Sign-In is not available in Expo Go. Use a native EAS build.");
+    }
+    if (!_GoogleSignin) {
+        _GoogleSignin = require("@react-native-google-signin/google-signin").GoogleSignin;
+    }
+    return _GoogleSignin;
+}
 
 type AuthCtx = {
     user: User | null;
     loading: boolean;
     signInEmail: (email: string, password: string) => Promise<SyncScenario>;
     signUpEmail: (email: string, password: string) => Promise<SyncScenario>;
+    signInGoogle: () => Promise<SyncScenario>;
+    deleteAccount: () => Promise<void>;
     logOut: () => Promise<void>;
     // Sync state
     syncScenario: SyncScenario | null;
@@ -34,6 +55,8 @@ const AuthContext = createContext<AuthCtx>({
     loading: true,
     signInEmail: async () => "none",
     signUpEmail: async () => "none",
+    signInGoogle: async () => "none",
+    deleteAccount: async () => { },
     logOut: async () => { },
     syncScenario: null,
     syncing: false,
@@ -48,6 +71,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sync = useSync();
 
     useEffect(() => {
+        // Configure Google Sign-In (skip in Expo Go)
+        if (!isExpoGo) {
+            try {
+                const GS = getGoogleSignin();
+                GS.configure({
+                    iosClientId: "484524163355-276q8p8ahq8tnmsloocpkok8tps7hrio.apps.googleusercontent.com",
+                    webClientId: "484524163355-qeuj19glrkke8c9rbn9kcegbgmrb8lqt.apps.googleusercontent.com",
+                });
+            } catch {
+                // silently skip if module unavailable
+            }
+        }
+
         return onAuthStateChanged(auth, (u) => {
             setUser(u);
             setLoading(false);
@@ -66,8 +102,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return scenario;
     };
 
+    const signInGoogle = async (): Promise<SyncScenario> => {
+        const GS = getGoogleSignin();
+        await GS.hasPlayServices();
+        const signInResult = await GS.signIn();
+        const idToken = signInResult?.data?.idToken;
+        if (!idToken) throw new Error("No ID token from Google Sign-In");
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(auth, credential);
+        const scenario = await sync.onSignIn(cred.user);
+        return scenario;
+    };
+
     const logOut = async () => {
         await signOut(auth);
+    };
+
+    const deleteAccount = async () => {
+        if (!user) throw new Error("No user signed in");
+        // Delete all cloud data first
+        await deleteAllUserData(user.uid);
+        // Clear local cache
+        await clearLocalData();
+        // Delete the Firebase auth account
+        await user.delete();
     };
 
     const confirmMerge = async (selectedIds?: string[]) => {
@@ -83,6 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 loading,
                 signInEmail,
                 signUpEmail,
+                signInGoogle,
+                deleteAccount,
                 logOut,
                 syncScenario: sync.scenario,
                 syncing: sync.syncing,

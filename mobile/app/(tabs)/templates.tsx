@@ -13,7 +13,8 @@ import Fuse from "fuse.js";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { useColors } from "@/hooks/useTheme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -103,7 +104,184 @@ function formatDueDate(task: Task): string | null {
 type StatusFilter = "all" | "active" | "completed";
 
 // ── Component ────────────────────────────────────────────────
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        paddingHorizontal: Spacing.xl,
+        paddingTop: Platform.OS === "ios" ? 60 : 48,
+        paddingBottom: Spacing.sm,
+        backgroundColor: C.bgCard,
+        ...Shadows.sm,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    searchWrap: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginHorizontal: Spacing.lg,
+        marginTop: Spacing.md,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        paddingHorizontal: Spacing.md,
+        ...Shadows.sm,
+    },
+    searchInput: {
+        flex: 1,
+        height: 44,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+    },
+    filterRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.sm,
+    },
+    chip: {
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: Radius.full,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    chipActive: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    chipText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+    chipTextActive: {
+        color: "#fff",
+    },
+    resultCount: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        marginLeft: "auto",
+    },
+    body: {
+        flex: 1,
+        paddingHorizontal: Spacing.lg,
+    },
+    emptyState: {
+        alignItems: "center",
+        paddingTop: 80,
+        gap: 8,
+    },
+    emptyTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+    emptyHint: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        textAlign: "center",
+        paddingHorizontal: Spacing.xl,
+    },
+    resultRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 0,
+        padding: Spacing.lg,
+        marginBottom: Spacing.sm,
+        ...Shadows.sm,
+    },
+    statusDot: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: Spacing.md,
+        marginTop: 1,
+    },
+    statusDotActive: {
+        borderWidth: 2,
+        borderColor: C.borderLight,
+        backgroundColor: "transparent",
+    },
+    statusDotDone: {
+        backgroundColor: C.success,
+    },
+    resultContent: {
+        flex: 1,
+    },
+    resultTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.textPrimary,
+        marginBottom: 3,
+    },
+    resultTitleDone: {
+        textDecorationLine: "line-through",
+        color: C.textTertiary,
+    },
+    metaRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+    },
+    metaTag: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+    },
+    metaText: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+    },
+    groupDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+    },
+    priorityBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: Radius.full,
+        borderWidth: 1,
+    },
+    priorityDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+    priorityText: {
+        fontSize: 11,
+        fontWeight: "600",
+    },
+    notesPreview: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        fontStyle: "italic",
+        marginTop: 3,
+    },
+});
+}
+
 export default function SearchScreen() {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
@@ -209,12 +387,12 @@ export default function SearchScreen() {
 
             {/* Search bar */}
             <View style={styles.searchWrap}>
-                <Ionicons name="search" size={18} color={Colors.light.textTertiary} style={{ marginRight: 6 }} />
+                <Ionicons name="search" size={18} color={C.textTertiary} style={{ marginRight: 6 }} />
                 <TextInput
                     ref={inputRef}
                     style={styles.searchInput}
                     placeholder="Search tasks, groups, dates..."
-                    placeholderTextColor={Colors.light.textTertiary}
+                    placeholderTextColor={C.textTertiary}
                     value={query}
                     onChangeText={setQuery}
                     autoCapitalize="none"
@@ -253,13 +431,13 @@ export default function SearchScreen() {
             >
                 {query.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="search-outline" size={48} color={Colors.light.borderLight} />
+                        <Ionicons name="search-outline" size={48} color={C.borderLight} />
                         <Text style={styles.emptyTitle}>Search your tasks</Text>
                         <Text style={styles.emptyHint}>Try a task name, note, or date like "sep 5" or "12/5"</Text>
                     </View>
                 ) : results.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="alert-circle-outline" size={40} color={Colors.light.borderLight} />
+                        <Ionicons name="alert-circle-outline" size={40} color={C.borderLight} />
                         <Text style={styles.emptyTitle}>No matches</Text>
                         <Text style={styles.emptyHint}>Try a different search term</Text>
                     </View>
@@ -299,13 +477,13 @@ export default function SearchScreen() {
                                     <View style={styles.metaRow}>
                                         {due && (
                                             <View style={styles.metaTag}>
-                                                <Ionicons name="calendar-outline" size={12} color={Colors.light.textTertiary} />
+                                                <Ionicons name="calendar-outline" size={12} color={C.textTertiary} />
                                                 <Text style={styles.metaText}>{due}</Text>
                                             </View>
                                         )}
                                         {group && (
                                             <View style={styles.metaTag}>
-                                                <View style={[styles.groupDot, { backgroundColor: group.color || Colors.light.textTertiary }]} />
+                                                <View style={[styles.groupDot, { backgroundColor: group.color || C.textTertiary }]} />
                                                 <Text style={styles.metaText} numberOfLines={1}>{group.name}</Text>
                                             </View>
                                         )}
@@ -346,176 +524,3 @@ export default function SearchScreen() {
 }
 
 // ── Styles ────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 60 : 48,
-        paddingBottom: Spacing.sm,
-        backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    searchWrap: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginHorizontal: Spacing.lg,
-        marginTop: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        paddingHorizontal: Spacing.md,
-    },
-    searchInput: {
-        flex: 1,
-        height: 44,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    filterRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.sm,
-    },
-    chip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    chipActive: {
-        backgroundColor: Colors.light.accent,
-        borderColor: Colors.light.accent,
-    },
-    chipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-    chipTextActive: {
-        color: "#fff",
-    },
-    resultCount: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        marginLeft: "auto",
-    },
-    body: {
-        flex: 1,
-        paddingHorizontal: Spacing.lg,
-    },
-    emptyState: {
-        alignItems: "center",
-        paddingTop: 80,
-        gap: 8,
-    },
-    emptyTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-    emptyHint: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        textAlign: "center",
-        paddingHorizontal: Spacing.xl,
-    },
-    resultRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        padding: Spacing.md,
-        marginBottom: 8,
-    },
-    statusDot: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: Spacing.sm,
-        marginTop: 1,
-    },
-    statusDotActive: {
-        borderWidth: 2,
-        borderColor: Colors.light.borderLight,
-        backgroundColor: "transparent",
-    },
-    statusDotDone: {
-        backgroundColor: Colors.light.success,
-    },
-    resultContent: {
-        flex: 1,
-    },
-    resultTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-        marginBottom: 3,
-    },
-    resultTitleDone: {
-        textDecorationLine: "line-through",
-        color: Colors.light.textTertiary,
-    },
-    metaRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 6,
-    },
-    metaTag: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-    },
-    metaText: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-    },
-    groupDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-    },
-    priorityBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    priorityDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    priorityText: {
-        fontSize: 10,
-        fontWeight: "600",
-    },
-    notesPreview: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        fontStyle: "italic",
-        marginTop: 3,
-    },
-});

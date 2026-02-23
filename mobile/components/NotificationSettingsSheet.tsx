@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     View,
     Text,
@@ -15,6 +15,7 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/hooks/useAuth";
+import { useColors } from "@/hooks/useTheme";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
@@ -35,8 +36,287 @@ type Props = {
     onClose: () => void;
 };
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    sheet: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 20,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    headerLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    headerTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "700",
+        color: C.textPrimary,
+        letterSpacing: -0.3,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.xl,
+    },
+    // ── Sections ──
+    section: {
+        marginBottom: Spacing.xl,
+        gap: 10,
+    },
+    sectionTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    sectionDesc: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        lineHeight: 16,
+    },
+    // ── Toggle row ──
+    toggleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        padding: Spacing.md,
+    },
+    toggleInfo: {
+        flex: 1,
+        marginRight: Spacing.md,
+    },
+    toggleLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    toggleDesc: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        marginTop: 2,
+        lineHeight: 15,
+    },
+    // ── Picker button ──
+    pickerBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 12,
+    },
+    pickerBtnText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    // ── Options list ──
+    optionsList: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        overflow: "hidden",
+    },
+    optionRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 11,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    optionRowActive: {
+        backgroundColor: C.accentLight,
+    },
+    optionText: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    optionTextActive: {
+        fontWeight: "600",
+        color: C.accent,
+    },
+    // ── Group list ──
+    groupList: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        overflow: "hidden",
+    },
+    groupRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 11,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    groupRowActive: {
+        backgroundColor: C.accentLight,
+    },
+    radio: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: C.textTertiary,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    radioActive: {
+        borderColor: C.accent,
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: C.accent,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: C.textTertiary,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    checkboxActive: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    groupDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    groupName: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    // ── Time picker ──
+    timePickerContainer: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        overflow: "hidden",
+    },
+    // ── WIP location ──
+    wipRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    wipBadge: {
+        backgroundColor: "#fef3c7",
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    wipBadgeText: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#d97706",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    wipInfoCard: {
+        flexDirection: "row",
+        gap: 10,
+        padding: Spacing.md,
+        backgroundColor: "#fffbeb",
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: "#fde68a",
+    },
+    wipInfoText: {
+        flex: 1,
+        fontSize: FontSize.xs,
+        color: "#92400e",
+        lineHeight: 16,
+    },
+    // ── Custom time input ──
+    customTimeRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: C.borderLight,
+        backgroundColor: C.bg,
+    },
+    customTimeLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+    customTimeInput: {
+        width: 56,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+        textAlign: "center",
+        backgroundColor: "#fff",
+    },
+    unitRow: {
+        flexDirection: "row",
+        gap: 4,
+    },
+    unitBtn: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        backgroundColor: "#fff",
+    },
+    unitBtnActive: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    unitBtnText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+    unitBtnTextActive: {
+        color: "#fff",
+    },
+    applyBtn: {
+        padding: 2,
+    },
+});
+}
+
 export function NotificationSettingsSheet({ visible, onClose }: Props) {
     const { user } = useAuth();
+    const C = useColors();
     const { groups } = useTaskGroups(user?.uid);
     const { tasks } = useTasks(user?.uid);
     const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
@@ -157,6 +437,8 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
         setCustomValue("");
     };
 
+    const styles = useMemo(() => makeStyles(C), [C]);
+
     if (!loaded) return null;
 
     return (
@@ -170,11 +452,11 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Ionicons name="notifications-outline" size={20} color={Colors.light.accent} />
+                        <Ionicons name="notifications-outline" size={20} color={C.accent} />
                         <Text style={styles.headerTitle}>Notification Settings</Text>
                     </View>
                     <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Ionicons name="close-circle" size={26} color={Colors.light.textTertiary} />
+                        <Ionicons name="close-circle" size={26} color={C.textTertiary} />
                     </TouchableOpacity>
                 </View>
 
@@ -191,8 +473,8 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                             <Switch
                                 value={settings.enabled}
                                 onValueChange={handleMasterToggle}
-                                trackColor={{ false: Colors.light.borderLight, true: Colors.light.accent + "60" }}
-                                thumbColor={settings.enabled ? Colors.light.accent : "#ccc"}
+                                trackColor={{ false: C.borderLight, true: C.accent + "60" }}
+                                thumbColor={settings.enabled ? C.accent : "#ccc"}
                             />
                         </View>
                     </View>
@@ -210,12 +492,12 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                     onPress={() => setShowReminderPicker(!showReminderPicker)}
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons name="time-outline" size={16} color={Colors.light.accent} />
+                                    <Ionicons name="time-outline" size={16} color={C.accent} />
                                     <Text style={styles.pickerBtnText}>{currentReminderLabel}</Text>
                                     <Ionicons
                                         name={showReminderPicker ? "chevron-up" : "chevron-down"}
                                         size={14}
-                                        color={Colors.light.textTertiary}
+                                        color={C.textTertiary}
                                     />
                                 </TouchableOpacity>
                                 {showReminderPicker && (
@@ -242,7 +524,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                                     {opt.label}
                                                 </Text>
                                                 {settings.reminderMinutes === opt.value && (
-                                                    <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                                    <Ionicons name="checkmark" size={16} color={C.accent} />
                                                 )}
                                             </TouchableOpacity>
                                         ))}
@@ -255,7 +537,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                                 value={customValue}
                                                 onChangeText={setCustomValue}
                                                 placeholder="e.g. 10"
-                                                placeholderTextColor={Colors.light.textTertiary}
+                                                placeholderTextColor={C.textTertiary}
                                                 keyboardType="number-pad"
                                                 returnKeyType="done"
                                             />
@@ -287,7 +569,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                                 disabled={!customValue}
                                                 activeOpacity={0.8}
                                             >
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.light.accent} />
+                                                <Ionicons name="checkmark-circle" size={24} color={C.accent} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -310,7 +592,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                     <View style={[styles.radio, settings.allGroupsEnabled && styles.radioActive]}>
                                         {settings.allGroupsEnabled && <View style={styles.radioInner} />}
                                     </View>
-                                    <Ionicons name="layers-outline" size={16} color={Colors.light.textPrimary} />
+                                    <Ionicons name="layers-outline" size={16} color={C.textPrimary} />
                                     <Text style={styles.groupName}>All Groups</Text>
                                 </TouchableOpacity>
 
@@ -358,8 +640,8 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                             updateAndSave({ dailySummaryEnabled: v });
                                         }}
-                                        trackColor={{ false: Colors.light.borderLight, true: Colors.light.accent + "60" }}
-                                        thumbColor={settings.dailySummaryEnabled ? Colors.light.accent : "#ccc"}
+                                        trackColor={{ false: C.borderLight, true: C.accent + "60" }}
+                                        thumbColor={settings.dailySummaryEnabled ? C.accent : "#ccc"}
                                     />
                                 </View>
                                 {settings.dailySummaryEnabled && (
@@ -369,14 +651,14 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                             onPress={() => setShowTimePicker(!showTimePicker)}
                                             activeOpacity={0.7}
                                         >
-                                            <Ionicons name="alarm-outline" size={16} color={Colors.light.accent} />
+                                            <Ionicons name="alarm-outline" size={16} color={C.accent} />
                                             <Text style={styles.pickerBtnText}>
                                                 Daily at {formatTime12(settings.dailySummaryHour, settings.dailySummaryMinute)}
                                             </Text>
                                             <Ionicons
                                                 name={showTimePicker ? "chevron-up" : "chevron-down"}
                                                 size={14}
-                                                color={Colors.light.textTertiary}
+                                                color={C.textTertiary}
                                             />
                                         </TouchableOpacity>
                                         {showTimePicker && (
@@ -421,7 +703,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                             }
                                             updateAndSave({ locationRemindersEnabled: v });
                                         }}
-                                        trackColor={{ false: Colors.light.borderLight, true: "#f59e0b60" }}
+                                        trackColor={{ false: C.borderLight, true: "#f59e0b60" }}
                                         thumbColor={settings.locationRemindersEnabled ? "#f59e0b" : "#ccc"}
                                     />
                                 </View>
@@ -439,280 +721,3 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    sheet: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 20,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    headerLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.xl,
-    },
-    // ── Sections ──
-    section: {
-        marginBottom: Spacing.xl,
-        gap: 10,
-    },
-    sectionTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    sectionDesc: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        lineHeight: 16,
-    },
-    // ── Toggle row ──
-    toggleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        padding: Spacing.md,
-    },
-    toggleInfo: {
-        flex: 1,
-        marginRight: Spacing.md,
-    },
-    toggleLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    toggleDesc: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        marginTop: 2,
-        lineHeight: 15,
-    },
-    // ── Picker button ──
-    pickerBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 12,
-    },
-    pickerBtnText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    // ── Options list ──
-    optionsList: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        overflow: "hidden",
-    },
-    optionRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 11,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    optionRowActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    optionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    optionTextActive: {
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    // ── Group list ──
-    groupList: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        overflow: "hidden",
-    },
-    groupRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 11,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    groupRowActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    radio: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: Colors.light.textTertiary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    radioActive: {
-        borderColor: Colors.light.accent,
-    },
-    radioInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: Colors.light.accent,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 5,
-        borderWidth: 1.5,
-        borderColor: Colors.light.textTertiary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxActive: {
-        backgroundColor: Colors.light.accent,
-        borderColor: Colors.light.accent,
-    },
-    groupDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    groupName: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    // ── Time picker ──
-    timePickerContainer: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        overflow: "hidden",
-    },
-    // ── WIP location ──
-    wipRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    wipBadge: {
-        backgroundColor: "#fef3c7",
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    wipBadgeText: {
-        fontSize: 9,
-        fontWeight: "700",
-        color: "#d97706",
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    wipInfoCard: {
-        flexDirection: "row",
-        gap: 10,
-        padding: Spacing.md,
-        backgroundColor: "#fffbeb",
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#fde68a",
-    },
-    wipInfoText: {
-        flex: 1,
-        fontSize: FontSize.xs,
-        color: "#92400e",
-        lineHeight: 16,
-    },
-    // ── Custom time input ──
-    customTimeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        borderTopWidth: 1,
-        borderTopColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bg,
-    },
-    customTimeLabel: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-    customTimeInput: {
-        width: 56,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-        textAlign: "center",
-        backgroundColor: "#fff",
-    },
-    unitRow: {
-        flexDirection: "row",
-        gap: 4,
-    },
-    unitBtn: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        backgroundColor: "#fff",
-    },
-    unitBtnActive: {
-        backgroundColor: Colors.light.accent,
-        borderColor: Colors.light.accent,
-    },
-    unitBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-    unitBtnTextActive: {
-        color: "#fff",
-    },
-    applyBtn: {
-        padding: 2,
-    },
-});

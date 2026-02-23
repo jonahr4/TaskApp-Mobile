@@ -10,7 +10,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { useColors } from "@/hooks/useTheme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, Quadrant } from "@/lib/types";
 import ScreenHeader from "@/components/ScreenHeader";
@@ -30,6 +31,8 @@ function StatCard({
     color: string;
     bgColor: string;
 }) {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     return (
         <View style={[styles.statCard, { borderLeftColor: color }]}>
             <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
@@ -42,10 +45,148 @@ function StatCard({
     );
 }
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        paddingHorizontal: Spacing.xl,
+        paddingTop: 60,
+        paddingBottom: Spacing.md,
+        backgroundColor: C.bgCard,
+        ...Shadows.sm,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.lg,
+    },
+    statGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: Spacing.md,
+        marginBottom: Spacing.lg,
+    },
+    statCard: {
+        width: "47%",
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        padding: Spacing.lg,
+        borderWidth: 0,
+        borderLeftWidth: 4,
+        ...Shadows.md,
+    },
+    statIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: Spacing.sm,
+    },
+    statValue: {
+        fontSize: FontSize.xxl,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+    statLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textSecondary,
+        marginTop: 2,
+    },
+    statSub: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        marginTop: 1,
+    },
+    sectionCard: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        padding: Spacing.xl,
+        marginBottom: Spacing.lg,
+        borderWidth: 0,
+        ...Shadows.md,
+    },
+    sectionTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: "600",
+        color: C.textPrimary,
+        marginBottom: Spacing.lg,
+    },
+    barRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    barLabel: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        width: 90,
+    },
+    barDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    barLabelText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        fontWeight: "500",
+    },
+    barTrack: {
+        flex: 1,
+        height: 10,
+        backgroundColor: C.bg,
+        borderRadius: 5,
+        overflow: "hidden",
+    },
+    barFill: {
+        height: "100%",
+        borderRadius: 5,
+    },
+    barCount: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textPrimary,
+        width: 30,
+        textAlign: "right",
+    },
+    groupRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        paddingVertical: Spacing.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    groupName: {
+        flex: 1,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+    },
+    groupCount: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+});
+}
+
 export default function StatsScreen() {
+    const C = useColors();
     const { user } = useAuth();
     const { tasks } = useTasks(user?.uid);
     const { groups } = useTaskGroups(user?.uid);
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     const stats = useMemo(() => {
         const total = tasks.length;
@@ -64,7 +205,7 @@ export default function StatsScreen() {
         const groupCounts: { name: string; color: string; count: number }[] = [];
         for (const g of groups) {
             const count = tasks.filter((t) => t.groupId === g.id).length;
-            groupCounts.push({ name: g.name, color: g.color || Colors.light.textTertiary, count });
+            groupCounts.push({ name: g.name, color: g.color || C.textTertiary, count });
         }
         groupCounts.sort((a, b) => b.count - a.count);
 
@@ -106,7 +247,7 @@ export default function StatsScreen() {
         }
 
         return { total, completed, active, completionRate, quadrantCounts, groupCounts, overdue, dueToday, streak };
-    }, [tasks, groups]);
+    }, [tasks, groups, C]);
 
     return (
         <View style={styles.container}>
@@ -121,20 +262,20 @@ export default function StatsScreen() {
                 {/* Quick Stats */}
                 <View style={styles.statGrid}>
                     <StatCard
-                        icon={<Ionicons name="checkmark-circle" size={20} color={Colors.light.success} />}
+                        icon={<Ionicons name="checkmark-circle" size={20} color={C.success} />}
                         label="Completed"
                         value={stats.completed}
                         subValue={`${stats.completionRate}% rate`}
-                        color={Colors.light.success}
+                        color={C.success}
                         bgColor="#f0fdf4"
                     />
                     <StatCard
-                        icon={<Ionicons name="time" size={20} color={Colors.light.accent} />}
+                        icon={<Ionicons name="time" size={20} color={C.accent} />}
                         label="Active"
                         value={stats.active}
                         subValue={`${stats.total} total`}
-                        color={Colors.light.accent}
-                        bgColor={Colors.light.accentLight}
+                        color={C.accent}
+                        bgColor={C.accentLight}
                     />
                     <StatCard
                         icon={<Ionicons name="flame" size={20} color="#f59e0b" />}
@@ -145,11 +286,11 @@ export default function StatsScreen() {
                         bgColor="#fffbeb"
                     />
                     <StatCard
-                        icon={<Ionicons name="alert-circle" size={20} color={Colors.light.danger} />}
+                        icon={<Ionicons name="alert-circle" size={20} color={C.danger} />}
                         label="Overdue"
                         value={stats.overdue}
                         subValue={`${stats.dueToday} due today`}
-                        color={Colors.light.danger}
+                        color={C.danger}
                         bgColor="#fef2f2"
                     />
                 </View>
@@ -183,7 +324,7 @@ export default function StatsScreen() {
                     {stats.quadrantCounts.none > 0 && (
                         <View style={styles.barRow}>
                             <View style={styles.barLabel}>
-                                <View style={[styles.barDot, { backgroundColor: Colors.light.textTertiary }]} />
+                                <View style={[styles.barDot, { backgroundColor: C.textTertiary }]} />
                                 <Text style={styles.barLabelText}>No Priority</Text>
                             </View>
                             <View style={styles.barTrack}>
@@ -192,7 +333,7 @@ export default function StatsScreen() {
                                         styles.barFill,
                                         {
                                             width: `${Math.round((stats.quadrantCounts.none / (stats.total || 1)) * 100)}%`,
-                                            backgroundColor: Colors.light.textTertiary,
+                                            backgroundColor: C.textTertiary,
                                         },
                                     ]}
                                 />
@@ -219,144 +360,3 @@ export default function StatsScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.lg,
-    },
-    statGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: Spacing.md,
-        marginBottom: Spacing.lg,
-    },
-    statCard: {
-        width: "47%",
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        padding: Spacing.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderLeftWidth: 3,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
-        elevation: 1,
-    },
-    statIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: Spacing.sm,
-    },
-    statValue: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-    statLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-        marginTop: 2,
-    },
-    statSub: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        marginTop: 1,
-    },
-    sectionCard: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.lg,
-        padding: Spacing.lg,
-        marginBottom: Spacing.lg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    sectionTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-        marginBottom: Spacing.lg,
-    },
-    barRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        marginBottom: Spacing.md,
-    },
-    barLabel: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        width: 90,
-    },
-    barDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    barLabelText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-        fontWeight: "500",
-    },
-    barTrack: {
-        flex: 1,
-        height: 8,
-        backgroundColor: Colors.light.bg,
-        borderRadius: 4,
-        overflow: "hidden",
-    },
-    barFill: {
-        height: "100%",
-        borderRadius: 4,
-    },
-    barCount: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-        width: 30,
-        textAlign: "right",
-    },
-    groupRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingVertical: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    groupName: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    groupCount: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-});

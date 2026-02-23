@@ -16,12 +16,15 @@ import Animated, {
     useAnimatedStyle,
     withSpring,
     withTiming,
+    Easing,
 } from "react-native-reanimated";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useColors, useTheme } from "@/hooks/useTheme";
 import { updateTaskUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { makeFilterStyles } from "@/lib/sharedStyles";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -32,6 +35,7 @@ import ScreenHeader from "@/components/ScreenHeader";
 const EXPANDED = 0.75;
 const DEFAULT = 0.5;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.8 };
+const TRAY_TIMING = { duration: 300, easing: Easing.out(Easing.cubic) };
 const TRAY_HANDLE_HEIGHT = 52;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TRAY_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -111,7 +115,339 @@ type DragRef = {
 } | null;
 
 // ── Component ────────────────────────────────────────────────
+function makeStyles(C: typeof Colors.light) {
+    const filterStyles = makeFilterStyles(C);
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.xl,
+        paddingTop: Platform.OS === "ios" ? 60 : 48,
+        paddingBottom: Spacing.md,
+        backgroundColor: C.bgCard,
+        ...Shadows.sm,
+    },
+    headerTitle: {
+        fontSize: FontSize.title,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    resetBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+        backgroundColor: C.accentLight,
+    },
+    resetBtnText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.accent,
+    },
+    grid: {
+        flex: 1,
+    },
+    gridInner: {
+        flex: 1,
+    },
+    gridRow: {
+        flexDirection: "row",
+    },
+    quadrant: {
+        padding: Spacing.xs,
+    },
+    qInner: {
+        flex: 1,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        overflow: "hidden",
+        ...Shadows.sm,
+    },
+    qHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.sm + 2,
+        paddingVertical: 7,
+    },
+    qHeaderLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        flex: 1,
+    },
+    qHeaderRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    qDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    qLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: "700",
+        flexShrink: 1,
+    },
+    qLabelExpanded: {
+        fontSize: FontSize.md,
+    },
+    qCount: {
+        fontSize: 11,
+        color: C.textTertiary,
+        fontWeight: "600",
+    },
+    qCountExpanded: {
+        fontSize: FontSize.xs,
+    },
+    expandBtn: {
+        padding: 4,
+        borderRadius: Radius.sm,
+    },
+    qTaskList: {
+        flex: 1,
+        backgroundColor: C.bgCard,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 2,
+    },
+    qTask: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 6,
+        paddingVertical: 6,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+    },
+    qCheckbox: {
+        padding: 2,
+        marginTop: 1,
+    },
+    qCheckInner: {
+        width: 16,
+        height: 16,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        justifyContent: "center" as const,
+        alignItems: "center" as const,
+    },
+    taskItemContent: {
+        flex: 1,
+    },
+    qTaskTitle: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+        lineHeight: 18,
+    },
+    qTaskTitleExpanded: {
+        fontSize: FontSize.md,
+        lineHeight: 22,
+    },
+    qTaskTitleCompleted: {
+        textDecorationLine: "line-through" as const,
+        color: C.textTertiary,
+    },
+    qCheckCompleted: {
+        backgroundColor: C.success,
+        borderColor: C.success,
+    },
+    taskItemMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 3,
+    },
+    taskMetaTag: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+    },
+    taskMetaText: {
+        fontSize: 11,
+        color: C.textTertiary,
+    },
+    taskGroupDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+    taskNotes: {
+        fontSize: 11,
+        color: C.textTertiary,
+        fontStyle: "italic",
+        marginTop: 2,
+    },
+    qEmptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingVertical: Spacing.lg,
+    },
+    qEmpty: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        textAlign: "center",
+    },
+    dropZone: {
+        alignItems: "center",
+        gap: 4,
+    },
+    dropZoneText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+    },
+    filterBar: filterStyles.filterBar,
+    filterChip: filterStyles.filterChip,
+    filterChipActive: filterStyles.filterChipActive,
+    filterChipText: filterStyles.filterChipText,
+    filterChipTextActive: filterStyles.filterChipTextActive,
+    filterDropdown: {
+        position: "absolute",
+        top: 38,
+        left: 0,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        ...Shadows.lg,
+        zIndex: 30,
+        minWidth: 160,
+        overflow: "hidden",
+    },
+    filterOption: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    filterOptionActive: {
+        backgroundColor: C.accentLight,
+    },
+    filterOptionText: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+    },
+    filterOptionTextActive: {
+        color: C.accent,
+        fontWeight: "600" as const,
+    },
+    // ── Tray styles ──────────────────────────────────────────
+    tray: {
+        backgroundColor: C.bgCard,
+        borderTopWidth: 0,
+        borderTopLeftRadius: Radius.xl,
+        borderTopRightRadius: Radius.xl,
+        ...Shadows.xl,
+        shadowOffset: { width: 0, height: -4 },
+        overflow: "hidden",
+    },
+    trayHandle: {
+        alignItems: "center",
+        paddingTop: 10,
+        paddingBottom: 8,
+        paddingHorizontal: Spacing.lg,
+    },
+    trayHandlePill: {
+        width: 40,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: C.borderLight,
+        marginBottom: 10,
+    },
+    trayHandleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+    },
+    trayHandleLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    trayHandleText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        fontWeight: "600",
+    },
+    trayContent: {
+        overflow: "hidden",
+    },
+    trayScrollContent: {
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: Spacing.lg,
+    },
+    trayTask: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 12,
+        paddingHorizontal: Spacing.md,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.sm,
+    },
+    trayTaskContent: {
+        flex: 1,
+        flexDirection: "row" as const,
+        alignItems: "center" as const,
+        gap: 8,
+    },
+    trayTaskTitle: {
+        fontSize: FontSize.sm,
+        color: C.textPrimary,
+        lineHeight: 18,
+    },
+    dragHandle: {
+        width: 34,
+        height: 34,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        backgroundColor: C.bg,
+        justifyContent: "center" as const,
+        alignItems: "center" as const,
+        marginLeft: 8,
+        ...Shadows.sm,
+    },
+    // ── Ghost card ───────────────────────────────────────────
+    ghostCard: {
+        position: "absolute",
+        zIndex: 999,
+        width: 170,
+    },
+    ghostCardInner: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.lg,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderWidth: 1.5,
+        borderColor: C.accent,
+        ...Shadows.xl,
+        shadowColor: C.accent,
+        shadowOpacity: 0.25,
+    },
+    ghostCardText: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    });
+};
+
 export default function MatrixScreen() {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
     const { tasks } = useTasks(user?.uid);
     const { groups } = useTaskGroups(user?.uid);
@@ -121,6 +457,8 @@ export default function MatrixScreen() {
     const [defaultUrgent, setDefaultUrgent] = useState<boolean>(false);
     const [defaultImportant, setDefaultImportant] = useState<boolean>(false);
     const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+    const containerW = useSharedValue(0);
+    const containerH = useSharedValue(0);
     const [expandedQIdx, setExpandedQIdx] = useState(-1);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
@@ -282,7 +620,7 @@ export default function MatrixScreen() {
 
         // Close tray when expanding a quadrant
         if (trayOpen) {
-            trayHeight.value = withSpring(0, SPRING_CFG);
+            trayHeight.value = withTiming(0, TRAY_TIMING);
             setTrayOpen(false);
         }
 
@@ -303,7 +641,7 @@ export default function MatrixScreen() {
     const toggleTray = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         if (trayOpen) {
-            trayHeight.value = withSpring(0, SPRING_CFG);
+            trayHeight.value = withTiming(0, TRAY_TIMING);
             setTrayOpen(false);
         } else {
             // Reset quadrant expansion when opening tray
@@ -312,7 +650,7 @@ export default function MatrixScreen() {
                 splitY.value = withSpring(DEFAULT, SPRING_CFG);
                 setExpandedQIdx(-1);
             }
-            trayHeight.value = withSpring(TRAY_EXPANDED_HEIGHT, SPRING_CFG);
+            trayHeight.value = withTiming(TRAY_EXPANDED_HEIGHT, TRAY_TIMING);
             setTrayOpen(true);
         }
     }, [trayOpen, trayHeight, expandedQIdx, splitX, splitY]);
@@ -392,20 +730,20 @@ export default function MatrixScreen() {
 
     // Animated styles for each quadrant
     const doStyle = useAnimatedStyle(() => ({
-        width: splitX.value * containerSize.w,
-        height: splitY.value * containerSize.h,
+        width: splitX.value * containerW.value,
+        height: splitY.value * containerH.value,
     }));
     const scheduleStyle = useAnimatedStyle(() => ({
-        width: (1 - splitX.value) * containerSize.w,
-        height: splitY.value * containerSize.h,
+        width: (1 - splitX.value) * containerW.value,
+        height: splitY.value * containerH.value,
     }));
     const delegateStyle = useAnimatedStyle(() => ({
-        width: splitX.value * containerSize.w,
-        height: (1 - splitY.value) * containerSize.h,
+        width: splitX.value * containerW.value,
+        height: (1 - splitY.value) * containerH.value,
     }));
     const deleteStyle = useAnimatedStyle(() => ({
-        width: (1 - splitX.value) * containerSize.w,
-        height: (1 - splitY.value) * containerSize.h,
+        width: (1 - splitX.value) * containerW.value,
+        height: (1 - splitY.value) * containerH.value,
     }));
 
     const animatedStyles: Record<Quadrant, any> = {
@@ -448,11 +786,11 @@ export default function MatrixScreen() {
                         onPress={() => setShowFilterMenu(showFilterMenu === "status" ? null : "status")}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="filter-outline" size={14} color={statusFilter !== "all" ? C.accent : C.textSecondary} />
                         <Text style={[styles.filterChipText, statusFilter !== "all" && styles.filterChipTextActive]}>
                             {STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label ?? "All"}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu === "status" && (
                         <View style={styles.filterDropdown}>
@@ -475,7 +813,7 @@ export default function MatrixScreen() {
                                         {opt.label}
                                     </Text>
                                     {statusFilter === opt.key && (
-                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                        <Ionicons name="checkmark" size={16} color={C.accent} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -493,11 +831,11 @@ export default function MatrixScreen() {
                         onPress={() => setShowFilterMenu(showFilterMenu === "sort" ? null : "sort")}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="swap-vertical-outline" size={14} color={sortBy !== "due_date" ? Colors.light.accent : Colors.light.textSecondary} />
+                        <Ionicons name="swap-vertical-outline" size={14} color={sortBy !== "due_date" ? C.accent : C.textSecondary} />
                         <Text style={[styles.filterChipText, sortBy !== "due_date" && styles.filterChipTextActive]}>
                             {SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? "Due Date"}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={Colors.light.textTertiary} />
+                        <Ionicons name="chevron-down" size={12} color={C.textTertiary} />
                     </TouchableOpacity>
                     {showFilterMenu === "sort" && (
                         <View style={styles.filterDropdown}>
@@ -520,7 +858,7 @@ export default function MatrixScreen() {
                                         {opt.label}
                                     </Text>
                                     {sortBy === opt.key && (
-                                        <Ionicons name="checkmark" size={16} color={Colors.light.accent} />
+                                        <Ionicons name="checkmark" size={16} color={C.accent} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -546,7 +884,7 @@ export default function MatrixScreen() {
                         style={styles.resetBtn}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="contract-outline" size={14} color={Colors.light.accent} />
+                        <Ionicons name="contract-outline" size={14} color={C.accent} />
                         <Text style={styles.resetBtnText}>Reset</Text>
                     </TouchableOpacity>
                 )}
@@ -558,7 +896,9 @@ export default function MatrixScreen() {
                 style={styles.grid}
                 onLayout={(e) => {
                     const { width, height } = e.nativeEvent.layout;
-                    setContainerSize({ w: width, h: height });
+                    containerW.value = width;
+                    containerH.value = height;
+                    if (containerSize.w === 0) setContainerSize({ w: width, h: height });
                     // Measure absolute position for hit-testing
                     setTimeout(measureContainer, 100);
                 }}
@@ -667,7 +1007,7 @@ export default function MatrixScreen() {
                         <View style={styles.trayHandlePill} />
                         <View style={styles.trayHandleRow}>
                             <View style={styles.trayHandleLeft}>
-                                <Ionicons name="help-circle-outline" size={16} color={Colors.light.textTertiary} />
+                                <Ionicons name="help-circle-outline" size={16} color={C.textTertiary} />
                                 <Text style={styles.trayHandleText}>
                                     {uncategorizedTasks.length} uncategorized
                                 </Text>
@@ -675,7 +1015,7 @@ export default function MatrixScreen() {
                             <Ionicons
                                 name={trayOpen ? "chevron-down" : "chevron-up"}
                                 size={18}
-                                color={Colors.light.textTertiary}
+                                color={C.textTertiary}
                             />
                         </View>
                     </TouchableOpacity>
@@ -749,6 +1089,8 @@ function DraggableTaskItem({
     onDragMove: (x: number, y: number) => void;
     onDragEnd: () => void;
 }) {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const isDraggingRef = useRef(false);
     const group = task.groupId ? groupMap[task.groupId] : null;
     const due = formatDueCompact(task);
@@ -839,7 +1181,7 @@ function DraggableTaskItem({
                 >
                     <View style={[
                         styles.qCheckInner,
-                        { borderColor: Colors.light.textTertiary },
+                        { borderColor: C.textTertiary },
                         task.completed && styles.qCheckCompleted,
                     ]}>
                         {task.completed && (
@@ -861,13 +1203,13 @@ function DraggableTaskItem({
                         <View style={styles.taskItemMeta}>
                             {due && (
                                 <View style={styles.taskMetaTag}>
-                                    <Ionicons name="calendar-outline" size={10} color={Colors.light.textTertiary} />
+                                    <Ionicons name="calendar-outline" size={10} color={C.textTertiary} />
                                     <Text style={styles.taskMetaText}>{due}</Text>
                                 </View>
                             )}
                             {group && (
                                 <View style={styles.taskMetaTag}>
-                                    <View style={[styles.taskGroupDot, { backgroundColor: group.color || Colors.light.textTertiary }]} />
+                                    <View style={[styles.taskGroupDot, { backgroundColor: group.color || C.textTertiary }]} />
                                     <Text style={styles.taskMetaText} numberOfLines={1}>{group.name}</Text>
                                 </View>
                             )}
@@ -877,7 +1219,7 @@ function DraggableTaskItem({
             </View>
             {/* Instant-drag handle (separate touch target) */}
             <View style={styles.dragHandle} {...handlePan.panHandlers}>
-                <Ionicons name="move-outline" size={14} color={Colors.light.textTertiary} />
+                <Ionicons name="move-outline" size={14} color={C.textTertiary} />
             </View>
         </View>
     );
@@ -923,7 +1265,13 @@ function QuadrantCell({
     onDragEnd: () => void;
     onLayoutQuadrant: (layout: { x: number; y: number; w: number; h: number }) => void;
 }) {
+    const C = useColors();
+    const { isDark } = useTheme();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const meta = QUADRANT_META[q];
+    const quadColor = isDark ? meta.darkColor : meta.color;
+    const quadBg = isDark ? meta.darkBg : meta.bg;
+    const quadBorder = isDark ? meta.darkBorder : meta.border;
     const innerRef = useRef<View>(null);
 
     return (
@@ -940,12 +1288,12 @@ function QuadrantCell({
                 ref={innerRef}
                 style={[
                     styles.qInner,
-                    { borderColor: meta.border },
+                    { borderColor: quadBorder },
                     isHovered && {
-                        borderColor: meta.color,
+                        borderColor: quadColor,
                         borderWidth: 2,
-                        backgroundColor: meta.bg,
-                        shadowColor: meta.color,
+                        backgroundColor: quadBg,
+                        shadowColor: quadColor,
                         shadowOffset: { width: 0, height: 0 },
                         shadowOpacity: 0.3,
                         shadowRadius: 12,
@@ -954,15 +1302,15 @@ function QuadrantCell({
                 ]}
             >
                 {/* Header */}
-                <View style={[styles.qHeader, { backgroundColor: meta.bg }]}>
+                <View style={[styles.qHeader, { backgroundColor: quadBg }]}>
                     <View style={styles.qHeaderLeft}>
-                        <View style={[styles.qDot, { backgroundColor: meta.color }]} />
+                        <View style={[styles.qDot, { backgroundColor: quadColor }]} />
                         {!isCollapsed && (
                             <>
                                 <Text
                                     style={[
                                         styles.qLabel,
-                                        { color: meta.color },
+                                        { color: quadColor },
                                         isExpanded && styles.qLabelExpanded,
                                     ]}
                                     numberOfLines={1}
@@ -984,7 +1332,7 @@ function QuadrantCell({
                                 onPress={() => onAdd(q)}
                                 hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                             >
-                                <Ionicons name="add-circle-outline" size={18} color={meta.color} />
+                                <Ionicons name="add-circle-outline" size={18} color={quadColor} />
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity
@@ -992,13 +1340,13 @@ function QuadrantCell({
                             hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
                             style={[
                                 styles.expandBtn,
-                                isExpanded && { backgroundColor: meta.color + "20" },
+                                isExpanded && { backgroundColor: quadColor + "20" },
                             ]}
                         >
                             <Ionicons
                                 name={isExpanded ? "contract-outline" : "expand-outline"}
                                 size={14}
-                                color={meta.color}
+                                color={quadColor}
                             />
                         </TouchableOpacity>
                     </View>
@@ -1031,8 +1379,8 @@ function QuadrantCell({
                         <View style={styles.qEmptyContainer}>
                             {isDragging ? (
                                 <View style={styles.dropZone}>
-                                    <Ionicons name="add-circle" size={24} color={meta.color + "80"} />
-                                    <Text style={[styles.dropZoneText, { color: meta.color }]}>
+                                    <Ionicons name="add-circle" size={24} color={quadColor + "80"} />
+                                    <Text style={[styles.dropZoneText, { color: quadColor }]}>
                                         Drop here
                                     </Text>
                                 </View>
@@ -1073,6 +1421,10 @@ function TaskItem({
     onDragMove: (x: number, y: number) => void;
     onDragEnd: () => void;
 }) {
+    const C = useColors();
+    const { isDark } = useTheme();
+    const styles = useMemo(() => makeStyles(C), [C]);
+    const quadColor = isDark ? meta.darkColor : meta.color;
     const due = formatDueCompact(task);
     const group = task.groupId ? groupMap[task.groupId] : null;
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1135,7 +1487,7 @@ function TaskItem({
             >
                 <View style={[
                     styles.qCheckInner,
-                    { borderColor: meta.color },
+                    { borderColor: quadColor },
                     task.completed && styles.qCheckCompleted,
                 ]}>
                     {task.completed && (
@@ -1162,13 +1514,13 @@ function TaskItem({
                     <View style={styles.taskItemMeta}>
                         {due && (
                             <View style={styles.taskMetaTag}>
-                                <Ionicons name="calendar-outline" size={10} color={Colors.light.textTertiary} />
+                                <Ionicons name="calendar-outline" size={10} color={C.textTertiary} />
                                 <Text style={styles.taskMetaText}>{due}</Text>
                             </View>
                         )}
                         {group && (
                             <View style={styles.taskMetaTag}>
-                                <View style={[styles.taskGroupDot, { backgroundColor: group.color || Colors.light.textTertiary }]} />
+                                <View style={[styles.taskGroupDot, { backgroundColor: group.color || C.textTertiary }]} />
                                 <Text style={styles.taskMetaText} numberOfLines={1}>{group.name}</Text>
                             </View>
                         )}
@@ -1187,370 +1539,3 @@ function TaskItem({
 }
 
 // ── Styles ────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 60 : 48,
-        paddingBottom: Spacing.md,
-        backgroundColor: Colors.light.bgCard,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    headerTitle: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.3,
-    },
-    resetBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.accentLight,
-    },
-    resetBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    grid: {
-        flex: 1,
-    },
-    gridInner: {
-        flex: 1,
-    },
-    gridRow: {
-        flexDirection: "row",
-    },
-    quadrant: {
-        padding: Spacing.xs,
-    },
-    qInner: {
-        flex: 1,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        overflow: "hidden",
-    },
-    qHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 6,
-    },
-    qHeaderLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        flex: 1,
-    },
-    qHeaderRight: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    qDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-    },
-    qLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-        flexShrink: 1,
-    },
-    qLabelExpanded: {
-        fontSize: FontSize.md,
-    },
-    qCount: {
-        fontSize: 10,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-    qCountExpanded: {
-        fontSize: FontSize.xs,
-    },
-    expandBtn: {
-        padding: 3,
-        borderRadius: Radius.sm,
-    },
-    qTaskList: {
-        flex: 1,
-        backgroundColor: Colors.light.bgCard,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 2,
-    },
-    qTask: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 5,
-        paddingVertical: 5,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-    },
-    qCheckbox: {
-        padding: 2,
-        marginTop: 1,
-    },
-    qCheckInner: {
-        width: 14,
-        height: 14,
-        borderRadius: 4,
-        borderWidth: 1.5,
-        justifyContent: "center" as const,
-        alignItems: "center" as const,
-    },
-    taskItemContent: {
-        flex: 1,
-    },
-    qTaskTitle: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-        lineHeight: 18,
-    },
-    qTaskTitleExpanded: {
-        fontSize: FontSize.md,
-        lineHeight: 22,
-    },
-    qTaskTitleCompleted: {
-        textDecorationLine: "line-through" as const,
-        color: Colors.light.textTertiary,
-    },
-    qCheckCompleted: {
-        backgroundColor: Colors.light.success,
-        borderColor: Colors.light.success,
-    },
-    taskItemMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 2,
-    },
-    taskMetaTag: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 2,
-    },
-    taskMetaText: {
-        fontSize: 9,
-        color: Colors.light.textTertiary,
-    },
-    taskGroupDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    taskNotes: {
-        fontSize: 9,
-        color: Colors.light.textTertiary,
-        fontStyle: "italic",
-        marginTop: 2,
-    },
-    qEmptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: Spacing.lg,
-    },
-    qEmpty: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        textAlign: "center",
-    },
-    dropZone: {
-        alignItems: "center",
-        gap: 4,
-    },
-    dropZoneText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-    },
-    filterBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingTop: 6,
-        paddingBottom: 2,
-        zIndex: 20,
-    },
-    filterChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    filterChipActive: {
-        backgroundColor: Colors.light.accentLight,
-        borderColor: Colors.light.accent,
-    },
-    filterChipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "500" as const,
-        color: Colors.light.textSecondary,
-    },
-    filterChipTextActive: {
-        color: Colors.light.accent,
-    },
-    filterDropdown: {
-        position: "absolute",
-        top: 36,
-        left: 0,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        elevation: 6,
-        zIndex: 30,
-        minWidth: 150,
-        overflow: "hidden",
-    },
-    filterOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-    },
-    filterOptionActive: {
-        backgroundColor: Colors.light.accentLight,
-    },
-    filterOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-    },
-    filterOptionTextActive: {
-        color: Colors.light.accent,
-        fontWeight: "600" as const,
-    },
-    // ── Tray styles ──────────────────────────────────────────
-    tray: {
-        backgroundColor: Colors.light.bgCard,
-        borderTopWidth: 1,
-        borderTopColor: Colors.light.borderLight,
-        borderTopLeftRadius: Radius.lg,
-        borderTopRightRadius: Radius.lg,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 10,
-        overflow: "hidden",
-    },
-    trayHandle: {
-        alignItems: "center",
-        paddingTop: 8,
-        paddingBottom: 6,
-        paddingHorizontal: Spacing.lg,
-    },
-    trayHandlePill: {
-        width: 36,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: Colors.light.borderLight,
-        marginBottom: 8,
-    },
-    trayHandleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-    },
-    trayHandleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    trayHandleText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-    trayContent: {
-        overflow: "hidden",
-    },
-    trayScrollContent: {
-        paddingHorizontal: Spacing.lg,
-        paddingBottom: Spacing.lg,
-    },
-    trayTask: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 10,
-        paddingHorizontal: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.sm,
-    },
-    trayTaskContent: {
-        flex: 1,
-        flexDirection: "row" as const,
-        alignItems: "center" as const,
-        gap: 8,
-    },
-    trayTaskTitle: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textPrimary,
-        lineHeight: 18,
-    },
-    dragHandle: {
-        width: 32,
-        height: 32,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bg,
-        justifyContent: "center" as const,
-        alignItems: "center" as const,
-        marginLeft: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    // ── Ghost card ───────────────────────────────────────────
-    ghostCard: {
-        position: "absolute",
-        zIndex: 999,
-        width: 160,
-    },
-    ghostCardInner: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderWidth: 1.5,
-        borderColor: Colors.light.accent,
-        shadowColor: Colors.light.accent,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-        elevation: 12,
-    },
-    ghostCardText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     View,
     Text,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useColors } from "@/hooks/useTheme";
 import { createGroupUnified, updateGroupUnified, deleteGroupUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import type { Task, TaskGroup } from "@/lib/types";
@@ -31,12 +32,160 @@ type Props = {
     tasks?: Task[];
 };
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: C.borderLight,
+        backgroundColor: C.bgCard,
+    },
+    cancelText: {
+        fontSize: FontSize.md,
+        color: C.textSecondary,
+    },
+    headerTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    saveText: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.accent,
+    },
+    saveTextDisabled: {
+        opacity: 0.4,
+    },
+    body: {
+        flex: 1,
+        padding: Spacing.lg,
+    },
+    section: {
+        marginBottom: Spacing.xxl,
+    },
+    sectionLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textSecondary,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        marginBottom: Spacing.sm,
+    },
+    input: {
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 14,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+    },
+    colorGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: Spacing.md,
+    },
+    colorSwatch: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    colorSwatchSelected: {
+        borderWidth: 3,
+        borderColor: "rgba(255,255,255,0.5)",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    previewCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.sm,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+    },
+    previewDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    previewName: {
+        fontSize: FontSize.md,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    deleteBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        paddingVertical: Spacing.md,
+        marginTop: Spacing.lg,
+    },
+    deleteText: {
+        fontSize: FontSize.md,
+        color: C.danger,
+        fontWeight: "500",
+    },
+    statsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingVertical: Spacing.md,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: "center",
+        gap: 2,
+    },
+    statNumber: {
+        fontSize: FontSize.xl,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+    statLabel: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+        fontWeight: "500",
+    },
+    statDivider: {
+        width: 1,
+        height: 28,
+        backgroundColor: C.borderLight,
+    },
+});
+}
+
 export default function GroupModal({ visible, onClose, group, groupCount, tasks = [] }: Props) {
+    const C = useColors();
     const { user } = useAuth();
     const isEdit = !!group;
     const [name, setName] = useState("");
     const [color, setColor] = useState(GROUP_COLORS[0]);
     const [saving, setSaving] = useState(false);
+
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     useEffect(() => {
         if (visible) {
@@ -132,7 +281,7 @@ export default function GroupModal({ visible, onClose, group, groupCount, tasks 
                             value={name}
                             onChangeText={setName}
                             placeholder="e.g. Work, Personal, CS 505"
-                            placeholderTextColor={Colors.light.textTertiary}
+                            placeholderTextColor={C.textTertiary}
                             autoFocus
                         />
                     </View>
@@ -186,12 +335,12 @@ export default function GroupModal({ visible, onClose, group, groupCount, tasks 
                                     </View>
                                     <View style={[styles.statDivider]} />
                                     <View style={styles.statItem}>
-                                        <Text style={[styles.statNumber, { color: Colors.light.accent }]}>{active}</Text>
+                                        <Text style={[styles.statNumber, { color: C.accent }]}>{active}</Text>
                                         <Text style={styles.statLabel}>Active</Text>
                                     </View>
                                     <View style={[styles.statDivider]} />
                                     <View style={styles.statItem}>
-                                        <Text style={[styles.statNumber, { color: Colors.light.success }]}>{completed}</Text>
+                                        <Text style={[styles.statNumber, { color: C.success }]}>{completed}</Text>
                                         <Text style={styles.statLabel}>Completed</Text>
                                     </View>
                                 </View>
@@ -206,7 +355,7 @@ export default function GroupModal({ visible, onClose, group, groupCount, tasks 
                             onPress={handleDelete}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name="trash-outline" size={18} color={Colors.light.danger} />
+                            <Ionicons name="trash-outline" size={18} color={C.danger} />
                             <Text style={styles.deleteText}>Delete List</Text>
                         </TouchableOpacity>
                     )}
@@ -215,147 +364,3 @@ export default function GroupModal({ visible, onClose, group, groupCount, tasks 
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.borderLight,
-        backgroundColor: Colors.light.bgCard,
-    },
-    cancelText: {
-        fontSize: FontSize.md,
-        color: Colors.light.textSecondary,
-    },
-    headerTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    saveText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.accent,
-    },
-    saveTextDisabled: {
-        opacity: 0.4,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.lg,
-    },
-    section: {
-        marginBottom: Spacing.xxl,
-    },
-    sectionLabel: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-        marginBottom: Spacing.sm,
-    },
-    input: {
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-    },
-    colorGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: Spacing.md,
-    },
-    colorSwatch: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    colorSwatchSelected: {
-        borderWidth: 3,
-        borderColor: "rgba(255,255,255,0.5)",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    previewCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
-    },
-    previewDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    previewName: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: Colors.light.textPrimary,
-    },
-    deleteBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        paddingVertical: Spacing.md,
-        marginTop: Spacing.lg,
-    },
-    deleteText: {
-        fontSize: FontSize.md,
-        color: Colors.light.danger,
-        fontWeight: "500",
-    },
-    statsRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingVertical: Spacing.md,
-    },
-    statItem: {
-        flex: 1,
-        alignItems: "center",
-        gap: 2,
-    },
-    statNumber: {
-        fontSize: FontSize.xl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-    statLabel: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        fontWeight: "500",
-    },
-    statDivider: {
-        width: 1,
-        height: 28,
-        backgroundColor: Colors.light.borderLight,
-    },
-});
