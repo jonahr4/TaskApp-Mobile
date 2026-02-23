@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     View,
     Text,
@@ -9,14 +9,186 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
-    Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
+import { useColors } from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: C.bg,
+    },
+    navBar: {
+        paddingTop: 56,
+        paddingHorizontal: Spacing.md,
+        paddingBottom: Spacing.sm,
+        backgroundColor: C.bg,
+    },
+    backBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+    },
+    backText: {
+        fontSize: FontSize.md,
+        color: C.accent,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: "center",
+        padding: Spacing.xxl,
+        paddingTop: 0,
+    },
+    brandSection: {
+        alignItems: "center",
+        marginBottom: Spacing.xxl,
+    },
+    logoBox: {
+        width: 64,
+        height: 64,
+        borderRadius: Radius.lg,
+        backgroundColor: C.accent,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: Spacing.lg,
+        ...Shadows.md,
+        shadowColor: C.accent,
+        shadowOpacity: 0.3,
+    },
+    appName: {
+        fontSize: 32,
+        fontWeight: "800",
+        color: C.textPrimary,
+        letterSpacing: -0.5,
+    },
+    tagline: {
+        fontSize: FontSize.md,
+        color: C.textSecondary,
+        textAlign: "center",
+        marginTop: Spacing.sm,
+        maxWidth: 280,
+        lineHeight: 22,
+    },
+    featurePills: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        marginBottom: Spacing.xxxl,
+    },
+    pill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: C.accentLight,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 6,
+        borderRadius: Radius.full,
+    },
+    pillText: {
+        fontSize: FontSize.xs,
+        color: C.accent,
+        fontWeight: "600",
+    },
+    card: {
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.xl,
+        padding: Spacing.xxl,
+        borderWidth: 0,
+        ...Shadows.lg,
+    },
+    cardTitle: {
+        fontSize: FontSize.xl,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+    cardSubtitle: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+        marginTop: 2,
+        marginBottom: Spacing.lg,
+    },
+    googleBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: Spacing.sm,
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: Radius.md,
+        paddingVertical: 14,
+    },
+    googleBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: "500",
+        color: C.textPrimary,
+    },
+    divider: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginVertical: Spacing.lg,
+        gap: Spacing.md,
+    },
+    dividerLine: {
+        flex: 1,
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: C.borderLight,
+    },
+    dividerText: {
+        fontSize: FontSize.xs,
+        color: C.textTertiary,
+    },
+    input: {
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.md,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 14,
+        fontSize: FontSize.md,
+        color: C.textPrimary,
+        marginBottom: Spacing.md,
+    },
+    errorText: {
+        fontSize: FontSize.sm,
+        color: C.danger,
+        marginBottom: Spacing.sm,
+    },
+    submitButton: {
+        backgroundColor: C.accent,
+        paddingVertical: 16,
+        borderRadius: Radius.md,
+        alignItems: "center",
+        marginTop: Spacing.md,
+        ...Shadows.sm,
+        shadowColor: C.accent,
+        shadowOpacity: 0.25,
+    },
+    buttonDisabled: {
+        opacity: 0.6,
+    },
+    submitText: {
+        color: "#fff",
+        fontSize: FontSize.md,
+        fontWeight: "600",
+    },
+    toggleLink: {
+        marginTop: Spacing.lg,
+        alignItems: "center",
+    },
+    toggleText: {
+        fontSize: FontSize.sm,
+        color: C.textTertiary,
+    },
+});
+}
+
 export default function LoginScreen() {
+    const C = useColors();
+    const styles = useMemo(() => makeStyles(C), [C]);
     const { signInEmail, signUpEmail, signInGoogle } = useAuth();
     const router = useRouter();
     const [email, setEmail] = useState("");
@@ -85,7 +257,7 @@ export default function LoginScreen() {
                     style={styles.backBtn}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                    <Ionicons name="chevron-back" size={24} color={Colors.light.accent} />
+                    <Ionicons name="chevron-back" size={24} color={C.accent} />
                     <Text style={styles.backText}>Back</Text>
                 </TouchableOpacity>
             </View>
@@ -113,7 +285,7 @@ export default function LoginScreen() {
                         { icon: "calendar" as const, label: "Calendar" },
                     ].map((f) => (
                         <View key={f.label} style={styles.pill}>
-                            <Ionicons name={f.icon} size={12} color={Colors.light.accent} />
+                            <Ionicons name={f.icon} size={12} color={C.accent} />
                             <Text style={styles.pillText}>{f.label}</Text>
                         </View>
                     ))}
@@ -134,10 +306,8 @@ export default function LoginScreen() {
                         activeOpacity={0.8}
                         onPress={handleGoogleSignIn}
                         disabled={submitting}
-                        accessibilityLabel="Continue with Google"
-                        accessibilityRole="button"
                     >
-                        <Ionicons name="logo-google" size={18} color={Colors.light.textPrimary} />
+                        <Ionicons name="logo-google" size={18} color={C.textPrimary} />
                         <Text style={styles.googleBtnText}>Continue with Google</Text>
                     </TouchableOpacity>
 
@@ -150,25 +320,21 @@ export default function LoginScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
-                        placeholderTextColor={Colors.light.textTertiary}
+                        placeholderTextColor={C.textTertiary}
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
-                        accessibilityLabel="Email address"
-                        textContentType="emailAddress"
                     />
 
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
-                        placeholderTextColor={Colors.light.textTertiary}
+                        placeholderTextColor={C.textTertiary}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
-                        accessibilityLabel="Password"
-                        textContentType="password"
                     />
 
                     {error && <Text style={styles.errorText}>{error}</Text>}
@@ -178,8 +344,6 @@ export default function LoginScreen() {
                         onPress={handleSubmit}
                         disabled={submitting}
                         activeOpacity={0.8}
-                        accessibilityLabel={isSignUp ? "Create account" : "Sign in"}
-                        accessibilityRole="button"
                     >
                         {submitting ? (
                             <ActivityIndicator color="#fff" size="small" />
@@ -198,193 +362,8 @@ export default function LoginScreen() {
                             {isSignUp ? "Already have an account? Sign in" : "No account? Create one"}
                         </Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => Linking.openURL("https://the-task-app.vercel.app/privacy")}
-                        style={styles.privacyLink}
-                    >
-                        <Text style={styles.privacyText}>Privacy Policy</Text>
-                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.bg,
-    },
-    navBar: {
-        paddingTop: 56,
-        paddingHorizontal: Spacing.md,
-        paddingBottom: Spacing.sm,
-        backgroundColor: Colors.light.bg,
-    },
-    backBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 2,
-    },
-    backText: {
-        fontSize: FontSize.md,
-        color: Colors.light.accent,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: "center",
-        padding: Spacing.xxl,
-        paddingTop: 0,
-    },
-    brandSection: {
-        alignItems: "center",
-        marginBottom: Spacing.xxl,
-    },
-    logoBox: {
-        width: 64,
-        height: 64,
-        borderRadius: Radius.lg,
-        backgroundColor: Colors.light.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: Spacing.lg,
-        ...Shadows.md,
-        shadowColor: Colors.light.accent,
-        shadowOpacity: 0.3,
-    },
-    appName: {
-        fontSize: 32,
-        fontWeight: "800",
-        color: Colors.light.textPrimary,
-        letterSpacing: -0.5,
-    },
-    tagline: {
-        fontSize: FontSize.md,
-        color: Colors.light.textSecondary,
-        textAlign: "center",
-        marginTop: Spacing.sm,
-        maxWidth: 280,
-        lineHeight: 22,
-    },
-    featurePills: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        marginBottom: Spacing.xxxl,
-    },
-    pill: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        backgroundColor: Colors.light.accentLight,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-    },
-    pillText: {
-        fontSize: FontSize.xs,
-        color: Colors.light.accent,
-        fontWeight: "600",
-    },
-    card: {
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.xl,
-        padding: Spacing.xxl,
-        borderWidth: 0,
-        ...Shadows.lg,
-    },
-    cardTitle: {
-        fontSize: FontSize.xl,
-        fontWeight: "700",
-        color: Colors.light.textPrimary,
-    },
-    cardSubtitle: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-        marginTop: 2,
-        marginBottom: Spacing.lg,
-    },
-    googleBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.border,
-        borderRadius: Radius.md,
-        paddingVertical: 14,
-    },
-    googleBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: Colors.light.textPrimary,
-    },
-    divider: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginVertical: Spacing.lg,
-        gap: Spacing.md,
-    },
-    dividerLine: {
-        flex: 1,
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: Colors.light.borderLight,
-    },
-    dividerText: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-    },
-    input: {
-        backgroundColor: Colors.light.bg,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-        fontSize: FontSize.md,
-        color: Colors.light.textPrimary,
-        marginBottom: Spacing.md,
-    },
-    errorText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.danger,
-        marginBottom: Spacing.sm,
-    },
-    submitButton: {
-        backgroundColor: Colors.light.accent,
-        paddingVertical: 16,
-        borderRadius: Radius.md,
-        alignItems: "center",
-        marginTop: Spacing.md,
-        ...Shadows.sm,
-        shadowColor: Colors.light.accent,
-        shadowOpacity: 0.25,
-    },
-    buttonDisabled: {
-        opacity: 0.6,
-    },
-    submitText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "600",
-    },
-    toggleLink: {
-        marginTop: Spacing.lg,
-        alignItems: "center",
-    },
-    toggleText: {
-        fontSize: FontSize.sm,
-        color: Colors.light.textTertiary,
-    },
-    privacyLink: {
-        marginTop: Spacing.lg,
-        alignItems: "center",
-    },
-    privacyText: {
-        fontSize: FontSize.xs,
-        color: Colors.light.textTertiary,
-        textDecorationLine: "underline",
-    },
-});

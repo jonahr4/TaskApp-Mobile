@@ -8,6 +8,7 @@ import {
     ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useColors } from "@/hooks/useTheme";
 import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
 import type { TaskGroup } from "@/lib/types";
 
@@ -22,8 +23,89 @@ type Props = {
  * Multi-select group filter dropdown chip.
  * Shows "All Tasks ▼" when everything selected, "3/7 Groups ▼" otherwise.
  */
+function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
+    chip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: Radius.full,
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+    },
+    chipActive: {
+        backgroundColor: C.accentLight,
+        borderColor: C.accent,
+    },
+    chipText: {
+        fontSize: FontSize.xs,
+        fontWeight: "600",
+        color: C.textSecondary,
+    },
+    chipTextActive: {
+        color: C.accent,
+    },
+    dropdown: {
+        position: "absolute",
+        top: "100%",
+        right: 0,
+        marginTop: 4,
+        minWidth: 190,
+        backgroundColor: C.bgCard,
+        borderRadius: Radius.md,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        shadowColor: "#000",
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
+        overflow: "hidden",
+    },
+    listScroll: {
+        maxHeight: 240,
+    },
+    allOption: {
+        borderBottomWidth: 0,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: C.borderLight,
+    },
+    option: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    optionActive: {
+        backgroundColor: C.accentLight + "30",
+    },
+    optionText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+    },
+    optionTextActive: {
+        color: C.textPrimary,
+        fontWeight: "500",
+    },
+    colorDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+});
+}
+
 export function GroupFilterDropdown({ groups, selectedIds, onToggle, onSelectAll }: Props) {
+    const C = useColors();
     const [open, setOpen] = useState(false);
+
+    const styles = useMemo(() => makeStyles(C), [C]);
 
     // Include "General Tasks" (empty-id bucket) + user groups
     const allEntries = useMemo(() => {
@@ -55,12 +137,12 @@ export function GroupFilterDropdown({ groups, selectedIds, onToggle, onSelectAll
                     <Ionicons
                         name="layers-outline"
                         size={12}
-                        color={isFiltered ? Colors.light.accent : Colors.light.textSecondary}
+                        color={isFiltered ? C.accent : C.textSecondary}
                     />
                     <Text style={[styles.chipText, isFiltered && styles.chipTextActive]}>
                         {label}
                     </Text>
-                    <Ionicons name="chevron-down" size={10} color={Colors.light.textTertiary} />
+                    <Ionicons name="chevron-down" size={10} color={C.textTertiary} />
                 </TouchableOpacity>
 
                 {open && (
@@ -76,7 +158,7 @@ export function GroupFilterDropdown({ groups, selectedIds, onToggle, onSelectAll
                             <Ionicons
                                 name={allSelected ? "checkbox" : "square-outline"}
                                 size={16}
-                                color={allSelected ? Colors.light.accent : Colors.light.textTertiary}
+                                color={allSelected ? C.accent : C.textTertiary}
                             />
                             <Text
                                 style={[
@@ -104,7 +186,7 @@ export function GroupFilterDropdown({ groups, selectedIds, onToggle, onSelectAll
                                         <Ionicons
                                             name={checked ? "checkbox" : "square-outline"}
                                             size={16}
-                                            color={checked ? Colors.light.accent : Colors.light.textTertiary}
+                                            color={checked ? C.accent : C.textTertiary}
                                         />
                                         <View
                                             style={[styles.colorDot, { backgroundColor: entry.color }]}
@@ -136,80 +218,3 @@ export function GroupFilterDropdown({ groups, selectedIds, onToggle, onSelectAll
         </>
     );
 }
-
-const styles = StyleSheet.create({
-    chip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Radius.full,
-        backgroundColor: Colors.light.bgCard,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-    },
-    chipActive: {
-        backgroundColor: Colors.light.accentLight,
-        borderColor: Colors.light.accent,
-    },
-    chipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: Colors.light.textSecondary,
-    },
-    chipTextActive: {
-        color: Colors.light.accent,
-    },
-    dropdown: {
-        position: "absolute",
-        top: "100%",
-        right: 0,
-        marginTop: 4,
-        minWidth: 190,
-        backgroundColor: Colors.light.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: Colors.light.borderLight,
-        shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 8,
-        overflow: "hidden",
-    },
-    listScroll: {
-        maxHeight: 240,
-    },
-    allOption: {
-        borderBottomWidth: 0,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.light.borderLight,
-    },
-    option: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-    },
-    optionActive: {
-        backgroundColor: Colors.light.accentLight + "30",
-    },
-    optionText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.light.textSecondary,
-    },
-    optionTextActive: {
-        color: Colors.light.textPrimary,
-        fontWeight: "500",
-    },
-    colorDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-});
