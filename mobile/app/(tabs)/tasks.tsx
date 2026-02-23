@@ -136,6 +136,8 @@ function TaskRow({
             onPress={onPress}
             onLongPress={handleLongPress}
             activeOpacity={0.7}
+            accessibilityLabel={`Task: ${task.title}${task.completed ? ", completed" : ""}`}
+            accessibilityRole="button"
         >
             <TouchableOpacity
                 style={[
@@ -144,6 +146,8 @@ function TaskRow({
                 ]}
                 onPress={onToggle}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={task.completed ? "Mark as incomplete" : "Mark as complete"}
+                accessibilityRole="checkbox"
             >
                 {task.completed && (
                     <Ionicons name="checkmark" size={14} color="#fff" />
@@ -179,6 +183,8 @@ function TaskRow({
                 onPress={onDelete}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.deleteBtn}
+                accessibilityLabel={`Delete ${task.title}`}
+                accessibilityRole="button"
             >
                 <Ionicons name="trash-outline" size={16} color={Colors.light.textTertiary} />
             </TouchableOpacity>

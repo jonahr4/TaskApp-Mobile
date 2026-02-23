@@ -9,6 +9,7 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
+    Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -133,6 +134,8 @@ export default function LoginScreen() {
                         activeOpacity={0.8}
                         onPress={handleGoogleSignIn}
                         disabled={submitting}
+                        accessibilityLabel="Continue with Google"
+                        accessibilityRole="button"
                     >
                         <Ionicons name="logo-google" size={18} color={Colors.light.textPrimary} />
                         <Text style={styles.googleBtnText}>Continue with Google</Text>
@@ -153,6 +156,8 @@ export default function LoginScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
+                        accessibilityLabel="Email address"
+                        textContentType="emailAddress"
                     />
 
                     <TextInput
@@ -162,6 +167,8 @@ export default function LoginScreen() {
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
+                        accessibilityLabel="Password"
+                        textContentType="password"
                     />
 
                     {error && <Text style={styles.errorText}>{error}</Text>}
@@ -171,6 +178,8 @@ export default function LoginScreen() {
                         onPress={handleSubmit}
                         disabled={submitting}
                         activeOpacity={0.8}
+                        accessibilityLabel={isSignUp ? "Create account" : "Sign in"}
+                        accessibilityRole="button"
                     >
                         {submitting ? (
                             <ActivityIndicator color="#fff" size="small" />
@@ -188,6 +197,13 @@ export default function LoginScreen() {
                         <Text style={styles.toggleText}>
                             {isSignUp ? "Already have an account? Sign in" : "No account? Create one"}
                         </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => Linking.openURL("https://the-task-app.vercel.app/privacy")}
+                        style={styles.privacyLink}
+                    >
+                        <Text style={styles.privacyText}>Privacy Policy</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -361,5 +377,14 @@ const styles = StyleSheet.create({
     toggleText: {
         fontSize: FontSize.sm,
         color: Colors.light.textTertiary,
+    },
+    privacyLink: {
+        marginTop: Spacing.lg,
+        alignItems: "center",
+    },
+    privacyText: {
+        fontSize: FontSize.xs,
+        color: Colors.light.textTertiary,
+        textDecorationLine: "underline",
     },
 });

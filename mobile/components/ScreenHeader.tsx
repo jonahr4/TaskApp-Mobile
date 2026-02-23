@@ -6,6 +6,9 @@ import {
     TouchableOpacity,
     Pressable,
     Platform,
+    Alert,
+    ActivityIndicator,
+    Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -20,22 +23,53 @@ type Props = {
 };
 
 export default function ScreenHeader({ title }: Props) {
-    const { user, logOut } = useAuth();
+    const { user, logOut, deleteAccount } = useAuth();
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const [calFeedOpen, setCalFeedOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const close = useCallback(() => setMenuOpen(false), []);
+
+    const handleDeleteAccount = useCallback(() => {
+        Alert.alert(
+            "Delete Account",
+            "This will permanently delete your account and all your data. This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setDeleting(true);
+                        try {
+                            await deleteAccount();
+                            close();
+                        } catch (err: any) {
+                            const msg = err?.code === "auth/requires-recent-login"
+                                ? "For security, please sign out and sign back in, then try again."
+                                : err?.message || "Failed to delete account.";
+                            Alert.alert("Error", msg);
+                        } finally {
+                            setDeleting(false);
+                        }
+                    },
+                },
+            ]
+        );
+    }, [deleteAccount, close]);
 
     return (
         <>
             {/* Header bar */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>{title}</Text>
+                <Text style={styles.headerTitle} accessibilityRole="header">{title}</Text>
                 <TouchableOpacity
                     onPress={() => setMenuOpen(!menuOpen)}
                     style={styles.profileBtn}
+                    accessibilityLabel={user ? "Account menu" : "Sign in"}
+                    accessibilityRole="button"
                 >
                     <View style={[
                         styles.profileCircle,
@@ -113,6 +147,18 @@ export default function ScreenHeader({ title }: Props) {
                             <Text style={styles.menuBtnText}>Learn More</Text>
                         </TouchableOpacity>
 
+                        {/* Privacy Policy */}
+                        <TouchableOpacity
+                            style={styles.menuBtn}
+                            onPress={() => { close(); Linking.openURL("https://the-task-app.vercel.app/privacy"); }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name="shield-checkmark-outline" size={16} color={Colors.light.textSecondary} />
+                            </View>
+                            <Text style={styles.menuBtnText}>Privacy Policy</Text>
+                        </TouchableOpacity>
+
                         <View style={styles.divider} />
 
                         {user ? (
@@ -129,6 +175,23 @@ export default function ScreenHeader({ title }: Props) {
                                         <Ionicons name="log-out-outline" size={16} color={Colors.light.danger} />
                                     </View>
                                     <Text style={[styles.menuBtnText, { color: Colors.light.danger }]}>Sign Out</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.menuBtn}
+                                    onPress={handleDeleteAccount}
+                                    activeOpacity={0.7}
+                                    disabled={deleting}
+                                >
+                                    <View style={[styles.menuIconWrap, { backgroundColor: "rgba(239,68,68,0.08)" }]}>
+                                        {deleting ? (
+                                            <ActivityIndicator size="small" color={Colors.light.danger} />
+                                        ) : (
+                                            <Ionicons name="trash-outline" size={16} color={Colors.light.danger} />
+                                        )}
+                                    </View>
+                                    <Text style={[styles.menuBtnText, { color: Colors.light.danger }]}>
+                                        {deleting ? "Deleting…" : "Delete Account"}
+                                    </Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
