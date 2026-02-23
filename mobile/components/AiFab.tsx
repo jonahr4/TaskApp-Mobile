@@ -12,6 +12,7 @@ import {
     Platform,
     Dimensions,
     Animated,
+    Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -391,6 +392,26 @@ export default function AiFab() {
             endSub?.remove?.();
             errorSub?.remove?.();
         };
+    }, []);
+
+    // Deep link: auto-open when widget sends mobile://openai
+    useEffect(() => {
+        const handleURL = (event: { url: string }) => {
+            if (event.url?.includes("openai")) {
+                setOpen(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+        };
+        // Check if app was opened via this URL
+        Linking.getInitialURL().then((url) => {
+            if (url?.includes("openai")) {
+                setOpen(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+        });
+        // Listen for subsequent URL events
+        const sub = Linking.addEventListener("url", handleURL);
+        return () => sub.remove();
     }, []);
 
     const toggleMic = async () => {
