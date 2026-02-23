@@ -5,6 +5,7 @@ import {
     deleteDoc,
     doc,
     getDoc,
+    getDocs,
     setDoc,
     serverTimestamp,
     query,
@@ -101,4 +102,28 @@ export async function getOrCreateCalendarToken(uid: string): Promise<string> {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     await setDoc(ref, { calendarToken: token, uid, timezone }, { merge: true });
     return token;
+}
+
+// --- Account Deletion ---
+
+/** Delete all Firestore data for a user (tasks, groups, user doc). */
+export async function deleteAllUserData(uid: string): Promise<void> {
+    // Delete all tasks
+    const tasksSnap = await getDocs(tasksQuery(uid));
+    for (const d of tasksSnap.docs) {
+        await deleteDoc(d.ref);
+    }
+
+    // Delete all task groups
+    const groupsSnap = await getDocs(groupsQuery(uid));
+    for (const d of groupsSnap.docs) {
+        await deleteDoc(d.ref);
+    }
+
+    // Delete user document (calendar token, etc.)
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+        await deleteDoc(userRef);
+    }
 }

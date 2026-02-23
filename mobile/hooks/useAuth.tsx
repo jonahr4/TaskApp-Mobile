@@ -15,6 +15,8 @@ import {
     type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { deleteAllUserData } from "@/lib/firestore";
+import { clearLocalData } from "@/lib/localDb";
 import { useSync, type SyncScenario } from "@/hooks/useSync";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 
@@ -38,6 +40,7 @@ type AuthCtx = {
     signInEmail: (email: string, password: string) => Promise<SyncScenario>;
     signUpEmail: (email: string, password: string) => Promise<SyncScenario>;
     signInGoogle: () => Promise<SyncScenario>;
+    deleteAccount: () => Promise<void>;
     logOut: () => Promise<void>;
     // Sync state
     syncScenario: SyncScenario | null;
@@ -53,6 +56,7 @@ const AuthContext = createContext<AuthCtx>({
     signInEmail: async () => "none",
     signUpEmail: async () => "none",
     signInGoogle: async () => "none",
+    deleteAccount: async () => { },
     logOut: async () => { },
     syncScenario: null,
     syncing: false,
@@ -114,6 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signOut(auth);
     };
 
+    const deleteAccount = async () => {
+        if (!user) throw new Error("No user signed in");
+        // Delete all cloud data first
+        await deleteAllUserData(user.uid);
+        // Clear local cache
+        await clearLocalData();
+        // Delete the Firebase auth account
+        await user.delete();
+    };
+
     const confirmMerge = async (selectedIds?: string[]) => {
         if (user) {
             await sync.confirmMerge(user, selectedIds);
@@ -128,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 signInEmail,
                 signUpEmail,
                 signInGoogle,
+                deleteAccount,
                 logOut,
                 syncScenario: sync.scenario,
                 syncing: sync.syncing,
