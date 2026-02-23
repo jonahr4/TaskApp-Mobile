@@ -11,6 +11,7 @@ async function syncToWidget(tasks: Task[]) {
     if (Platform.OS !== "ios") return;
     try {
         const WidgetDataModule = require("@/modules/widget-data").default;
+        if (!WidgetDataModule) return; // not available outside native build
         // Only send incomplete tasks, sorted by due date, capped at 10
         const upcoming: WidgetTask[] = tasks
             .filter((t) => !t.completed)

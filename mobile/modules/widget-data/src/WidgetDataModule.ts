@@ -1,8 +1,15 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { requireNativeModule } from 'expo';
 
-declare class WidgetDataModule extends NativeModule {
+declare class WidgetDataModuleType {
   setTasksJSON(json: string): Promise<void>;
   setTaskCount(count: number): Promise<void>;
 }
 
-export default requireNativeModule<WidgetDataModule>('WidgetData');
+let WidgetData: WidgetDataModuleType | null = null;
+try {
+  WidgetData = requireNativeModule<WidgetDataModuleType>('WidgetData');
+} catch {
+  // Native module not available (Expo Dev Client / simulator without native build)
+}
+
+export default WidgetData;
