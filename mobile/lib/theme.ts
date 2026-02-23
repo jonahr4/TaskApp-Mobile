@@ -27,7 +27,7 @@ export const Colors = {
         bgElevated: "#3a3a3c",
         textPrimary: "#f2f2f7",
         textSecondary: "#aeaeb2",
-        textTertiary: "#636366",
+        textTertiary: "#8e8e93",
         accent: "#7c7ff5",
         accentSoft: "#9496f8",
         accentLight: "rgba(124, 127, 245, 0.18)",

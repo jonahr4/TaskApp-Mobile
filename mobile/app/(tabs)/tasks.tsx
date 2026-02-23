@@ -17,6 +17,7 @@ import {
     UIManager,
     Platform,
     Modal,
+    ActionSheetIOS,
 } from "react-native";
 import PagerView from "react-native-pager-view";
 import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
@@ -29,7 +30,7 @@ import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 import { updateTaskUnified, deleteTaskUnified, createGroupUnified, updateGroupUnified, createTaskUnified, reorderGroupsUnified } from "@/lib/crud";
 import { Colors, Spacing, Radius, FontSize, Shadows, SCREEN } from "@/lib/theme";
-import { useColors } from "@/hooks/useTheme";
+import { useColors, useTheme } from "@/hooks/useTheme";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
@@ -114,29 +115,44 @@ function TaskRow({
     onDuplicate: () => void;
 }) {
     const C = useColors();
+    const { isDark } = useTheme();
     const styles = useMemo(() => makeStyles(C), [C]);
     const quadrant = getQuadrant(task);
     const meta = quadrant ? QUADRANT_META[quadrant] : null;
     const due = formatDueDateTime(task);
 
-    const handleLongPress = useCallback(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        Alert.alert(
-            task.title,
-            undefined,
-            [
-                { text: "Duplicate Task", onPress: onDuplicate },
-                { text: "Delete Task", style: "destructive", onPress: onDelete },
+    const quadColor = meta ? (isDark ? meta.darkColor : meta.color) : null;
+    const quadBg = meta ? (isDark ? meta.darkBg : meta.bg) : null;
+    const quadBorder = meta ? (isDark ? meta.darkBorder : meta.border) : null;
+
+    const showMenu = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS === "ios") {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: ["Cancel", "Duplicate", "Delete"],
+                    destructiveButtonIndex: 2,
+                    cancelButtonIndex: 0,
+                    title: task.title,
+                },
+                (idx) => {
+                    if (idx === 1) onDuplicate();
+                    if (idx === 2) onDelete();
+                }
+            );
+        } else {
+            Alert.alert(task.title, undefined, [
+                { text: "Duplicate", onPress: onDuplicate },
+                { text: "Delete", style: "destructive", onPress: onDelete },
                 { text: "Cancel", style: "cancel" },
-            ]
-        );
+            ]);
+        }
     }, [onDuplicate, onDelete, task.title]);
 
     return (
         <TouchableOpacity
             style={styles.taskRow}
             onPress={onPress}
-            onLongPress={handleLongPress}
             activeOpacity={0.7}
         >
             <TouchableOpacity
@@ -163,13 +179,14 @@ function TaskRow({
                     {task.title}
                 </Text>
                 <View style={styles.taskMeta}>
-                    {due && (
-                        <Text style={styles.taskDue}>{due}</Text>
-                    )}
-                    {meta && (
-                        <View style={[styles.priorityBadge, { backgroundColor: meta.bg, borderColor: meta.border }]}>
-                            <View style={[styles.priorityDot, { backgroundColor: meta.color }]} />
-                            <Text style={[styles.priorityText, { color: meta.color }]}>
+                    {due
+                        ? <Text style={styles.taskDue}>{due}</Text>
+                        : <View style={{ flex: 1 }} />
+                    }
+                    {due && <View style={{ flex: 1 }} />}
+                    {meta && quadColor && quadBg && quadBorder && (
+                        <View style={[styles.priorityBadge, { backgroundColor: quadBg, borderColor: quadBorder }]}>
+                            <Text style={[styles.priorityText, { color: quadColor }]} numberOfLines={1}>
                                 {meta.sublabel}
                             </Text>
                         </View>
@@ -178,11 +195,11 @@ function TaskRow({
             </View>
 
             <TouchableOpacity
-                onPress={onDelete}
+                onPress={showMenu}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.deleteBtn}
+                style={styles.menuBtn}
             >
-                <Ionicons name="trash-outline" size={16} color={C.textTertiary} />
+                <Ionicons name="ellipsis-vertical" size={17} color={C.textTertiary} />
             </TouchableOpacity>
         </TouchableOpacity>
     );
@@ -681,34 +698,27 @@ function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
     taskMeta: {
         flexDirection: "row",
         alignItems: "center",
-        gap: Spacing.sm,
-        marginTop: 4,
-        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 3,
     },
     taskDue: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
+        fontSize: 11,
+        color: C.textSecondary,
     },
     priorityBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 7,
         paddingVertical: 2,
-        borderRadius: Radius.sm,
+        paddingHorizontal: 5,
+        borderRadius: 4,
         borderWidth: 1,
-    },
-    priorityDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
     },
     priorityText: {
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "500",
     },
-    deleteBtn: {
+    menuBtn: {
         padding: 6,
+        alignItems: "center",
+        justifyContent: "center",
     },
     emptyState: {
         alignItems: "center",
