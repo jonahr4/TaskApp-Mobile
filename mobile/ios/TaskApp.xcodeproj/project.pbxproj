@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,12 @@
 		B7B5166E7F6D5CD3D3AB8FC3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EC1EC2F41A7B82C383595BF9 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		C10A00012F4D000000000001 /* TaskAppWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000001 /* TaskAppWidgets.swift */; };
+		C10A00012F4D000000000002 /* TaskAppWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000002 /* TaskAppWidgetsBundle.swift */; };
+		C10A00012F4D000000000003 /* AppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000003 /* AppIntent.swift */; };
+		C10A00012F4D000000000004 /* TaskAppWidgetsControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000004 /* TaskAppWidgetsControl.swift */; };
+		C10A00012F4D000000000005 /* TaskAppWidgetsLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000005 /* TaskAppWidgetsLiveActivity.swift */; };
+		C10A00012F4D000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C10A00002F4D000000000006 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,27 +66,17 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TaskApp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* TaskApp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "TaskApp-Bridging-Header.h"; path = "TaskApp/TaskApp-Bridging-Header.h"; sourceTree = "<group>"; };
+		C10A00002F4D000000000001 /* TaskAppWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAppWidgets.swift; sourceTree = "<group>"; };
+		C10A00002F4D000000000002 /* TaskAppWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAppWidgetsBundle.swift; sourceTree = "<group>"; };
+		C10A00002F4D000000000003 /* AppIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntent.swift; sourceTree = "<group>"; };
+		C10A00002F4D000000000004 /* TaskAppWidgetsControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAppWidgetsControl.swift; sourceTree = "<group>"; };
+		C10A00002F4D000000000005 /* TaskAppWidgetsLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAppWidgetsLiveActivity.swift; sourceTree = "<group>"; };
+		C10A00002F4D000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C10A00002F4D000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C10A00002F4D000000000008 /* TaskAppWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskAppWidgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		B59A0F7A2F4CFB0B006369C3 /* TaskAppWidgets */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				B59A0FA02F4CFB0B006369C3 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {};
-			explicitFolders = ();
-			path = TaskAppWidgets;
-			sourceTree = "<group>";
-		};
-		B59A0FA02F4CFB0B006369C3 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = B59A0F742F4CFB0B006369C3 /* TaskAppWidgetsExtension */;
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
+
 
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
@@ -160,6 +156,21 @@
 			name = Libraries;
 			sourceTree = "<group>";
 		};
+		B59A0F7A2F4CFB0B006369C3 /* TaskAppWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				C10A00002F4D000000000003 /* AppIntent.swift */,
+				C10A00002F4D000000000006 /* Assets.xcassets */,
+				C10A00002F4D000000000007 /* Info.plist */,
+				C10A00002F4D000000000008 /* TaskAppWidgets.entitlements */,
+				C10A00002F4D000000000001 /* TaskAppWidgets.swift */,
+				C10A00002F4D000000000002 /* TaskAppWidgetsBundle.swift */,
+				C10A00002F4D000000000004 /* TaskAppWidgetsControl.swift */,
+				C10A00002F4D000000000005 /* TaskAppWidgetsLiveActivity.swift */,
+			);
+			path = TaskAppWidgets;
+			sourceTree = "<group>";
+		};
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
@@ -233,9 +244,7 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				B59A0F7A2F4CFB0B006369C3 /* TaskAppWidgets */,
-			);
+
 			name = TaskAppWidgetsExtension;
 			packageProductDependencies = (
 			);
@@ -295,6 +304,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C10A00012F4D000000000006 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -452,6 +462,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C10A00012F4D000000000001 /* TaskAppWidgets.swift in Sources */,
+				C10A00012F4D000000000002 /* TaskAppWidgetsBundle.swift in Sources */,
+				C10A00012F4D000000000003 /* AppIntent.swift in Sources */,
+				C10A00012F4D000000000004 /* TaskAppWidgetsControl.swift in Sources */,
+				C10A00012F4D000000000005 /* TaskAppWidgetsLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
