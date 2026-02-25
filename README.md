@@ -25,43 +25,37 @@
 
 ---
 
-## ✨ Features
+## Screenshots
+
+<p align="center">
+  <img src="assets/images/Screenshots/iphone/ios_1.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_2.png" width="180" />
+</p>
+
+---
+
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **AI Assistant** | Type tasks in plain English — AI creates them with smart dates, priorities, and descriptions. |
-| 📊 **Eisenhower Matrix** | Drag-and-drop prioritization into Do First, Schedule, Delegate, and Eliminate quadrants. |
-| 📅 **Calendar View** | Visual calendar with color-coded priority dots for every due date. |
-| 🔍 **Smart Search** | Instantly find any task. Filter by active, completed, or keyword. |
-| 📱 **Home Screen Widgets** | Today Dashboard, Next Task, and AI Quick Action widgets. |
-| 🎙️ **Voice Input** | Speak your tasks — AI transcribes and creates them. |
-| ☁️ **Cloud Sync** | Tasks sync to Firebase and are accessible from any device via the [web app](https://the-task-app.vercel.app). |
-| 📁 **Groups** | Organize tasks by class, project, or area of life. |
-| 🔔 **Smart Notifications** | Configurable reminders with custom scheduling. |
-| 🌗 **Dark Mode** | Full dark mode support with automatic system detection. |
+| **AI Assistant** | Type tasks in plain English — AI creates them with smart dates, priorities, and descriptions. |
+| **Eisenhower Matrix** | Drag-and-drop prioritization into Do First, Schedule, Delegate, and Eliminate quadrants. |
+| **Calendar View** | Visual calendar with color-coded priority dots for every due date. |
+| **Smart Search** | Instantly find any task. Filter by active, completed, or keyword. |
+| **Home Screen Widgets** | Today Dashboard, Next Task, and AI Quick Action widgets. |
+| **Voice Input** | Speak your tasks — AI transcribes and creates them. |
+| **Cloud Sync** | Tasks sync to Firebase and are accessible from any device via the [web app](https://the-task-app.vercel.app). |
+| **Groups** | Organize tasks by class, project, or area of life. |
+| **Smart Notifications** | Configurable reminders with custom scheduling. |
+| **Dark Mode** | Full dark mode support with automatic system detection. |
 
 > 100% free — no ads, no subscriptions, no in-app purchases.
 
 ---
 
-## 📱 Screenshots
-
-<p align="center">
-  <em>Tasks • AI Assistant • Eisenhower Matrix • Calendar • Search • Widgets</em>
-</p>
-
-<!-- Replace with your actual App Store screenshots -->
-<!-- <p align="center">
-  <img src="screenshots/tasks.png" width="180" />
-  <img src="screenshots/ai.png" width="180" />
-  <img src="screenshots/matrix.png" width="180" />
-  <img src="screenshots/calendar.png" width="180" />
-  <img src="screenshots/search.png" width="180" />
-</p> -->
-
----
-
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -76,7 +70,7 @@
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```
 ├── app/                    # Expo Router screens (file-based routing)
@@ -111,7 +105,7 @@
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -157,12 +151,12 @@ npx expo run:ios
 
 ---
 
-## 🌐 Web Version
+## Web Version
 
 TaskApp also has a companion web app built with Next.js, available at [the-task-app.vercel.app](https://the-task-app.vercel.app). Tasks sync in real-time between mobile and web via Firebase.
 
 ---
 
-## 📄 License
+## License
 
 MIT © [Jonah Rothman](https://github.com/jonahr4)
