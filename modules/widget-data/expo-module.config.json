@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["WidgetDataModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.widgetdata.WidgetDataModule"]
+  }
+}
