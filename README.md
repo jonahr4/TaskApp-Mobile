@@ -29,9 +29,9 @@
 
 <p align="center">
   <img src="assets/images/Screenshots/iphone/ios_1.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_2.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
   <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_2.png" width="180" />
 </p>
 
 ---
