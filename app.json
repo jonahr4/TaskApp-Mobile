@@ -4,7 +4,7 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Icon Dev-iOS-Default-white-glass1024x1024@1x.png",
+    "icon": "./assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
