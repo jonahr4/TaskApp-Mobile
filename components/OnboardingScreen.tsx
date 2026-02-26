@@ -1,31 +1,30 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useColors } from "@/hooks/useTheme";
+import { getOrCreateCalendarToken } from "@/lib/firestore";
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
-    Animated,
-    Modal,
-    Alert,
-    Linking,
-    Platform,
-    ActivityIndicator,
-} from "react-native";
+    loadSettings,
+    requestPermissions,
+    saveSettings,
+    setupNotificationChannel
+} from "@/lib/notifications";
+import { Colors, FontSize, Radius } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
-import { useColors } from "@/hooks/useTheme";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
-    loadSettings,
-    saveSettings,
-    requestPermissions,
-    DEFAULT_SETTINGS,
-    setupNotificationChannel,
-} from "@/lib/notifications";
-import { useAuth } from "@/hooks/useAuth";
-import { getOrCreateCalendarToken } from "@/lib/firestore";
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Linking,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BASE_URL = "https://the-task-app.vercel.app";
@@ -126,176 +125,177 @@ type Props = {
     onDone: () => void;
 };
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    skipBtn: {
-        position: "absolute",
-        top: 60,
-        right: 24,
-        zIndex: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-    },
-    skipText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textTertiary,
-    },
-    // ── Page ──
-    page: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 36,
-        paddingBottom: 100,
-    },
-    iconCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 28,
-    },
-    pageTitle: {
-        fontSize: 26,
-        fontWeight: "800",
-        color: C.textPrimary,
-        textAlign: "center",
-        letterSpacing: -0.5,
-    },
-    pageSubtitle: {
-        fontSize: FontSize.md,
-        color: C.textSecondary,
-        textAlign: "center",
-        marginTop: 6,
-        marginBottom: 28,
-    },
-    bulletList: {
-        alignSelf: "stretch",
-        gap: 14,
-    },
-    bulletRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 10,
-    },
-    bulletDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginTop: 6,
-    },
-    bulletText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        lineHeight: 18,
-    },
-    // ── Interactive action area ──
-    actionArea: {
-        alignSelf: "stretch",
-        marginTop: 20,
-        gap: 10,
-    },
-    actionBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: Radius.md,
-    },
-    actionBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    actionHint: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        textAlign: "center",
-        lineHeight: 16,
-    },
-    successRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: "#ecfdf5",
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#a7f3d0",
-    },
-    successText: {
-        flex: 1,
-        fontSize: FontSize.xs,
-        color: "#065f46",
-        lineHeight: 16,
-        fontWeight: "500",
-    },
-    // ── Bottom ──
-    bottom: {
-        paddingHorizontal: 36,
-        paddingBottom: 50,
-        gap: 24,
-    },
-    dotsRow: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 10,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: C.textTertiary,
-    },
-    nextBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        backgroundColor: C.accent,
-        paddingVertical: 15,
-        borderRadius: Radius.md,
-    },
-    nextBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    lastPageActions: {
-        gap: 10,
-    },
-    signInBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        backgroundColor: C.accent,
-        paddingVertical: 15,
-        borderRadius: Radius.md,
-    },
-    signInBtnText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "700",
-    },
-    continueBtn: {
-        alignItems: "center",
-        paddingVertical: 12,
-    },
-    continueBtnText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        fontWeight: "500",
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        skipBtn: {
+            position: "absolute",
+            top: 60,
+            right: 24,
+            zIndex: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+        },
+        skipText: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textTertiary,
+        },
+        // ── Page ──
+        page: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 36,
+            paddingBottom: 100,
+        },
+        iconCircle: {
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 28,
+        },
+        pageTitle: {
+            fontSize: 26,
+            fontWeight: "800",
+            color: C.textPrimary,
+            textAlign: "center",
+            letterSpacing: -0.5,
+        },
+        pageSubtitle: {
+            fontSize: FontSize.md,
+            color: C.textSecondary,
+            textAlign: "center",
+            marginTop: 6,
+            marginBottom: 28,
+        },
+        bulletList: {
+            alignSelf: "stretch",
+            gap: 14,
+        },
+        bulletRow: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 10,
+        },
+        bulletDot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            marginTop: 6,
+        },
+        bulletText: {
+            flex: 1,
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            lineHeight: 18,
+        },
+        // ── Interactive action area ──
+        actionArea: {
+            alignSelf: "stretch",
+            marginTop: 20,
+            gap: 10,
+        },
+        actionBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            paddingVertical: 14,
+            borderRadius: Radius.md,
+        },
+        actionBtnText: {
+            color: "#fff",
+            fontSize: FontSize.md,
+            fontWeight: "700",
+        },
+        actionHint: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            textAlign: "center",
+            lineHeight: 16,
+        },
+        successRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: "#ecfdf5",
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: "#a7f3d0",
+        },
+        successText: {
+            flex: 1,
+            fontSize: FontSize.xs,
+            color: "#065f46",
+            lineHeight: 16,
+            fontWeight: "500",
+        },
+        // ── Bottom ──
+        bottom: {
+            paddingHorizontal: 36,
+            paddingBottom: 50,
+            gap: 24,
+        },
+        dotsRow: {
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 10,
+        },
+        dot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: C.textTertiary,
+        },
+        nextBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            backgroundColor: C.accent,
+            paddingVertical: 15,
+            borderRadius: Radius.md,
+        },
+        nextBtnText: {
+            color: "#fff",
+            fontSize: FontSize.md,
+            fontWeight: "700",
+        },
+        lastPageActions: {
+            gap: 10,
+        },
+        signInBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            backgroundColor: C.accent,
+            paddingVertical: 15,
+            borderRadius: Radius.md,
+        },
+        signInBtnText: {
+            color: "#fff",
+            fontSize: FontSize.md,
+            fontWeight: "700",
+        },
+        continueBtn: {
+            alignItems: "center",
+            paddingVertical: 12,
+        },
+        continueBtnText: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+            fontWeight: "500",
+        },
+    });
 }
 
 export function OnboardingScreen({ visible, onDone }: Props) {
@@ -361,7 +361,7 @@ export function OnboardingScreen({ visible, onDone }: Props) {
             const next = {
                 ...current,
                 enabled: true,
-                reminderMinutes: 15,
+                reminderMinutesList: [15],
                 allGroupsEnabled: true,
                 dailySummaryEnabled: true,
                 dailySummaryHour: 8,

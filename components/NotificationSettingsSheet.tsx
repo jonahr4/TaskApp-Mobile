@@ -1,317 +1,318 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors } from "@/hooks/useTheme";
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Switch,
+    DEFAULT_SETTINGS,
+    NotificationSettings,
+    REMINDER_OPTIONS,
+    formatMinutes,
+    loadSettings,
+    requestPermissions,
+    rescheduleAllReminders,
+    saveSettings,
+    setupNotificationChannel,
+} from "@/lib/notifications";
+import { Colors, FontSize, Radius, Spacing } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
     Alert,
     Modal,
     Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
     TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { useAuth } from "@/hooks/useAuth";
-import { useColors } from "@/hooks/useTheme";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useTasks } from "@/hooks/useTasks";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
-import {
-    NotificationSettings,
-    DEFAULT_SETTINGS,
-    REMINDER_OPTIONS,
-    loadSettings,
-    saveSettings,
-    requestPermissions,
-    rescheduleAllReminders,
-    setupNotificationChannel,
-    formatMinutes,
-} from "@/lib/notifications";
 
 type Props = {
     visible: boolean;
     onClose: () => void;
 };
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    sheet: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 20,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-        backgroundColor: C.bgCard,
-    },
-    headerLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: C.textPrimary,
-        letterSpacing: -0.3,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.xl,
-    },
-    // ── Sections ──
-    section: {
-        marginBottom: Spacing.xl,
-        gap: 10,
-    },
-    sectionTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
-    sectionDesc: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        lineHeight: 16,
-    },
-    // ── Toggle row ──
-    toggleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        padding: Spacing.md,
-    },
-    toggleInfo: {
-        flex: 1,
-        marginRight: Spacing.md,
-    },
-    toggleLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
-    toggleDesc: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        marginTop: 2,
-        lineHeight: 15,
-    },
-    // ── Picker button ──
-    pickerBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 12,
-    },
-    pickerBtnText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-    },
-    // ── Options list ──
-    optionsList: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        overflow: "hidden",
-    },
-    optionRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 11,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-    },
-    optionRowActive: {
-        backgroundColor: C.accentLight,
-    },
-    optionText: {
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-    },
-    optionTextActive: {
-        fontWeight: "600",
-        color: C.accent,
-    },
-    // ── Group list ──
-    groupList: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        overflow: "hidden",
-    },
-    groupRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 11,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-    },
-    groupRowActive: {
-        backgroundColor: C.accentLight,
-    },
-    radio: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: C.textTertiary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    radioActive: {
-        borderColor: C.accent,
-    },
-    radioInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: C.accent,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 5,
-        borderWidth: 1.5,
-        borderColor: C.textTertiary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxActive: {
-        backgroundColor: C.accent,
-        borderColor: C.accent,
-    },
-    groupDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    groupName: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-    },
-    // ── Time picker ──
-    timePickerContainer: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        overflow: "hidden",
-    },
-    // ── WIP location ──
-    wipRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    wipBadge: {
-        backgroundColor: "#fef3c7",
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    wipBadgeText: {
-        fontSize: 11,
-        fontWeight: "700",
-        color: "#d97706",
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    wipInfoCard: {
-        flexDirection: "row",
-        gap: 10,
-        padding: Spacing.md,
-        backgroundColor: "#fffbeb",
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#fde68a",
-    },
-    wipInfoText: {
-        flex: 1,
-        fontSize: FontSize.xs,
-        color: "#92400e",
-        lineHeight: 16,
-    },
-    // ── Custom time input ──
-    customTimeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        borderTopWidth: 1,
-        borderTopColor: C.borderLight,
-        backgroundColor: C.bg,
-    },
-    customTimeLabel: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: C.textSecondary,
-    },
-    customTimeInput: {
-        width: 56,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-        textAlign: "center",
-        backgroundColor: "#fff",
-    },
-    unitRow: {
-        flexDirection: "row",
-        gap: 4,
-    },
-    unitBtn: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        backgroundColor: "#fff",
-    },
-    unitBtnActive: {
-        backgroundColor: C.accent,
-        borderColor: C.accent,
-    },
-    unitBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: C.textSecondary,
-    },
-    unitBtnTextActive: {
-        color: "#fff",
-    },
-    applyBtn: {
-        padding: 2,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        sheet: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: Spacing.xl,
+            paddingTop: 20,
+            paddingBottom: Spacing.md,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+            backgroundColor: C.bgCard,
+        },
+        headerLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+        },
+        headerTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "700",
+            color: C.textPrimary,
+            letterSpacing: -0.3,
+        },
+        body: {
+            flex: 1,
+            padding: Spacing.xl,
+        },
+        // ── Sections ──
+        section: {
+            marginBottom: Spacing.xl,
+            gap: 10,
+        },
+        sectionTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        sectionDesc: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            lineHeight: 16,
+        },
+        // ── Toggle row ──
+        toggleRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            padding: Spacing.md,
+        },
+        toggleInfo: {
+            flex: 1,
+            marginRight: Spacing.md,
+        },
+        toggleLabel: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        toggleDesc: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            marginTop: 2,
+            lineHeight: 15,
+        },
+        // ── Picker button ──
+        pickerBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 12,
+        },
+        pickerBtnText: {
+            flex: 1,
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        // ── Options list ──
+        optionsList: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            overflow: "hidden",
+        },
+        optionRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 11,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        optionRowActive: {
+            backgroundColor: C.accentLight,
+        },
+        optionText: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        optionTextActive: {
+            fontWeight: "600",
+            color: C.accent,
+        },
+        // ── Group list ──
+        groupList: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            overflow: "hidden",
+        },
+        groupRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 11,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        groupRowActive: {
+            backgroundColor: C.accentLight,
+        },
+        radio: {
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            borderWidth: 1.5,
+            borderColor: C.textTertiary,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        radioActive: {
+            borderColor: C.accent,
+        },
+        radioInner: {
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: C.accent,
+        },
+        checkbox: {
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            borderWidth: 1.5,
+            borderColor: C.textTertiary,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        checkboxActive: {
+            backgroundColor: C.accent,
+            borderColor: C.accent,
+        },
+        groupDot: {
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+        },
+        groupName: {
+            flex: 1,
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        // ── Time picker ──
+        timePickerContainer: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            overflow: "hidden",
+        },
+        // ── WIP location ──
+        wipRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+        },
+        wipBadge: {
+            backgroundColor: "#fef3c7",
+            paddingHorizontal: 7,
+            paddingVertical: 2,
+            borderRadius: 6,
+        },
+        wipBadgeText: {
+            fontSize: 11,
+            fontWeight: "700",
+            color: "#d97706",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+        },
+        wipInfoCard: {
+            flexDirection: "row",
+            gap: 10,
+            padding: Spacing.md,
+            backgroundColor: "#fffbeb",
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: "#fde68a",
+        },
+        wipInfoText: {
+            flex: 1,
+            fontSize: FontSize.xs,
+            color: "#92400e",
+            lineHeight: 16,
+        },
+        // ── Custom time input ──
+        customTimeRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 10,
+            borderTopWidth: 1,
+            borderTopColor: C.borderLight,
+            backgroundColor: C.bg,
+        },
+        customTimeLabel: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+        customTimeInput: {
+            width: 56,
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+            borderRadius: Radius.sm,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+            textAlign: "center",
+            backgroundColor: "#fff",
+        },
+        unitRow: {
+            flexDirection: "row",
+            gap: 4,
+        },
+        unitBtn: {
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: Radius.sm,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            backgroundColor: "#fff",
+        },
+        unitBtnActive: {
+            backgroundColor: C.accent,
+            borderColor: C.accent,
+        },
+        unitBtnText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+        unitBtnTextActive: {
+            color: "#fff",
+        },
+        applyBtn: {
+            padding: 2,
+        },
+    });
 }
 
 export function NotificationSettingsSheet({ visible, onClose }: Props) {
@@ -422,18 +423,35 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
         return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${p}`;
     };
 
-    const isPreset = REMINDER_OPTIONS.some((o) => o.value === settings.reminderMinutes);
-    const currentReminderLabel = isPreset
-        ? REMINDER_OPTIONS.find((o) => o.value === settings.reminderMinutes)!.label
-        : `Custom: ${formatMinutes(settings.reminderMinutes)} before`;
+    const selectedCount = settings.reminderMinutesList.length;
+    const currentReminderLabel = selectedCount === 0
+        ? "No reminders selected"
+        : selectedCount === 1
+            ? formatMinutes(settings.reminderMinutesList[0]) === "at time of event"
+                ? "At time of event"
+                : `${formatMinutes(settings.reminderMinutesList[0])} before`
+            : `${selectedCount} reminders selected`;
+
+    const toggleReminderOption = (value: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const current = new Set(settings.reminderMinutesList);
+        if (current.has(value)) {
+            current.delete(value);
+        } else {
+            current.add(value);
+        }
+        updateAndSave({ reminderMinutesList: Array.from(current) });
+    };
 
     const applyCustomTime = () => {
         const num = parseInt(customValue, 10);
         if (!num || num <= 0) return;
         const multiplier = customUnit === "day" ? 1440 : customUnit === "hr" ? 60 : 1;
         const totalMinutes = num * multiplier;
-        updateAndSave({ reminderMinutes: totalMinutes });
-        setShowReminderPicker(false);
+        // Add to list if not already present
+        if (!settings.reminderMinutesList.includes(totalMinutes)) {
+            updateAndSave({ reminderMinutesList: [...settings.reminderMinutesList, totalMinutes] });
+        }
         setCustomValue("");
     };
 
@@ -502,32 +520,38 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                 </TouchableOpacity>
                                 {showReminderPicker && (
                                     <View style={styles.optionsList}>
-                                        {REMINDER_OPTIONS.map((opt) => (
-                                            <TouchableOpacity
-                                                key={opt.value}
-                                                style={[
-                                                    styles.optionRow,
-                                                    settings.reminderMinutes === opt.value && styles.optionRowActive,
-                                                ]}
-                                                onPress={() => {
-                                                    updateAndSave({ reminderMinutes: opt.value });
-                                                    setShowReminderPicker(false);
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text
+                                        {REMINDER_OPTIONS.map((opt) => {
+                                            const isSelected = settings.reminderMinutesList.includes(opt.value);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={opt.value}
                                                     style={[
-                                                        styles.optionText,
-                                                        settings.reminderMinutes === opt.value && styles.optionTextActive,
+                                                        styles.optionRow,
+                                                        isSelected && styles.optionRowActive,
                                                     ]}
+                                                    onPress={() => toggleReminderOption(opt.value)}
+                                                    activeOpacity={0.7}
                                                 >
-                                                    {opt.label}
-                                                </Text>
-                                                {settings.reminderMinutes === opt.value && (
-                                                    <Ionicons name="checkmark" size={16} color={C.accent} />
-                                                )}
-                                            </TouchableOpacity>
-                                        ))}
+                                                    <View
+                                                        style={[
+                                                            styles.checkbox,
+                                                            isSelected && styles.checkboxActive,
+                                                        ]}
+                                                    >
+                                                        {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
+                                                    </View>
+                                                    <Text
+                                                        style={[
+                                                            styles.optionText,
+                                                            isSelected && styles.optionTextActive,
+                                                            { marginLeft: 8 },
+                                                        ]}
+                                                    >
+                                                        {opt.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
 
                                         {/* Custom time input */}
                                         <View style={styles.customTimeRow}>
