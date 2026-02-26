@@ -52,12 +52,7 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+
     <key>NSMicrophoneUsageDescription</key>
     <string>TaskApp uses the microphone for voice-to-text input in the AI assistant.</string>
     <key>NSPhotoLibraryUsageDescription</key>

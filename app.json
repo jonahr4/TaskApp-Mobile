@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jonahro.mobile",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "TaskApp may use your photo library for profile images and attachments.",
@@ -46,6 +47,7 @@
     "plugins": [
       "expo-router",
       "@react-native-google-signin/google-signin",
+      "expo-apple-authentication",
       "expo-speech-recognition"
     ],
     "experiments": {
