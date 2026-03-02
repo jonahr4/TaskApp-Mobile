@@ -53,6 +53,11 @@
       <true/>
     </dict>
 
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>TaskApp uses the microphone for voice-to-text input in the AI assistant.</string>
     <key>NSPhotoLibraryUsageDescription</key>

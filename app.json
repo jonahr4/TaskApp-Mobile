@@ -22,8 +22,8 @@
         "NSPhotoLibraryUsageDescription": "TaskApp may use your photo library for profile images and attachments.",
         "NSMicrophoneUsageDescription": "TaskApp uses the microphone for voice-to-text input in the AI assistant.",
         "NSSpeechRecognitionUsageDescription": "TaskApp uses speech recognition to transcribe your voice into task descriptions.",
-        "NSLocationWhenInUseUsageDescription": "TaskApp requires your location to show your current position on the map when you attach a specific place to a task.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TaskApp requires your location to show your current position on the map when you attach a specific place to a task.",
+        "NSLocationWhenInUseUsageDescription": "TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
