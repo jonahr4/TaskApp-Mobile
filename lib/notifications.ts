@@ -13,7 +13,7 @@ export type NotificationSettings = {
     dailySummaryEnabled: boolean;
     dailySummaryHour: number; // 0-23
     dailySummaryMinute: number; // 0-59
-    locationRemindersEnabled: boolean; // WIP — UI only
+
 };
 
 const SETTINGS_KEY = "notificationSettings";
@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: NotificationSettings = {
     dailySummaryEnabled: false,
     dailySummaryHour: 8,
     dailySummaryMinute: 0,
-    locationRemindersEnabled: false,
+
 };
 
 export const REMINDER_OPTIONS = [

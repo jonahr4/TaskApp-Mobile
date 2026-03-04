@@ -223,40 +223,7 @@ function makeStyles(C: typeof Colors.light) {
             borderColor: C.borderLight,
             overflow: "hidden",
         },
-        // ── WIP location ──
-        wipRow: {
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-        },
-        wipBadge: {
-            backgroundColor: "#fef3c7",
-            paddingHorizontal: 7,
-            paddingVertical: 2,
-            borderRadius: 6,
-        },
-        wipBadgeText: {
-            fontSize: 11,
-            fontWeight: "700",
-            color: "#d97706",
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-        },
-        wipInfoCard: {
-            flexDirection: "row",
-            gap: 10,
-            padding: Spacing.md,
-            backgroundColor: "#fffbeb",
-            borderRadius: Radius.md,
-            borderWidth: 1,
-            borderColor: "#fde68a",
-        },
-        wipInfoText: {
-            flex: 1,
-            fontSize: FontSize.xs,
-            color: "#92400e",
-            lineHeight: 16,
-        },
+
         // ── Custom time input ──
         customTimeRow: {
             flexDirection: "row",
@@ -700,44 +667,7 @@ export function NotificationSettingsSheet({ visible, onClose }: Props) {
                                 )}
                             </View>
 
-                            {/* ── Location Reminders (WIP) ── */}
-                            <View style={styles.section}>
-                                <View style={styles.toggleRow}>
-                                    <View style={styles.toggleInfo}>
-                                        <View style={styles.wipRow}>
-                                            <Text style={styles.toggleLabel}>Location Reminders</Text>
-                                            <View style={styles.wipBadge}>
-                                                <Text style={styles.wipBadgeText}>Coming Soon</Text>
-                                            </View>
-                                        </View>
-                                        <Text style={styles.toggleDesc}>
-                                            Get notified when you're near a task's location
-                                        </Text>
-                                    </View>
-                                    <Switch
-                                        value={settings.locationRemindersEnabled}
-                                        onValueChange={(v) => {
-                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            if (v) {
-                                                Alert.alert(
-                                                    "Coming Soon",
-                                                    "Location-based reminders are still in development. We'll notify you when this feature is ready!",
-                                                    [{ text: "OK" }]
-                                                );
-                                            }
-                                            updateAndSave({ locationRemindersEnabled: v });
-                                        }}
-                                        trackColor={{ false: C.borderLight, true: "#f59e0b60" }}
-                                        thumbColor={settings.locationRemindersEnabled ? "#f59e0b" : "#ccc"}
-                                    />
-                                </View>
-                                <View style={styles.wipInfoCard}>
-                                    <Ionicons name="location-outline" size={16} color="#f59e0b" />
-                                    <Text style={styles.wipInfoText}>
-                                        When enabled, tasks with a location field will trigger a reminder when you arrive nearby. This feature is being built and will work in a future update.
-                                    </Text>
-                                </View>
-                            </View>
+
                         </>
                     )}
                 </ScrollView>

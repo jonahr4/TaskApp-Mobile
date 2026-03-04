@@ -2,7 +2,7 @@
   "expo": {
     "name": "TaskApp",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png",
     "scheme": "mobile",
@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "18",
       "bundleIdentifier": "com.jonahro.mobile",
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -22,8 +23,6 @@
         "NSPhotoLibraryUsageDescription": "TaskApp may use your photo library for profile images and attachments.",
         "NSMicrophoneUsageDescription": "TaskApp uses the microphone for voice-to-text input in the AI assistant.",
         "NSSpeechRecognitionUsageDescription": "TaskApp uses speech recognition to transcribe your voice into task descriptions.",
-        "NSLocationWhenInUseUsageDescription": "TaskApp requires your location to show your current position on the map when you attach a specific place to a task.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TaskApp requires your location to show your current position on the map when you attach a specific place to a task.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -39,7 +38,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.jonahro.mobile"
     },
     "web": {
       "bundler": "metro",

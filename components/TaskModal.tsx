@@ -1,29 +1,28 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { useEffect, useMemo, useState } from "react";
 import {
-    View,
+    Alert,
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
-    Modal,
-    ScrollView,
-    Platform,
-    Alert,
-    KeyboardAvoidingView,
-    Switch,
-    Dimensions,
-    Keyboard,
+    View,
 } from "react-native";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import MapView, { Marker, Region } from "react-native-maps";
-import * as Location from "expo-location";
-import { Ionicons } from "@expo/vector-icons";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import { createTaskUnified, updateTaskUnified, deleteTaskUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize } from "@/lib/theme";
+import { createTaskUnified, deleteTaskUnified, updateTaskUnified } from "@/lib/crud";
+import { Colors, FontSize, Radius, Spacing } from "@/lib/theme";
+import type { Quadrant, Task, TaskGroup } from "@/lib/types";
 import { QUADRANT_META } from "@/lib/types";
-import type { Task, TaskGroup, Quadrant } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -84,345 +83,262 @@ function displayTime(s: string | null): string {
 
 /* ── component ───────────────────────────── */
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-        backgroundColor: C.bgCard,
-    },
-    headerSideBtn: {
-        minWidth: 64,
-    },
-    cancelText: {
-        fontSize: FontSize.md,
-        color: C.textSecondary,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: C.textPrimary,
-        textAlign: "center",
-    },
-    saveText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: C.accent,
-    },
-    saveTextDisabled: {
-        opacity: 0.4,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.xl,
-    },
-    titleRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: Spacing.sm,
-    },
-    titleInput: {
-        flex: 1,
-        fontSize: FontSize.xl,
-        fontWeight: "600",
-        color: C.textPrimary,
-        paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-        minHeight: 48,
-    },
-    completedBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.md,
-        backgroundColor: "#fff",
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        marginTop: Spacing.md,
-    },
-    completedBadgeActive: {
-        backgroundColor: "#f0fdf4",
-        borderColor: "#bbf7d0",
-    },
-    completedBadgeText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: C.textTertiary,
-    },
-    completedBadgeTextActive: {
-        color: "#22c55e",
-    },
-    notesInput: {
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-        paddingVertical: Spacing.md,
-        marginTop: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-        minHeight: 60,
-        textAlignVertical: "top",
-    },
-    section: {
-        marginTop: Spacing.xxl,
-    },
-    sectionLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textSecondary,
-        marginBottom: Spacing.sm,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    fieldRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-    },
-    fieldText: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-    },
-    fieldPlaceholder: {
-        color: C.textTertiary,
-    },
-    picker: {
-        marginTop: Spacing.sm,
-        alignSelf: "center",
-    },
-    toggleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 12,
-    },
-    toggleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        flex: 1,
-    },
-    toggleLabel: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: C.textPrimary,
-    },
-    toggleSub: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        marginTop: 1,
-    },
-    daysRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-    },
-    daysLabel: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-    },
-    daysStepper: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.md,
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-    },
-    stepperBtn: {
-        padding: 4,
-    },
-    daysValue: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: C.textPrimary,
-        minWidth: 24,
-        textAlign: "center",
-    },
-    priorityGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: Spacing.sm,
-    },
-    priorityBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        borderRadius: Radius.md,
-        borderWidth: 1.5,
-        minWidth: "45%",
-        flex: 1,
-    },
-    priBtnDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    priBtnText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-    },
-    groupChips: {
-        flexDirection: "row",
-        gap: Spacing.sm,
-    },
-    groupChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 8,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        backgroundColor: C.bgCard,
-    },
-    chipDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    chipText: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        fontWeight: "500",
-    },
-    mapPreview: {
-        marginTop: Spacing.sm,
-        borderRadius: Radius.md,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    miniMap: {
-        height: 140,
-        width: "100%",
-    },
-    deleteBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        marginTop: Spacing.xxxl,
-        paddingVertical: Spacing.lg,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: "#fecaca",
-        backgroundColor: "#fef2f2",
-    },
-    deleteText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: C.danger,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
+            paddingBottom: Spacing.md,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+            backgroundColor: C.bgCard,
+        },
+        headerSideBtn: {
+            minWidth: 64,
+        },
+        cancelText: {
+            fontSize: FontSize.md,
+            color: C.textSecondary,
+        },
+        headerTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "600",
+            color: C.textPrimary,
+            textAlign: "center",
+        },
+        saveText: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.accent,
+        },
+        saveTextDisabled: {
+            opacity: 0.4,
+        },
+        body: {
+            flex: 1,
+            padding: Spacing.xl,
+        },
+        titleRow: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: Spacing.sm,
+        },
+        titleInput: {
+            flex: 1,
+            fontSize: FontSize.xl,
+            fontWeight: "600",
+            color: C.textPrimary,
+            paddingVertical: Spacing.md,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+            minHeight: 48,
+        },
+        completedBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: Radius.md,
+            backgroundColor: "#fff",
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            marginTop: Spacing.md,
+        },
+        completedBadgeActive: {
+            backgroundColor: "#f0fdf4",
+            borderColor: "#bbf7d0",
+        },
+        completedBadgeText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.textTertiary,
+        },
+        completedBadgeTextActive: {
+            color: "#22c55e",
+        },
+        notesInput: {
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+            paddingVertical: Spacing.md,
+            marginTop: Spacing.sm,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+            minHeight: 60,
+            textAlignVertical: "top",
+        },
+        section: {
+            marginTop: Spacing.xxl,
+        },
+        sectionLabel: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textSecondary,
+            marginBottom: Spacing.sm,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+        },
+        fieldRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 14,
+        },
+        fieldText: {
+            flex: 1,
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+        },
+        fieldPlaceholder: {
+            color: C.textTertiary,
+        },
+        picker: {
+            marginTop: Spacing.sm,
+            alignSelf: "center",
+        },
+        toggleRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 12,
+        },
+        toggleLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            flex: 1,
+        },
+        toggleLabel: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.textPrimary,
+        },
+        toggleSub: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            marginTop: 1,
+        },
+        daysRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: Spacing.sm,
+            paddingHorizontal: Spacing.sm,
+        },
+        daysLabel: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+        },
+        daysStepper: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.md,
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.sm,
+            paddingVertical: 4,
+        },
+        stepperBtn: {
+            padding: 4,
+        },
+        daysValue: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.textPrimary,
+            minWidth: 24,
+            textAlign: "center",
+        },
+        priorityGrid: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: Spacing.sm,
+        },
+        priorityBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 10,
+            borderRadius: Radius.md,
+            borderWidth: 1.5,
+            minWidth: "45%",
+            flex: 1,
+        },
+        priBtnDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+        },
+        priBtnText: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+        },
+        groupChips: {
+            flexDirection: "row",
+            gap: Spacing.sm,
+        },
+        groupChip: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 8,
+            borderRadius: Radius.full,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            backgroundColor: C.bgCard,
+        },
+        chipDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+        },
+        chipText: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            fontWeight: "500",
+        },
+
+        deleteBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            marginTop: Spacing.xxxl,
+            paddingVertical: Spacing.lg,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: "#fecaca",
+            backgroundColor: "#fef2f2",
+        },
+        deleteText: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.danger,
+        },
+    });
 }
 
-function makeMapStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Platform.OS === "ios" ? 20 : Spacing.lg,
-        paddingBottom: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-        backgroundColor: C.bgCard,
-    },
-    cancelText: {
-        fontSize: FontSize.md,
-        color: C.textSecondary,
-    },
-    headerTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
-    doneText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: C.accent,
-    },
-    searchBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        margin: Spacing.md,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 10,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-        padding: 0,
-    },
-    map: {
-        flex: 1,
-    },
-    selectedBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
-        backgroundColor: C.bgCard,
-        borderTopWidth: 1,
-        borderTopColor: C.borderLight,
-        minHeight: 56,
-    },
-    selectedText: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-    },
-    hintText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        textAlign: "center",
-        flex: 1,
-    },
-});
-}
+
 
 export default function TaskModal({
     visible,
@@ -448,14 +364,13 @@ export default function TaskModal({
     const [completed, setCompleted] = useState(false);
     const [autoUrgentEnabled, setAutoUrgentEnabled] = useState(false);
     const [autoUrgentDays, setAutoUrgentDays] = useState(1);
-    const [location, setLocation] = useState("");
-    const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+
     const [saving, setSaving] = useState(false);
 
     // Picker visibility
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
-    const [showMapPicker, setShowMapPicker] = useState(false);
+
 
     useEffect(() => {
         if (visible) {
@@ -470,7 +385,7 @@ export default function TaskModal({
                 setCompleted(task.completed);
                 setAutoUrgentEnabled(task.autoUrgentDays !== null && task.autoUrgentDays > 0);
                 setAutoUrgentDays(task.autoUrgentDays ?? 1);
-                setLocation(task.location || "");
+
             } else {
                 setTitle("");
                 setNotes("");
@@ -482,12 +397,11 @@ export default function TaskModal({
                 setCompleted(false);
                 setAutoUrgentEnabled(false);
                 setAutoUrgentDays(1);
-                setLocation("");
-                setLocationCoords(null);
+
             }
             setShowDatePicker(false);
             setShowTimePicker(false);
-            setShowMapPicker(false);
+
         }
     }, [visible, task, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate]);
 
@@ -533,7 +447,7 @@ export default function TaskModal({
                 order: task?.order ?? Date.now(),
                 autoUrgentDays: autoUrgentEnabled ? autoUrgentDays : null,
                 reminder: task?.reminder ?? false,
-                location: location.trim() || null,
+
             };
             if (isEdit && task) {
                 await updateTaskUnified(user?.uid, task.id, data);
@@ -889,54 +803,6 @@ export default function TaskModal({
                         )}
                     </View>
 
-                    {/* Location */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Location</Text>
-                        <TouchableOpacity
-                            style={styles.fieldRow}
-                            onPress={() => setShowMapPicker(true)}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="location-outline" size={20} color={C.accent} />
-                            <Text style={[styles.fieldText, !location && styles.fieldPlaceholder]}>
-                                {location || "Add location"}
-                            </Text>
-                            {location.length > 0 && (
-                                <TouchableOpacity
-                                    onPress={() => { setLocation(""); setLocationCoords(null); }}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                    <Ionicons name="close-circle" size={18} color={C.textTertiary} />
-                                </TouchableOpacity>
-                            )}
-                        </TouchableOpacity>
-                        {/* Mini map preview */}
-                        {locationCoords && (
-                            <View style={styles.mapPreview}>
-                                <MapView
-                                    style={styles.miniMap}
-                                    region={{
-                                        latitude: locationCoords.lat,
-                                        longitude: locationCoords.lng,
-                                        latitudeDelta: 0.01,
-                                        longitudeDelta: 0.01,
-                                    }}
-                                    scrollEnabled={false}
-                                    zoomEnabled={false}
-                                    pitchEnabled={false}
-                                    rotateEnabled={false}
-                                >
-                                    <Marker
-                                        coordinate={{
-                                            latitude: locationCoords.lat,
-                                            longitude: locationCoords.lng,
-                                        }}
-                                    />
-                                </MapView>
-                            </View>
-                        )}
-                    </View>
-
                     {/* Delete */}
                     {isEdit && (
                         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
@@ -946,191 +812,6 @@ export default function TaskModal({
                     )}
                 </ScrollView>
             </KeyboardAvoidingView>
-
-            {/* ── Map Picker Modal ──────────────── */}
-            <MapPickerModal
-                visible={showMapPicker}
-                onClose={() => setShowMapPicker(false)}
-                onSelect={(name, coords) => {
-                    setLocation(name);
-                    setLocationCoords(coords);
-                    setShowMapPicker(false);
-                }}
-                initialCoords={locationCoords}
-            />
         </Modal>
     );
 }
-
-/* ── Map Picker Subcomponent ────────────── */
-
-function MapPickerModal({
-    visible,
-    onClose,
-    onSelect,
-    initialCoords,
-}: {
-    visible: boolean;
-    onClose: () => void;
-    onSelect: (name: string, coords: { lat: number; lng: number }) => void;
-    initialCoords: { lat: number; lng: number } | null;
-}) {
-    const { colors: C } = useTheme();
-    const mapStyles = useMemo(() => makeMapStyles(C), [C]);
-    const [region, setRegion] = useState<Region>({
-        latitude: initialCoords?.lat ?? 37.7749,
-        longitude: initialCoords?.lng ?? -122.4194,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-    });
-    const [pin, setPin] = useState<{ lat: number; lng: number } | null>(initialCoords);
-    const [searchText, setSearchText] = useState("");
-    const [resolvedName, setResolvedName] = useState("");
-    const mapRef = useRef<MapView>(null);
-
-    useEffect(() => {
-        if (visible && !initialCoords) {
-            // Try to get user's current location
-            (async () => {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status === "granted") {
-                    const loc = await Location.getCurrentPositionAsync({});
-                    const r = {
-                        latitude: loc.coords.latitude,
-                        longitude: loc.coords.longitude,
-                        latitudeDelta: 0.02,
-                        longitudeDelta: 0.02,
-                    };
-                    setRegion(r);
-                }
-            })();
-        }
-        if (visible && initialCoords) {
-            setPin(initialCoords);
-            setRegion({
-                latitude: initialCoords.lat,
-                longitude: initialCoords.lng,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
-            });
-        }
-    }, [visible]);
-
-    const handleMapPress = async (e: any) => {
-        const coord = e.nativeEvent.coordinate;
-        const p = { lat: coord.latitude, lng: coord.longitude };
-        setPin(p);
-        // Reverse-geocode
-        try {
-            const results = await Location.reverseGeocodeAsync({
-                latitude: coord.latitude,
-                longitude: coord.longitude,
-            });
-            if (results.length > 0) {
-                const r = results[0];
-                const parts = [r.name, r.street, r.city, r.region].filter(Boolean);
-                setResolvedName(parts.join(", "));
-            } else {
-                setResolvedName(`${coord.latitude.toFixed(4)}, ${coord.longitude.toFixed(4)}`);
-            }
-        } catch {
-            setResolvedName(`${coord.latitude.toFixed(4)}, ${coord.longitude.toFixed(4)}`);
-        }
-    };
-
-    const handleSearch = async () => {
-        if (!searchText.trim()) return;
-        try {
-            const results = await Location.geocodeAsync(searchText.trim());
-            if (results.length > 0) {
-                const { latitude, longitude } = results[0];
-                const p = { lat: latitude, lng: longitude };
-                setPin(p);
-                setResolvedName(searchText.trim());
-                const r = { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 };
-                setRegion(r);
-                mapRef.current?.animateToRegion(r, 500);
-            } else {
-                Alert.alert("Not Found", "Couldn't find that location.");
-            }
-        } catch {
-            Alert.alert("Error", "Couldn't search for location.");
-        }
-    };
-
-    const handleConfirm = () => {
-        if (!pin) return;
-        onSelect(resolvedName || searchText || "Pinned Location", pin);
-    };
-
-    return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={onClose}
-        >
-            <View style={mapStyles.container}>
-                {/* Header */}
-                <View style={mapStyles.header}>
-                    <TouchableOpacity onPress={onClose}>
-                        <Text style={mapStyles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <Text style={mapStyles.headerTitle}>Choose Location</Text>
-                    <TouchableOpacity onPress={handleConfirm} disabled={!pin}>
-                        <Text style={[mapStyles.doneText, !pin && { opacity: 0.4 }]}>
-                            Done
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search */}
-                <View style={mapStyles.searchBar}>
-                    <Ionicons name="search" size={18} color={C.textTertiary} />
-                    <TextInput
-                        style={mapStyles.searchInput}
-                        placeholder="Search for a place..."
-                        placeholderTextColor={C.textTertiary}
-                        value={searchText}
-                        onChangeText={setSearchText}
-                        onSubmitEditing={handleSearch}
-                        returnKeyType="search"
-                    />
-                </View>
-
-                {/* Map */}
-                <MapView
-                    ref={mapRef}
-                    style={mapStyles.map}
-                    region={region}
-                    onRegionChangeComplete={setRegion}
-                    onPress={handleMapPress}
-                    showsUserLocation
-                    showsMyLocationButton
-                >
-                    {pin && (
-                        <Marker
-                            coordinate={{ latitude: pin.lat, longitude: pin.lng }}
-                        />
-                    )}
-                </MapView>
-
-                {/* Selected location bar */}
-                {pin && resolvedName ? (
-                    <View style={mapStyles.selectedBar}>
-                        <Ionicons name="location" size={18} color={C.accent} />
-                        <Text style={mapStyles.selectedText} numberOfLines={2}>
-                            {resolvedName}
-                        </Text>
-                    </View>
-                ) : (
-                    <View style={mapStyles.selectedBar}>
-                        <Text style={mapStyles.hintText}>Tap the map or search to select a location</Text>
-                    </View>
-                )}
-            </View>
-        </Modal>
-    );
-}
-
-/* ── Styles ──────────────────────────────── */
