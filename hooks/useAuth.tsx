@@ -1,7 +1,7 @@
 import { useSync, type SyncScenario } from "@/hooks/useSync";
 import { auth } from "@/lib/firebase";
-import { deleteAllUserData } from "@/lib/firestore";
-import { clearLocalData } from "@/lib/localDb";
+import { deleteAllUserData, groupsQuery, tasksQuery } from "@/lib/firestore";
+import { clearLocalData, replaceAllLocalGroups, replaceAllLocalTasks } from "@/lib/localDb";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import {
     createUserWithEmailAndPassword,
@@ -13,6 +13,7 @@ import {
     signOut,
     type User,
 } from "firebase/auth";
+import { getDocs } from "firebase/firestore";
 import {
     createContext,
     useContext,
@@ -148,6 +149,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logOut = async () => {
+        // Snapshot cloud data to local storage so tasks persist after sign-out
+        if (user) {
+            try {
+                const [tasksSnap, groupsSnap] = await Promise.all([
+                    getDocs(tasksQuery(user.uid)),
+                    getDocs(groupsQuery(user.uid)),
+                ]);
+                await replaceAllLocalTasks(
+                    tasksSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+                );
+                await replaceAllLocalGroups(
+                    groupsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+                );
+            } catch {
+                // Best-effort — don't block sign-out if snapshot fails
+            }
+        }
         await signOut(auth);
     };
 

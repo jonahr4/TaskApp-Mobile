@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "18",
+      "buildNumber": "22",
       "bundleIdentifier": "com.jonahro.mobile",
       "usesAppleSignIn": true,
       "infoPlist": {
