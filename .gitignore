@@ -47,6 +47,10 @@ Web Version/
 # duplicate/old mobile subfolder (legacy)
 /mobile/
 
+# Firebase service files (contain API keys)
+GoogleService-Info.plist
+google-services.json
+
 # macOS duplicate files
 *\ 2.*
 *\ 2/
