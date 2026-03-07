@@ -1,195 +1,191 @@
-import { useState, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useColors } from "@/hooks/useTheme";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    ActivityIndicator,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useAuth } from "@/hooks/useAuth";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { useColors } from "@/hooks/useTheme";
-import { Ionicons } from "@expo/vector-icons";
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    navBar: {
-        paddingTop: 56,
-        paddingHorizontal: Spacing.md,
-        paddingBottom: Spacing.sm,
-        backgroundColor: C.bg,
-    },
-    backBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 2,
-    },
-    backText: {
-        fontSize: FontSize.md,
-        color: C.accent,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: "center",
-        padding: Spacing.xxl,
-        paddingTop: 0,
-    },
-    brandSection: {
-        alignItems: "center",
-        marginBottom: Spacing.xxl,
-    },
-    logoBox: {
-        width: 64,
-        height: 64,
-        borderRadius: Radius.lg,
-        backgroundColor: C.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: Spacing.lg,
-        ...Shadows.md,
-        shadowColor: C.accent,
-        shadowOpacity: 0.3,
-    },
-    appName: {
-        fontSize: 32,
-        fontWeight: "800",
-        color: C.textPrimary,
-        letterSpacing: -0.5,
-    },
-    tagline: {
-        fontSize: FontSize.md,
-        color: C.textSecondary,
-        textAlign: "center",
-        marginTop: Spacing.sm,
-        maxWidth: 280,
-        lineHeight: 22,
-    },
-    featurePills: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        marginBottom: Spacing.xxxl,
-    },
-    pill: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        backgroundColor: C.accentLight,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-    },
-    pillText: {
-        fontSize: FontSize.xs,
-        color: C.accent,
-        fontWeight: "600",
-    },
-    card: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.xl,
-        padding: Spacing.xxl,
-        borderWidth: 0,
-        ...Shadows.lg,
-    },
-    cardTitle: {
-        fontSize: FontSize.xl,
-        fontWeight: "700",
-        color: C.textPrimary,
-    },
-    cardSubtitle: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        marginTop: 2,
-        marginBottom: Spacing.lg,
-    },
-    googleBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        backgroundColor: C.bg,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: Radius.md,
-        paddingVertical: 14,
-    },
-    googleBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: C.textPrimary,
-    },
-    divider: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginVertical: Spacing.lg,
-        gap: Spacing.md,
-    },
-    dividerLine: {
-        flex: 1,
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: C.borderLight,
-    },
-    dividerText: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-    },
-    input: {
-        backgroundColor: C.bg,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        borderRadius: Radius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-        marginBottom: Spacing.md,
-    },
-    errorText: {
-        fontSize: FontSize.sm,
-        color: C.danger,
-        marginBottom: Spacing.sm,
-    },
-    submitButton: {
-        backgroundColor: C.accent,
-        paddingVertical: 16,
-        borderRadius: Radius.md,
-        alignItems: "center",
-        marginTop: Spacing.md,
-        ...Shadows.sm,
-        shadowColor: C.accent,
-        shadowOpacity: 0.25,
-    },
-    buttonDisabled: {
-        opacity: 0.6,
-    },
-    submitText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        fontWeight: "600",
-    },
-    toggleLink: {
-        marginTop: Spacing.lg,
-        alignItems: "center",
-    },
-    toggleText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        navBar: {
+            paddingTop: 56,
+            paddingHorizontal: Spacing.md,
+            paddingBottom: Spacing.sm,
+            backgroundColor: C.bg,
+        },
+        backBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+        },
+        backText: {
+            fontSize: FontSize.md,
+            color: C.accent,
+        },
+        scrollContent: {
+            flexGrow: 1,
+            justifyContent: "center",
+            padding: Spacing.xxl,
+            paddingTop: 0,
+        },
+        brandSection: {
+            alignItems: "center",
+            marginBottom: Spacing.lg,
+        },
+        logoBox: {
+            width: 64,
+            height: 64,
+            borderRadius: Radius.lg,
+            backgroundColor: C.accent,
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: Spacing.lg,
+            ...Shadows.md,
+            shadowColor: C.accent,
+            shadowOpacity: 0.3,
+        },
+        appName: {
+            fontSize: 32,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        tagline: {
+            fontSize: FontSize.md,
+            color: C.textSecondary,
+            textAlign: "center",
+            marginTop: Spacing.sm,
+            maxWidth: 280,
+            lineHeight: 22,
+        },
+        card: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.xl,
+            padding: Spacing.xxl,
+            borderWidth: 0,
+            ...Shadows.lg,
+        },
+        cardTitle: {
+            fontSize: FontSize.xl,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        cardSubtitle: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+            marginTop: 2,
+            marginBottom: Spacing.lg,
+        },
+        googleBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: Spacing.sm,
+            backgroundColor: C.bg,
+            borderWidth: 1,
+            borderColor: C.border,
+            borderRadius: Radius.md,
+            paddingVertical: 14,
+        },
+        googleBtnText: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.textPrimary,
+        },
+        appleBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: Spacing.sm,
+            backgroundColor: "#000",
+            borderRadius: Radius.md,
+            paddingVertical: 14,
+            marginTop: Spacing.sm,
+        },
+        appleBtnText: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: "#fff",
+        },
+        divider: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginVertical: Spacing.lg,
+            gap: Spacing.md,
+        },
+        dividerLine: {
+            flex: 1,
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: C.borderLight,
+        },
+        dividerText: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+        },
+        input: {
+            backgroundColor: C.bg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 14,
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+            marginBottom: Spacing.md,
+        },
+        errorText: {
+            fontSize: FontSize.sm,
+            color: C.danger,
+            marginBottom: Spacing.sm,
+        },
+        submitButton: {
+            backgroundColor: C.accent,
+            paddingVertical: 16,
+            borderRadius: Radius.md,
+            alignItems: "center",
+            marginTop: Spacing.md,
+            ...Shadows.sm,
+            shadowColor: C.accent,
+            shadowOpacity: 0.25,
+        },
+        buttonDisabled: {
+            opacity: 0.6,
+        },
+        submitText: {
+            color: "#fff",
+            fontSize: FontSize.md,
+            fontWeight: "600",
+        },
+        toggleLink: {
+            marginTop: Spacing.lg,
+            alignItems: "center",
+        },
+        toggleText: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+        },
+    });
 }
 
 export default function LoginScreen() {
     const C = useColors();
     const styles = useMemo(() => makeStyles(C), [C]);
-    const { signInEmail, signUpEmail, signInGoogle } = useAuth();
+    const { signInEmail, signUpEmail, signInGoogle, signInApple } = useAuth();
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -245,6 +241,24 @@ export default function LoginScreen() {
         }
     };
 
+    const handleAppleSignIn = async () => {
+        setError(null);
+        setSubmitting(true);
+        try {
+            await signInApple();
+            router.back();
+        } catch (err: any) {
+            const code = err?.code || "";
+            const msg = err?.message || "Apple Sign-In failed.";
+            // Don't show error for user cancellation (ERR_REQUEST_CANCELED)
+            if (!code.includes("CANCELED") && !msg.includes("cancelled") && !msg.includes("canceled")) {
+                setError(msg);
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
@@ -277,19 +291,7 @@ export default function LoginScreen() {
                     </Text>
                 </View>
 
-                {/* Feature Pills */}
-                <View style={styles.featurePills}>
-                    {[
-                        { icon: "sparkles" as const, label: "AI Parsing" },
-                        { icon: "grid" as const, label: "Matrix" },
-                        { icon: "calendar" as const, label: "Calendar" },
-                    ].map((f) => (
-                        <View key={f.label} style={styles.pill}>
-                            <Ionicons name={f.icon} size={12} color={C.accent} />
-                            <Text style={styles.pillText}>{f.label}</Text>
-                        </View>
-                    ))}
-                </View>
+
 
                 {/* Auth Card */}
                 <View style={styles.card}>
@@ -309,6 +311,17 @@ export default function LoginScreen() {
                     >
                         <Ionicons name="logo-google" size={18} color={C.textPrimary} />
                         <Text style={styles.googleBtnText}>Continue with Google</Text>
+                    </TouchableOpacity>
+
+                    {/* Apple Sign-In */}
+                    <TouchableOpacity
+                        style={styles.appleBtn}
+                        activeOpacity={0.8}
+                        onPress={handleAppleSignIn}
+                        disabled={submitting}
+                    >
+                        <Ionicons name="logo-apple" size={20} color="#fff" />
+                        <Text style={styles.appleBtnText}>Continue with Apple</Text>
                     </TouchableOpacity>
 
                     <View style={styles.divider}>

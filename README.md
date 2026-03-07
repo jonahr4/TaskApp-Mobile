@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/Icon-iOS-Default-white-1024x1024@1x.png" width="120" alt="TaskApp Icon" />
+  <img src="assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png" width="120" alt="TaskApp Icon" />
 </p>
 
 <h1 align="center">TaskApp</h1>
@@ -29,9 +29,9 @@
 
 <p align="center">
   <img src="assets/images/Screenshots/iphone/ios_1.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
   <img src="assets/images/Screenshots/iphone/ios_2.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
 </p>
 
 ---
@@ -111,6 +111,7 @@
 
 - [Node.js](https://nodejs.org/) 18+
 - [Expo CLI](https://docs.expo.dev/get-started/installation/)
+- [Fastlane](https://fastlane.tools/) (for local builds)
 - Xcode 15+ (for iOS builds)
 - Firebase project with Firestore and Auth enabled
 
@@ -135,6 +136,17 @@ npx expo start
 npx expo run:ios
 ```
 
+### Building for Production
+
+Build locally to skip the EAS cloud queue:
+
+```bash
+# Build the .ipa on your machine (requires Fastlane + Xcode)
+eas build --platform ios --profile production --local
+```
+
+Then upload to App Store Connect using [Transporter](https://apps.apple.com/us/app/transporter/id1450874784?mt=12) — just drag the `.ipa` file into the app and click Deliver.
+
 ### Environment Variables
 
 | Variable | Description |
@@ -148,6 +160,26 @@ npx expo run:ios
 | `EXPO_PUBLIC_AI_API_URL` | AI API endpoint URL |
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Google Sign-In iOS client ID |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Google Sign-In web client ID |
+
+---
+
+## Branching Strategy
+
+```
+main              ← App Store releases only
+ └── dev          ← Active development
+      └── v1.1   ← Version branches (branched off dev)
+           └── feature/ai-improvements  ← Feature branches (branched off version)
+```
+
+| Branch | Purpose |
+|--------|--------|
+| `main` | Production — each commit is an App Store submission |
+| `dev` | Development — all work merges here first |
+| `v1.x` | Version branches — scoped to a release, branched off `dev` |
+| `feature/*` | Feature branches — branched off a version branch |
+
+Features merge into their version branch, version branches merge into `dev`, and `dev` merges into `main` for release.
 
 ---
 

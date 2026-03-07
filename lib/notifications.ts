@@ -1,32 +1,32 @@
-import * as Notifications from "expo-notifications";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
 import type { Task } from "@/lib/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 // ── Settings shape ──────────────────────────────────────────────────────────
 
 export type NotificationSettings = {
     enabled: boolean;
-    reminderMinutes: number; // how many minutes before due time
+    reminderMinutesList: number[]; // list of minutes-before-due values
     enabledGroupIds: string[]; // empty = all groups
     allGroupsEnabled: boolean; // true = notify for all groups
     dailySummaryEnabled: boolean;
     dailySummaryHour: number; // 0-23
     dailySummaryMinute: number; // 0-59
-    locationRemindersEnabled: boolean; // WIP — UI only
+
 };
 
 const SETTINGS_KEY = "notificationSettings";
 
 export const DEFAULT_SETTINGS: NotificationSettings = {
     enabled: false,
-    reminderMinutes: 15,
+    reminderMinutesList: [15],
     enabledGroupIds: [],
     allGroupsEnabled: true,
     dailySummaryEnabled: false,
     dailySummaryHour: 8,
     dailySummaryMinute: 0,
-    locationRemindersEnabled: false,
+
 };
 
 export const REMINDER_OPTIONS = [
@@ -44,7 +44,15 @@ export const REMINDER_OPTIONS = [
 export async function loadSettings(): Promise<NotificationSettings> {
     try {
         const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-        if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            // Migrate old single-value setting
+            if ('reminderMinutes' in parsed && !('reminderMinutesList' in parsed)) {
+                parsed.reminderMinutesList = [parsed.reminderMinutes];
+                delete parsed.reminderMinutes;
+            }
+            return { ...DEFAULT_SETTINGS, ...parsed };
+        }
     } catch { }
     return { ...DEFAULT_SETTINGS };
 }
@@ -92,8 +100,8 @@ export function configureForegroundHandler() {
 
 // ── Task reminder scheduling ────────────────────────────────────────────────
 
-function getTaskNotificationId(taskId: string): string {
-    return `task-reminder-${taskId}`;
+function getTaskNotificationId(taskId: string, minutes: number): string {
+    return `task-reminder-${taskId}-${minutes}`;
 }
 
 function getDailySummaryId(): string {
@@ -126,32 +134,28 @@ function colorToEmoji(hex?: string): string {
     return "🔴"; // pinkish reds
 }
 
-export async function scheduleTaskReminder(
+export async function scheduleTaskReminders(
     task: Task,
-    minutesBefore: number,
+    minutesBeforeList: number[],
     groupName?: string,
     groupColor?: string
 ): Promise<void> {
     if (!task.dueDate) return;
 
-    // Build the trigger date
+    // Build the due date
     const [year, month, day] = task.dueDate.split("-").map(Number);
-    let hours = 9, minutes = 0; // default: 9am if no time set
+    let hours = 9, mins = 0; // default: 9am if no time set
 
     if (task.dueTime) {
         const [h, m] = task.dueTime.split(":").map(Number);
         hours = h;
-        minutes = m;
+        mins = m;
     }
 
-    const dueDate = new Date(year, month - 1, day, hours, minutes, 0);
-    const triggerDate = new Date(dueDate.getTime() - minutesBefore * 60 * 1000);
+    const dueDate = new Date(year, month - 1, day, hours, mins, 0);
 
-    // Don't schedule if the trigger is in the past
-    if (triggerDate <= new Date()) return;
-
-    // Cancel any existing notification for this task
-    await cancelTaskReminder(task.id);
+    // Cancel all existing notifications for this task
+    await cancelTaskReminders(task.id);
 
     // Priority label — only show if task actually has a priority set
     const hasPriority = task.urgent === true || task.important === true;
@@ -160,32 +164,55 @@ export async function scheduleTaskReminder(
             !task.urgent && task.important ? "🔵 Schedule" :
                 task.urgent && !task.important ? "🟡 Delegate" : null;
 
-    // Build body parts
-    const bodyParts: string[] = [];
-    bodyParts.push(minutesBefore === 0 ? "Due now" : `Due in ${formatMinutes(minutesBefore)}`);
-    if (priorityLabel) bodyParts.push(priorityLabel);
-
     const emoji = colorToEmoji(groupColor);
 
-    await Notifications.scheduleNotificationAsync({
-        identifier: getTaskNotificationId(task.id),
-        content: {
-            title: `${emoji} ${task.title}`,
-            subtitle: groupName || undefined,
-            body: bodyParts.join(" • "),
-            data: { taskId: task.id },
-            sound: "default",
-            ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
-        },
-        trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: triggerDate,
-        },
-    });
+    for (const minutesBefore of minutesBeforeList) {
+        const triggerDate = new Date(dueDate.getTime() - minutesBefore * 60 * 1000);
+
+        // Don't schedule if the trigger is in the past
+        if (triggerDate <= new Date()) continue;
+
+        // Build body parts
+        const bodyParts: string[] = [];
+        bodyParts.push(minutesBefore === 0 ? "Due now" : `Due in ${formatMinutes(minutesBefore)}`);
+        if (priorityLabel) bodyParts.push(priorityLabel);
+
+        await Notifications.scheduleNotificationAsync({
+            identifier: getTaskNotificationId(task.id, minutesBefore),
+            content: {
+                title: `${emoji} ${task.title}`,
+                subtitle: groupName || undefined,
+                body: bodyParts.join(" • "),
+                data: { taskId: task.id },
+                sound: "default",
+                ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: triggerDate,
+            },
+        });
+    }
 }
 
-export async function cancelTaskReminder(taskId: string): Promise<void> {
-    await Notifications.cancelScheduledNotificationAsync(getTaskNotificationId(taskId));
+export async function cancelTaskReminders(taskId: string): Promise<void> {
+    // Cancel all known reminder variants for this task
+    const allMinutes = REMINDER_OPTIONS.map((o) => o.value);
+    for (const m of allMinutes) {
+        try {
+            await Notifications.cancelScheduledNotificationAsync(getTaskNotificationId(taskId, m));
+        } catch { }
+    }
+    // Also try cancelling any custom times by scanning scheduled notifications
+    try {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        const prefix = `task-reminder-${taskId}-`;
+        for (const n of scheduled) {
+            if (n.identifier.startsWith(prefix)) {
+                await Notifications.cancelScheduledNotificationAsync(n.identifier);
+            }
+        }
+    } catch { }
 }
 
 // ── Daily summary ───────────────────────────────────────────────────────────
@@ -247,11 +274,11 @@ export async function rescheduleAllReminders(
         return true;
     });
 
-    // Schedule individual reminders
+    // Schedule individual reminders (multiple per task)
     for (const task of eligibleTasks) {
         const gName = task.groupId && groupNameMap ? groupNameMap[task.groupId] : undefined;
         const gColor = task.groupId && groupColorMap ? groupColorMap[task.groupId] : undefined;
-        await scheduleTaskReminder(task, settings.reminderMinutes, gName || "General Tasks", gColor);
+        await scheduleTaskReminders(task, settings.reminderMinutesList, gName || "General Tasks", gColor);
     }
 
     // Schedule daily summary if enabled

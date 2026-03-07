@@ -1,21 +1,22 @@
-import { useState, useCallback, useMemo } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Pressable,
-    Platform,
-    Alert,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useAuth } from "@/hooks/useAuth";
-import { useColors, useTheme } from "@/hooks/useTheme";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
 import { triggerOnboarding } from "@/app/_layout";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
 import { NotificationSettingsSheet } from "@/components/NotificationSettingsSheet";
+import { useAuth } from "@/hooks/useAuth";
+import { useColors, useTheme } from "@/hooks/useTheme";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import {
+    Alert,
+    Linking,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 type Props = {
     title: string;
@@ -297,6 +298,18 @@ export default function ScreenHeader({ title }: Props) {
                                 <Ionicons name="help-circle-outline" size={16} color={C.textSecondary} />
                             </View>
                             <Text style={styles.menuBtnText}>Learn More</Text>
+                        </TouchableOpacity>
+
+                        {/* Privacy Policy */}
+                        <TouchableOpacity
+                            style={styles.menuBtn}
+                            onPress={() => { close(); Linking.openURL("https://www.the-task.app/privacy"); }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.menuIconWrap}>
+                                <Ionicons name="shield-checkmark-outline" size={16} color={C.textSecondary} />
+                            </View>
+                            <Text style={styles.menuBtnText}>Privacy Policy</Text>
                         </TouchableOpacity>
 
                         <View style={styles.divider} />

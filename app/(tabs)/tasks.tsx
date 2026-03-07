@@ -1,42 +1,36 @@
-import { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Dimensions,
-    ScrollView,
-    Alert,
-    Animated,
-    Pressable,
-    NativeSyntheticEvent,
-    NativeScrollEvent,
-    RefreshControl,
-    LayoutAnimation,
-    UIManager,
-    Platform,
-    Modal,
-    ActionSheetIOS,
-} from "react-native";
-import PagerView from "react-native-pager-view";
-import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useAutoUrgent } from "@/hooks/useAutoUrgent";
-import { updateTaskUnified, deleteTaskUnified, createGroupUnified, updateGroupUnified, createTaskUnified, reorderGroupsUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize, Shadows, SCREEN } from "@/lib/theme";
-import { useColors, useTheme } from "@/hooks/useTheme";
-import { getQuadrant, QUADRANT_META } from "@/lib/types";
-import type { Task, TaskGroup } from "@/lib/types";
-import TaskModal from "@/components/TaskModal";
 import GroupModal from "@/components/GroupModal";
 import ScreenHeader from "@/components/ScreenHeader";
+import TaskModal from "@/components/TaskModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useAutoUrgent } from "@/hooks/useAutoUrgent";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors, useTheme } from "@/hooks/useTheme";
+import { createTaskUnified, deleteTaskUnified, reorderGroupsUnified, updateTaskUnified } from "@/lib/crud";
 import { loadSettings, rescheduleAllReminders } from "@/lib/notifications";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Task, TaskGroup } from "@/lib/types";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    ActionSheetIOS,
+    Alert,
+    Animated,
+    Dimensions,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PEEK_WIDTH = 24;
@@ -283,7 +277,7 @@ function GroupPage({
             completed: false,
             order: task.order + 1,
             autoUrgentDays: task.autoUrgentDays,
-            location: task.location,
+
         });
         if (!uid) onLocalChange?.();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -479,439 +473,440 @@ const makePillStyles = (C: typeof Colors.light) => StyleSheet.create({
     },
 });
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: C.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: C.textPrimary,
-        letterSpacing: -0.5,
-    },
-    profileBtn: {
-        padding: 4,
-        position: "relative",
-    },
-    alertBadge: {
-        position: "absolute",
-        top: 0,
-        right: 0,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: "#f59e0b",
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 2,
-        borderColor: C.bgCard,
-    },
-    alertBadgeText: {
-        fontSize: 11,
-        fontWeight: "800",
-        color: "#fff",
-    },
-    dropdownBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 30,
-    },
-    accountDropdown: {
-        position: "absolute",
-        top: 100,
-        right: Spacing.lg,
-        width: 240,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.xl,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        ...Shadows.xl,
-        padding: Spacing.md,
-        zIndex: 31,
-    },
-    dropdownEmail: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        marginBottom: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-    },
-    dropdownBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-        borderRadius: Radius.md,
-    },
-    dropdownBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-    },
-    dropdownMessage: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.sm,
-        marginBottom: Spacing.md,
-    },
-    dropdownMessageText: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        flex: 1,
-    },
-    dropdownSignInBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
-        backgroundColor: C.accent,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.md,
-    },
-    dropdownSignInText: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: "#fff",
-    },
-    pager: {
-        flex: 1,
-    },
-    pagerPage: {
-        flex: 1,
-        paddingHorizontal: PEEK_WIDTH,
-        paddingTop: Spacing.lg,
-        paddingBottom: Spacing.sm,
-    },
-    pageWrapper: {
-        width: CARD_WIDTH,
-        marginRight: CARD_GAP,
-    },
-    groupPage: {
-        flex: 1,
-    },
-    groupCard: {
-        flex: 1,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.xl,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        ...Shadows.lg,
-        overflow: "hidden",
-    },
-    groupHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-    },
-    groupHeaderLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        flex: 1,
-    },
-    groupHeaderRight: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.xs,
-    },
-    groupDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
-    groupName: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: C.textPrimary,
-        flexShrink: 1,
-    },
-    countBadge: {
-        backgroundColor: C.bg,
-        borderRadius: Radius.full,
-        paddingHorizontal: 9,
-        paddingVertical: 3,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    countText: {
-        fontSize: FontSize.xs,
-        fontWeight: "700",
-        color: C.textSecondary,
-    },
-    addBtn: {
-        padding: 4,
-    },
-    taskList: {
-        flex: 1,
-        paddingHorizontal: Spacing.md,
-        paddingTop: Spacing.sm,
-    },
-    taskRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 14,
-        paddingHorizontal: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-        gap: Spacing.md,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 7,
-        borderWidth: 2,
-        borderColor: C.border,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxChecked: {
-        backgroundColor: C.success,
-        borderColor: C.success,
-    },
-    taskContent: {
-        flex: 1,
-    },
-    taskTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: C.textPrimary,
-        lineHeight: 21,
-    },
-    taskTitleCompleted: {
-        textDecorationLine: "line-through",
-        color: C.textTertiary,
-    },
-    taskMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 3,
-    },
-    taskDue: {
-        fontSize: 11,
-        color: C.textSecondary,
-    },
-    priorityBadge: {
-        paddingVertical: 2,
-        paddingHorizontal: 5,
-        borderRadius: 4,
-        borderWidth: 1,
-    },
-    priorityText: {
-        fontSize: 11,
-        fontWeight: "500",
-    },
-    menuBtn: {
-        padding: 6,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    emptyState: {
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 80,
-        gap: Spacing.md,
-    },
-    emptyText: {
-        fontSize: FontSize.md,
-        color: C.textTertiary,
-    },
-    completedToggle: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.sm,
-        marginTop: Spacing.sm,
-    },
-    completedToggleText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        fontWeight: "500",
-    },
-    dotContainer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: 10,
-        gap: 7,
-        minHeight: 28,
-    },
-    dotSpacer: {
-        height: 8,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: C.borderLight,
-    },
-    dotActive: {
-        backgroundColor: C.accent,
-        width: 24,
-        borderRadius: 4,
-    },
-    fab: {
-        position: "absolute",
-        right: 20,
-        bottom: 84,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: C.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        ...Shadows.lg,
-        shadowColor: C.accent,
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 3,
-        borderColor: "rgba(255,255,255,0.3)",
-        zIndex: 50,
-    },
-    fabBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.2)",
-        zIndex: 40,
-    },
-    fabMini: {
-        position: "absolute",
-        right: 20,
-        bottom: 84,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        zIndex: 45,
-    },
-    fabMiniTop: {},
-    fabMiniBottom: {},
-    fabMiniBtn: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        backgroundColor: C.accent,
-        justifyContent: "center",
-        alignItems: "center",
-        ...Shadows.md,
-    },
-    fabMiniLabel: {
-        position: "absolute",
-        right: 62,
-        backgroundColor: C.bgCard,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: 10,
-        borderRadius: Radius.md,
-        ...Shadows.md,
-        fontSize: FontSize.md,
-        fontWeight: "600" as const,
-        color: C.textPrimary,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: Spacing.md,
-    },
-    emptyContainerText: {
-        fontSize: FontSize.md,
-        color: C.textTertiary,
-    },
-    syncBanner: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        backgroundColor: C.accentLight,
-    },
-    syncBannerText: {
-        fontSize: FontSize.sm,
-        color: C.accent,
-        fontWeight: "500",
-    },
-    filterBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: 8,
-        paddingBottom: 8,
-        zIndex: 20,
-        backgroundColor: C.bgElevated,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-    },
-    filterChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    filterChipActive: {
-        backgroundColor: C.accentLight,
-        borderColor: C.accent,
-    },
-    filterChipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "500" as const,
-        color: C.textSecondary,
-    },
-    filterChipTextActive: {
-        color: C.accent,
-    },
-    filterDropdown: {
-        position: "absolute",
-        top: 38,
-        left: 0,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        ...Shadows.lg,
-        zIndex: 30,
-        minWidth: 160,
-        overflow: "hidden",
-    },
-    filterOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    filterOptionActive: {
-        backgroundColor: C.accentLight,
-    },
-    filterOptionText: {
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-    },
-    filterOptionTextActive: {
-        color: C.accent,
-        fontWeight: "600" as const,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.xl,
+            paddingTop: 60,
+            paddingBottom: Spacing.md,
+            backgroundColor: C.bgCard,
+            ...Shadows.sm,
+        },
+        headerTitle: {
+            fontSize: FontSize.title,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        profileBtn: {
+            padding: 4,
+            position: "relative",
+        },
+        alertBadge: {
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 16,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: "#f59e0b",
+            justifyContent: "center",
+            alignItems: "center",
+            borderWidth: 2,
+            borderColor: C.bgCard,
+        },
+        alertBadgeText: {
+            fontSize: 11,
+            fontWeight: "800",
+            color: "#fff",
+        },
+        dropdownBackdrop: {
+            ...StyleSheet.absoluteFillObject,
+            zIndex: 30,
+        },
+        accountDropdown: {
+            position: "absolute",
+            top: 100,
+            right: Spacing.lg,
+            width: 240,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.xl,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.xl,
+            padding: Spacing.md,
+            zIndex: 31,
+        },
+        dropdownEmail: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            marginBottom: Spacing.sm,
+            paddingHorizontal: Spacing.sm,
+        },
+        dropdownBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            paddingVertical: Spacing.sm,
+            paddingHorizontal: Spacing.sm,
+            borderRadius: Radius.md,
+        },
+        dropdownBtnText: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+        },
+        dropdownMessage: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            paddingHorizontal: Spacing.sm,
+            marginBottom: Spacing.md,
+        },
+        dropdownMessageText: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            flex: 1,
+        },
+        dropdownSignInBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: Spacing.sm,
+            backgroundColor: C.accent,
+            paddingVertical: Spacing.sm,
+            borderRadius: Radius.md,
+        },
+        dropdownSignInText: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: "#fff",
+        },
+        pager: {
+            flex: 1,
+        },
+        pagerPage: {
+            flex: 1,
+            paddingHorizontal: PEEK_WIDTH,
+            paddingTop: Spacing.lg,
+            paddingBottom: Spacing.sm,
+        },
+        pageWrapper: {
+            width: CARD_WIDTH,
+            marginRight: CARD_GAP,
+        },
+        groupPage: {
+            flex: 1,
+        },
+        groupCard: {
+            flex: 1,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.xl,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.lg,
+            overflow: "hidden",
+        },
+        groupHeader: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 14,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+        },
+        groupHeaderLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            flex: 1,
+        },
+        groupHeaderRight: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.xs,
+        },
+        groupDot: {
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+        },
+        groupName: {
+            fontSize: FontSize.lg,
+            fontWeight: "700",
+            color: C.textPrimary,
+            flexShrink: 1,
+        },
+        countBadge: {
+            backgroundColor: C.bg,
+            borderRadius: Radius.full,
+            paddingHorizontal: 9,
+            paddingVertical: 3,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        countText: {
+            fontSize: FontSize.xs,
+            fontWeight: "700",
+            color: C.textSecondary,
+        },
+        addBtn: {
+            padding: 4,
+        },
+        taskList: {
+            flex: 1,
+            paddingHorizontal: Spacing.md,
+            paddingTop: Spacing.sm,
+        },
+        taskRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 14,
+            paddingHorizontal: Spacing.sm,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+            gap: Spacing.md,
+        },
+        checkbox: {
+            width: 24,
+            height: 24,
+            borderRadius: 7,
+            borderWidth: 2,
+            borderColor: C.border,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        checkboxChecked: {
+            backgroundColor: C.success,
+            borderColor: C.success,
+        },
+        taskContent: {
+            flex: 1,
+        },
+        taskTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.textPrimary,
+            lineHeight: 21,
+        },
+        taskTitleCompleted: {
+            textDecorationLine: "line-through",
+            color: C.textTertiary,
+        },
+        taskMeta: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 3,
+        },
+        taskDue: {
+            fontSize: 11,
+            color: C.textSecondary,
+        },
+        priorityBadge: {
+            paddingVertical: 2,
+            paddingHorizontal: 5,
+            borderRadius: 4,
+            borderWidth: 1,
+        },
+        priorityText: {
+            fontSize: 11,
+            fontWeight: "500",
+        },
+        menuBtn: {
+            padding: 6,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        emptyState: {
+            alignItems: "center",
+            justifyContent: "center",
+            paddingTop: 80,
+            gap: Spacing.md,
+        },
+        emptyText: {
+            fontSize: FontSize.md,
+            color: C.textTertiary,
+        },
+        completedToggle: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingVertical: Spacing.md,
+            paddingHorizontal: Spacing.sm,
+            marginTop: Spacing.sm,
+        },
+        completedToggleText: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+            fontWeight: "500",
+        },
+        dotContainer: {
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: 10,
+            gap: 7,
+            minHeight: 28,
+        },
+        dotSpacer: {
+            height: 8,
+        },
+        dot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: C.borderLight,
+        },
+        dotActive: {
+            backgroundColor: C.accent,
+            width: 24,
+            borderRadius: 4,
+        },
+        fab: {
+            position: "absolute",
+            right: 20,
+            bottom: 84,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: C.accent,
+            justifyContent: "center",
+            alignItems: "center",
+            ...Shadows.lg,
+            shadowColor: C.accent,
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            borderWidth: 3,
+            borderColor: "rgba(255,255,255,0.3)",
+            zIndex: 50,
+        },
+        fabBackdrop: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: "rgba(0,0,0,0.2)",
+            zIndex: 40,
+        },
+        fabMini: {
+            position: "absolute",
+            right: 20,
+            bottom: 84,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            zIndex: 45,
+        },
+        fabMiniTop: {},
+        fabMiniBottom: {},
+        fabMiniBtn: {
+            width: 46,
+            height: 46,
+            borderRadius: 23,
+            backgroundColor: C.accent,
+            justifyContent: "center",
+            alignItems: "center",
+            ...Shadows.md,
+        },
+        fabMiniLabel: {
+            position: "absolute",
+            right: 62,
+            backgroundColor: C.bgCard,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 10,
+            borderRadius: Radius.md,
+            ...Shadows.md,
+            fontSize: FontSize.md,
+            fontWeight: "600" as const,
+            color: C.textPrimary,
+        },
+        emptyContainer: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            gap: Spacing.md,
+        },
+        emptyContainerText: {
+            fontSize: FontSize.md,
+            color: C.textTertiary,
+        },
+        syncBanner: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            paddingVertical: Spacing.sm,
+            paddingHorizontal: Spacing.lg,
+            backgroundColor: C.accentLight,
+        },
+        syncBannerText: {
+            fontSize: FontSize.sm,
+            color: C.accent,
+            fontWeight: "500",
+        },
+        filterBar: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: Spacing.lg,
+            paddingTop: 8,
+            paddingBottom: 8,
+            zIndex: 20,
+            backgroundColor: C.bgElevated,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        filterChip: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: Radius.full,
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        filterChipActive: {
+            backgroundColor: C.accentLight,
+            borderColor: C.accent,
+        },
+        filterChipText: {
+            fontSize: FontSize.xs,
+            fontWeight: "500" as const,
+            color: C.textSecondary,
+        },
+        filterChipTextActive: {
+            color: C.accent,
+        },
+        filterDropdown: {
+            position: "absolute",
+            top: 38,
+            left: 0,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.lg,
+            zIndex: 30,
+            minWidth: 160,
+            overflow: "hidden",
+        },
+        filterOption: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+        },
+        filterOptionActive: {
+            backgroundColor: C.accentLight,
+        },
+        filterOptionText: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        filterOptionTextActive: {
+            color: C.accent,
+            fontWeight: "600" as const,
+        },
+    });
 }
 
 export default function TasksScreen() {
