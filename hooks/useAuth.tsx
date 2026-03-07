@@ -1,3 +1,19 @@
+import { useSync, type SyncScenario } from "@/hooks/useSync";
+import { auth } from "@/lib/firebase";
+import { deleteAllUserData, groupsQuery, tasksQuery } from "@/lib/firestore";
+import { clearLocalData, replaceAllLocalGroups, replaceAllLocalTasks } from "@/lib/localDb";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import {
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    OAuthProvider,
+    onAuthStateChanged,
+    signInWithCredential,
+    signInWithEmailAndPassword,
+    signOut,
+    type User,
+} from "firebase/auth";
+import { getDocs } from "firebase/firestore";
 import {
     createContext,
     useContext,
@@ -5,20 +21,6 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import {
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signInWithCredential,
-    GoogleAuthProvider,
-    signOut,
-    type User,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { deleteAllUserData } from "@/lib/firestore";
-import { clearLocalData } from "@/lib/localDb";
-import { useSync, type SyncScenario } from "@/hooks/useSync";
-import Constants, { ExecutionEnvironment } from "expo-constants";
 
 // Google Sign-In only works in native builds, not Expo Go
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -40,6 +42,7 @@ type AuthCtx = {
     signInEmail: (email: string, password: string) => Promise<SyncScenario>;
     signUpEmail: (email: string, password: string) => Promise<SyncScenario>;
     signInGoogle: () => Promise<SyncScenario>;
+    signInApple: () => Promise<SyncScenario>;
     deleteAccount: () => Promise<void>;
     logOut: () => Promise<void>;
     // Sync state
@@ -56,6 +59,7 @@ const AuthContext = createContext<AuthCtx>({
     signInEmail: async () => "none",
     signUpEmail: async () => "none",
     signInGoogle: async () => "none",
+    signInApple: async () => "none",
     deleteAccount: async () => { },
     logOut: async () => { },
     syncScenario: null,
@@ -114,7 +118,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return scenario;
     };
 
+    const signInApple = async (): Promise<SyncScenario> => {
+        const AppleAuth = require("expo-apple-authentication") as typeof import("expo-apple-authentication");
+        const { sha256 } = require("js-sha256");
+
+        // Generate a nonce for security
+        const nonce = Math.random().toString(36).substring(2, 18);
+        const hashedNonce = sha256(nonce);
+
+        const appleCredential = await AppleAuth.signInAsync({
+            requestedScopes: [
+                AppleAuth.AppleAuthenticationScope.FULL_NAME,
+                AppleAuth.AppleAuthenticationScope.EMAIL,
+            ],
+            nonce: hashedNonce,
+        });
+
+        const { identityToken } = appleCredential;
+        if (!identityToken) throw new Error("No identity token from Apple Sign-In");
+
+        const provider = new OAuthProvider("apple.com");
+        const credential = provider.credential({
+            idToken: identityToken,
+            rawNonce: nonce,
+        });
+
+        const cred = await signInWithCredential(auth, credential);
+        const scenario = await sync.onSignIn(cred.user);
+        return scenario;
+    };
+
     const logOut = async () => {
+        // Snapshot cloud data to local storage so tasks persist after sign-out
+        if (user) {
+            try {
+                const [tasksSnap, groupsSnap] = await Promise.all([
+                    getDocs(tasksQuery(user.uid)),
+                    getDocs(groupsQuery(user.uid)),
+                ]);
+                await replaceAllLocalTasks(
+                    tasksSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+                );
+                await replaceAllLocalGroups(
+                    groupsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+                );
+            } catch {
+                // Best-effort — don't block sign-out if snapshot fails
+            }
+        }
         await signOut(auth);
     };
 
@@ -142,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 signInEmail,
                 signUpEmail,
                 signInGoogle,
+                signInApple,
                 deleteAccount,
                 logOut,
                 syncScenario: sync.scenario,

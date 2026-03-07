@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/Icon-iOS-Default-white-1024x1024@1x.png" width="120" alt="TaskApp Icon" />
+  <img src="assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png" width="120" alt="TaskApp Icon" />
 </p>
 
 <h1 align="center">TaskApp</h1>
@@ -29,9 +29,9 @@
 
 <p align="center">
   <img src="assets/images/Screenshots/iphone/ios_1.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
-  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
   <img src="assets/images/Screenshots/iphone/ios_2.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_3.png" width="180" />
+  <img src="assets/images/Screenshots/iphone/ios_4.png" width="180" />
 </p>
 
 ---

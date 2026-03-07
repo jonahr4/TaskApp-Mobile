@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
-import { Slot, useRouter, useSegments } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { ThemeProvider, useTheme } from "@/hooks/useTheme";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { configureForegroundHandler } from "@/lib/notifications";
+import AiFab from "@/components/AiFab";
 import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
-import AiFab from "@/components/AiFab";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider, useTheme } from "@/hooks/useTheme";
+import { configureForegroundHandler } from "@/lib/notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Slot, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Configure notification display while app is in foreground
 configureForegroundHandler();
@@ -28,6 +28,8 @@ function AppShell() {
   const { isDark, colors } = useTheme();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const segments = useSegments();
+  const isAuthScreen = segments[0] === "(auth)";
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((val: string | null) => {
@@ -61,7 +63,7 @@ function AppShell() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Slot />
-      <AiFab />
+      {!isAuthScreen && <AiFab />}
       {/* Merge prompt shown after sign-in when both local and cloud data exist */}
       <MergePrompt
         visible={syncScenario === "merge_needed"}

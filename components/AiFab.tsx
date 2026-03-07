@@ -17,6 +17,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
@@ -39,6 +40,7 @@ try {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 64; // carousel card width
+const AI_DATA_SHARING_CONSENT_KEY = "taskapp.aiDataSharingConsent.v1";
 
 // ── Types ───────────────────────────────────────────────────
 type AiTask = {
@@ -179,6 +181,51 @@ function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
         fontSize: FontSize.lg,
         fontWeight: "700",
         color: C.textPrimary,
+    },
+    consentCard: {
+        backgroundColor: C.bgCard,
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        borderRadius: Radius.lg,
+        padding: Spacing.md,
+        gap: 10,
+    },
+    consentTitle: {
+        fontSize: FontSize.md,
+        fontWeight: "700",
+        color: C.textPrimary,
+    },
+    consentText: {
+        fontSize: FontSize.sm,
+        color: C.textSecondary,
+        lineHeight: 20,
+    },
+    consentActions: {
+        flexDirection: "row",
+        gap: 10,
+        marginTop: 4,
+    },
+    consentBtn: {
+        flex: 1,
+        borderRadius: Radius.md,
+        paddingVertical: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: C.borderLight,
+        backgroundColor: C.bgElevated,
+    },
+    consentBtnPrimary: {
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+    },
+    consentBtnText: {
+        fontSize: FontSize.sm,
+        fontWeight: "600",
+        color: C.textPrimary,
+    },
+    consentBtnTextPrimary: {
+        color: "#fff",
     },
 
     // Messages
@@ -883,6 +930,8 @@ export default function AiFab() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [parsing, setParsing] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [aiConsentKnown, setAiConsentKnown] = useState(false);
+    const [aiConsentGranted, setAiConsentGranted] = useState(false);
     const scrollRef = useRef<ScrollView>(null);
     const inputRef = useRef<TextInput>(null);
     const [listening, setListening] = useState(false);
@@ -902,6 +951,24 @@ export default function AiFab() {
             endSub?.remove?.();
             errorSub?.remove?.();
         };
+    }, []);
+
+    useEffect(() => {
+        const loadConsent = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(AI_DATA_SHARING_CONSENT_KEY);
+                setAiConsentGranted(saved === "granted");
+            } finally {
+                setAiConsentKnown(true);
+            }
+        };
+        loadConsent();
+    }, []);
+
+    const setAiConsent = useCallback(async (granted: boolean) => {
+        await AsyncStorage.setItem(AI_DATA_SHARING_CONSENT_KEY, granted ? "granted" : "declined");
+        setAiConsentGranted(granted);
+        setAiConsentKnown(true);
     }, []);
 
     // Deep link: auto-open when widget sends mobile://openai
@@ -990,7 +1057,7 @@ export default function AiFab() {
 
     const handleSend = async () => {
         const trimmed = input.trim();
-        if (!trimmed || parsing) return;
+        if (!trimmed || parsing || !aiConsentGranted) return;
         Keyboard.dismiss();
 
         // Add user message
@@ -1101,7 +1168,7 @@ export default function AiFab() {
         } catch {
             setMessages((prev) => [...prev, { role: "system", text: "❌ Failed to add task" }]);
         }
-    }, [messages, user?.uid, groups, tasks.length]);
+    }, [messages, user?.uid, groups, tasks.length, aiConsentGranted]);
 
     const handleAddAll = useCallback(async (msgIdx: number) => {
         const msg = messages[msgIdx];
@@ -1245,6 +1312,26 @@ export default function AiFab() {
                             </View>
                         )}
 
+                        {aiConsentKnown && !aiConsentGranted && (
+                            <View style={styles.consentCard}>
+                                <Text style={styles.consentTitle}>AI data sharing permission</Text>
+                                <Text style={styles.consentText}>
+                                    To use AI Assistant, TaskApp sends the text you type, your timezone, your task groups, and a limited list of your incomplete task titles/due dates to our AI provider endpoint at the-task-app.vercel.app.
+                                </Text>
+                                <Text style={styles.consentText}>
+                                    This data is used only to answer your questions and create task suggestions. Choose Continue to allow sending this data.
+                                </Text>
+                                <View style={styles.consentActions}>
+                                    <TouchableOpacity style={styles.consentBtn} onPress={() => setAiConsent(false)}>
+                                        <Text style={styles.consentBtnText}>Not now</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.consentBtn, styles.consentBtnPrimary]} onPress={() => setAiConsent(true)}>
+                                        <Text style={[styles.consentBtnText, styles.consentBtnTextPrimary]}>Continue</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
                         {/* Chat messages */}
                         {messages.map((msg, mIdx) => {
                             if (msg.role === "user") {
@@ -1332,7 +1419,7 @@ export default function AiFab() {
                         <TouchableOpacity
                             style={[styles.sendBtn, (!input.trim() || parsing) && styles.sendBtnDisabled]}
                             onPress={handleSend}
-                            disabled={!input.trim() || parsing}
+                            disabled={!input.trim() || parsing || !aiConsentGranted}
                             activeOpacity={0.85}
                         >
                             <Ionicons

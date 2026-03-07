@@ -8,6 +8,8 @@ web-build/
 expo-env.d.ts
 
 # Native
+ios/Pods/
+ios/build/
 .kotlin/
 *.orig.*
 *.jks
@@ -41,3 +43,14 @@ yarn-error.*
 # build artifacts
 *.ipa
 Web Version/
+
+# duplicate/old mobile subfolder (legacy)
+/mobile/
+
+# Firebase service files (contain API keys)
+GoogleService-Info.plist
+google-services.json
+
+# macOS duplicate files
+*\ 2.*
+*\ 2/

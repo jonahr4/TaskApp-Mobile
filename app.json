@@ -2,7 +2,7 @@
   "expo": {
     "name": "TaskApp",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png",
     "scheme": "mobile",
@@ -15,7 +15,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "22",
       "bundleIdentifier": "com.jonahro.mobile",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "TaskApp may use your photo library for profile images and attachments.",
@@ -36,7 +38,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.jonahro.mobile"
     },
     "web": {
       "bundler": "metro",
@@ -46,6 +53,7 @@
     "plugins": [
       "expo-router",
       "@react-native-google-signin/google-signin",
+      "expo-apple-authentication",
       "expo-speech-recognition"
     ],
     "experiments": {
