@@ -1155,6 +1155,7 @@ export default function AiFab() {
                 if (user?.uid) incrementAiResult(user.uid, false).catch(() => null);
             }
         } catch (err) {
+            if (user?.uid) incrementAiResult(user.uid, false).catch(() => null);
             const errMsg: ChatMessage = {
                 role: "system",
                 text: `⚠️ ${err instanceof Error ? err.message : "Failed to parse. Try again."}`,
@@ -1186,6 +1187,7 @@ export default function AiFab() {
                 order: tasks.length,
                 autoUrgentDays: null,
                 reminder: false,
+                createdFrom: "ai",
             });
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -1219,6 +1221,7 @@ export default function AiFab() {
                     order: tasks.length + created,
                     autoUrgentDays: null,
                     reminder: false,
+                    createdFrom: "ai",
                 });
                 created++;
             }

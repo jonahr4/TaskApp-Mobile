@@ -44,7 +44,8 @@ const TRAY_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.45;
 
 const quadrants: Quadrant[] = ["DO", "SCHEDULE", "DELEGATE", "DELETE"];
 
-type StatusFilter = "all" | "in_progress" | "completed";
+import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
+
 type SortOption = "due_date" | "date_created" | "alphabetical" | "priority";
 
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
@@ -470,7 +471,7 @@ export default function MatrixScreen() {
     const containerW = useSharedValue(0);
     const containerH = useSharedValue(0);
     const [expandedQIdx, setExpandedQIdx] = useState(-1);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [statusFilter, setStatusFilter] = useStatusFilter();
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
     const [trayOpen, setTrayOpen] = useState(false);

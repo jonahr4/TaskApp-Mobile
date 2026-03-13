@@ -28,7 +28,8 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-type StatusFilter = "all" | "in_progress" | "completed";
+import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
+
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "All" },
     { key: "in_progress", label: "In Progress" },
@@ -326,7 +327,7 @@ export default function CalendarScreen() {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [statusFilter, setStatusFilter] = useStatusFilter();
     const [showFilterMenu, setShowFilterMenu] = useState(false);
 
     // Group filter — start with all selected

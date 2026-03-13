@@ -39,7 +39,8 @@ const PEEK_WIDTH = 24;
 const CARD_GAP = 10;
 const CARD_WIDTH = SCREEN_WIDTH - PEEK_WIDTH * 2 - CARD_GAP;
 
-type StatusFilter = "all" | "in_progress" | "completed";
+import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
+
 type SortOption = "due_date" | "date_created" | "alphabetical" | "priority";
 
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
@@ -953,7 +954,7 @@ export default function TasksScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [statusFilter, setStatusFilter] = useStatusFilter();
     const [sortBy, setSortBy] = useState<SortOption>("due_date");
     const [showFilterMenu, setShowFilterMenu] = useState<"status" | "sort" | null>(null);
     const pagerRef = useRef<ScrollView>(null);
