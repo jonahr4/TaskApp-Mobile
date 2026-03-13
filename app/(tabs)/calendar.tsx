@@ -32,7 +32,7 @@ import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
 
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "in_progress", label: "In Progress" },
+    { key: "in_progress", label: "Active" },
     { key: "completed", label: "Completed" },
 ];
 
@@ -513,16 +513,18 @@ export default function CalendarScreen() {
                 <View style={{ flex: 1 }} />
 
                 {/* Group filter */}
-                <GroupFilterDropdown
-                    groups={groups}
-                    selectedIds={selectedGroupIds}
-                    onToggle={handleToggleGroup}
-                    onSelectAll={handleSelectAllGroups}
-                />
+                <View style={{ marginLeft: "auto" }}>
+                    <GroupFilterDropdown
+                        groups={groups}
+                        selectedIds={selectedGroupIds}
+                        onToggle={handleToggleGroup}
+                        onSelectAll={handleSelectAllGroups}
+                    />
+                </View>
 
                 {/* Return to Today */}
                 {!isCurrentMonth && (
-                    <TouchableOpacity onPress={goToToday} style={styles.todayBtn} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={goToToday} style={[styles.todayBtn, { marginLeft: "auto" }]} activeOpacity={0.7}>
                         <Ionicons name="today-outline" size={12} color={C.accent} />
                         <Text style={styles.todayBtnText}>Today</Text>
                     </TouchableOpacity>

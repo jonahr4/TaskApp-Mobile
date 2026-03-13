@@ -50,7 +50,7 @@ type SortOption = "due_date" | "date_created" | "alphabetical" | "priority";
 
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "in_progress", label: "In Progress" },
+    { key: "in_progress", label: "Active" },
     { key: "completed", label: "Completed" },
 ];
 
@@ -878,15 +878,15 @@ export default function MatrixScreen() {
                 </View>
 
                 {/* Spacer */}
-                <View style={{ flex: 1 }} />
-
                 {/* Group filter */}
-                <GroupFilterDropdown
-                    groups={groups}
-                    selectedIds={selectedGroupIds}
-                    onToggle={handleToggleGroup}
-                    onSelectAll={handleSelectAllGroups}
-                />
+                <View style={{ marginLeft: "auto" }}>
+                    <GroupFilterDropdown
+                        groups={groups}
+                        selectedIds={selectedGroupIds}
+                        onToggle={handleToggleGroup}
+                        onSelectAll={handleSelectAllGroups}
+                    />
+                </View>
 
                 {/* Reset */}
                 {expandedQIdx !== -1 && (

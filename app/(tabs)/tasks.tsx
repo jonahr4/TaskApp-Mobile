@@ -45,7 +45,7 @@ type SortOption = "due_date" | "date_created" | "alphabetical" | "priority";
 
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "in_progress", label: "In Progress" },
+    { key: "in_progress", label: "Active" },
     { key: "completed", label: "Completed" },
 ];
 
@@ -789,7 +789,7 @@ function makeStyles(C: typeof Colors.light) {
         },
         fabMini: {
             position: "absolute",
-            right: 20,
+            right: 25, // (56 - 46) / 2 = 5, plus the base 20 = 25
             bottom: 84,
             flexDirection: "row",
             alignItems: "center",
@@ -809,7 +809,7 @@ function makeStyles(C: typeof Colors.light) {
         },
         fabMiniLabel: {
             position: "absolute",
-            right: 62,
+            right: 57, // 46 width + some margin
             backgroundColor: C.bgCard,
             paddingHorizontal: Spacing.lg,
             paddingVertical: 10,
@@ -846,8 +846,8 @@ function makeStyles(C: typeof Colors.light) {
         filterBar: {
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
-            paddingHorizontal: Spacing.lg,
+            gap: 4,
+            paddingHorizontal: Spacing.md,
             paddingTop: 8,
             paddingBottom: 8,
             zIndex: 20,
@@ -858,9 +858,9 @@ function makeStyles(C: typeof Colors.light) {
         filterChip: {
             flexDirection: "row",
             alignItems: "center",
-            gap: 4,
-            paddingHorizontal: 10,
-            paddingVertical: 6,
+            gap: 3,
+            paddingHorizontal: 8,
+            paddingVertical: 5,
             borderRadius: Radius.full,
             backgroundColor: C.bgCard,
             borderWidth: 1,
@@ -871,7 +871,7 @@ function makeStyles(C: typeof Colors.light) {
             borderColor: C.accent,
         },
         filterChipText: {
-            fontSize: FontSize.xs,
+            fontSize: 11,
             fontWeight: "500" as const,
             color: C.textSecondary,
         },
@@ -1168,10 +1168,12 @@ export default function TasksScreen() {
                 </View>
 
                 {/* Spacer to push pill to right */}
-                <View style={{ flex: 1 }} />
+                <View style={{ flexGrow: 1 }} />
 
                 {/* Task Count Pill */}
-                {pages.length > 1 && <TaskCountPill pages={pages} pillPage={pillPage} statusFilter={statusFilter} />}
+                <View style={{ marginLeft: "auto" }}>
+                    {pages.length > 1 && <TaskCountPill pages={pages} pillPage={pillPage} statusFilter={statusFilter} />}
+                </View>
             </View>
 
             {/* Dismiss filter menu backdrop */}

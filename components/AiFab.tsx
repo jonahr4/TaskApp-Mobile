@@ -361,8 +361,18 @@ function makeStyles(C: typeof Colors.light) {
             fontSize: FontSize.sm,
             color: C.textTertiary,
         },
-
-        // System message
+        fabMiniLabel: {
+            position: "absolute",
+            right: 57,
+            backgroundColor: C.bgCard,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: 10,
+            borderRadius: Radius.md,
+            ...Shadows.md,
+            fontSize: FontSize.md,
+            fontWeight: "600" as const,
+            color: C.textPrimary,
+        },
         systemRow: {
             alignItems: "center",
         },
@@ -576,6 +586,15 @@ function makeStyles(C: typeof Colors.light) {
         cardPillText: {
             fontSize: 11,
             fontWeight: "700",
+        },
+        fabMini: {
+            position: "absolute",
+            right: 25,
+            bottom: 84,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            zIndex: 998,
         },
         cardDateRow: {
             flexDirection: "row",
