@@ -1,35 +1,37 @@
-import { useState, useMemo, useCallback, useRef } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Platform,
-    Dimensions,
-    PanResponder,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    withTiming,
-    Easing,
-} from "react-native-reanimated";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useColors, useTheme } from "@/hooks/useTheme";
-import { updateTaskUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { makeFilterStyles } from "@/lib/sharedStyles";
-import { getQuadrant, QUADRANT_META } from "@/lib/types";
-import type { Task, TaskGroup, Quadrant } from "@/lib/types";
-import TaskModal from "@/components/TaskModal";
 import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
 import ScreenHeader from "@/components/ScreenHeader";
+import TaskModal from "@/components/TaskModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors, useTheme } from "@/hooks/useTheme";
+import { logEvent } from "@/lib/analytics";
+import { updateTaskUnified } from "@/lib/crud";
+import { makeFilterStyles } from "@/lib/sharedStyles";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Quadrant, Task, TaskGroup } from "@/lib/types";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+    Dimensions,
+    PanResponder,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated";
 
 // ── Constants ────────────────────────────────────────────────
 const EXPANDED = 0.75;
@@ -122,326 +124,326 @@ function makeStyles(C: typeof Colors.light) {
             flex: 1,
             backgroundColor: C.bg,
         },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 60 : 48,
-        paddingBottom: Spacing.md,
-        backgroundColor: C.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: C.textPrimary,
-        letterSpacing: -0.5,
-    },
-    resetBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        backgroundColor: C.accentLight,
-    },
-    resetBtnText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: C.accent,
-    },
-    grid: {
-        flex: 1,
-    },
-    gridInner: {
-        flex: 1,
-    },
-    gridRow: {
-        flexDirection: "row",
-    },
-    quadrant: {
-        padding: Spacing.xs,
-    },
-    qInner: {
-        flex: 1,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        overflow: "hidden",
-        ...Shadows.sm,
-    },
-    qHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: Spacing.sm + 2,
-        paddingVertical: 7,
-    },
-    qHeaderLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        flex: 1,
-    },
-    qHeaderRight: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    qDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    qLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-        flexShrink: 1,
-    },
-    qLabelExpanded: {
-        fontSize: FontSize.md,
-    },
-    qCount: {
-        fontSize: 11,
-        color: C.textTertiary,
-        fontWeight: "600",
-    },
-    qCountExpanded: {
-        fontSize: FontSize.xs,
-    },
-    expandBtn: {
-        padding: 4,
-        borderRadius: Radius.sm,
-    },
-    qTaskList: {
-        flex: 1,
-        backgroundColor: C.bgCard,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 2,
-    },
-    qTask: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 6,
-        paddingVertical: 6,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-    },
-    qCheckbox: {
-        padding: 2,
-        marginTop: 1,
-    },
-    qCheckInner: {
-        width: 16,
-        height: 16,
-        borderRadius: 5,
-        borderWidth: 1.5,
-        justifyContent: "center" as const,
-        alignItems: "center" as const,
-    },
-    taskItemContent: {
-        flex: 1,
-    },
-    qTaskTitle: {
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-        lineHeight: 18,
-    },
-    qTaskTitleExpanded: {
-        fontSize: FontSize.md,
-        lineHeight: 22,
-    },
-    qTaskTitleCompleted: {
-        textDecorationLine: "line-through" as const,
-        color: C.textTertiary,
-    },
-    qCheckCompleted: {
-        backgroundColor: C.success,
-        borderColor: C.success,
-    },
-    taskItemMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 3,
-    },
-    taskMetaTag: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-    },
-    taskMetaText: {
-        fontSize: 11,
-        color: C.textTertiary,
-    },
-    taskGroupDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    taskNotes: {
-        fontSize: 11,
-        color: C.textTertiary,
-        fontStyle: "italic",
-        marginTop: 2,
-    },
-    qEmptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: Spacing.lg,
-    },
-    qEmpty: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        textAlign: "center",
-    },
-    dropZone: {
-        alignItems: "center",
-        gap: 4,
-    },
-    dropZoneText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-    },
-    filterBar: filterStyles.filterBar,
-    filterChip: filterStyles.filterChip,
-    filterChipActive: filterStyles.filterChipActive,
-    filterChipText: filterStyles.filterChipText,
-    filterChipTextActive: filterStyles.filterChipTextActive,
-    filterDropdown: {
-        position: "absolute",
-        top: 38,
-        left: 0,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        ...Shadows.lg,
-        zIndex: 30,
-        minWidth: 160,
-        overflow: "hidden",
-    },
-    filterOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    filterOptionActive: {
-        backgroundColor: C.accentLight,
-    },
-    filterOptionText: {
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-    },
-    filterOptionTextActive: {
-        color: C.accent,
-        fontWeight: "600" as const,
-    },
-    // ── Tray styles ──────────────────────────────────────────
-    tray: {
-        backgroundColor: C.bgCard,
-        borderTopWidth: 0,
-        borderTopLeftRadius: Radius.xl,
-        borderTopRightRadius: Radius.xl,
-        ...Shadows.xl,
-        shadowOffset: { width: 0, height: -4 },
-        overflow: "hidden",
-    },
-    trayHandle: {
-        alignItems: "center",
-        paddingTop: 10,
-        paddingBottom: 8,
-        paddingHorizontal: Spacing.lg,
-    },
-    trayHandlePill: {
-        width: 40,
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: C.borderLight,
-        marginBottom: 10,
-    },
-    trayHandleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-    },
-    trayHandleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    trayHandleText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        fontWeight: "600",
-    },
-    trayContent: {
-        overflow: "hidden",
-    },
-    trayScrollContent: {
-        paddingHorizontal: Spacing.lg,
-        paddingBottom: Spacing.lg,
-    },
-    trayTask: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 12,
-        paddingHorizontal: Spacing.md,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.sm,
-    },
-    trayTaskContent: {
-        flex: 1,
-        flexDirection: "row" as const,
-        alignItems: "center" as const,
-        gap: 8,
-    },
-    trayTaskTitle: {
-        fontSize: FontSize.sm,
-        color: C.textPrimary,
-        lineHeight: 18,
-    },
-    dragHandle: {
-        width: 34,
-        height: 34,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        backgroundColor: C.bg,
-        justifyContent: "center" as const,
-        alignItems: "center" as const,
-        marginLeft: 8,
-        ...Shadows.sm,
-    },
-    // ── Ghost card ───────────────────────────────────────────
-    ghostCard: {
-        position: "absolute",
-        zIndex: 999,
-        width: 170,
-    },
-    ghostCardInner: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderWidth: 1.5,
-        borderColor: C.accent,
-        ...Shadows.xl,
-        shadowColor: C.accent,
-        shadowOpacity: 0.25,
-    },
-    ghostCardText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
+        header: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.xl,
+            paddingTop: Platform.OS === "ios" ? 60 : 48,
+            paddingBottom: Spacing.md,
+            backgroundColor: C.bgCard,
+            ...Shadows.sm,
+        },
+        headerTitle: {
+            fontSize: FontSize.title,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        resetBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: Radius.full,
+            backgroundColor: C.accentLight,
+        },
+        resetBtnText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.accent,
+        },
+        grid: {
+            flex: 1,
+        },
+        gridInner: {
+            flex: 1,
+        },
+        gridRow: {
+            flexDirection: "row",
+        },
+        quadrant: {
+            padding: Spacing.xs,
+        },
+        qInner: {
+            flex: 1,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            overflow: "hidden",
+            ...Shadows.sm,
+        },
+        qHeader: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: Spacing.sm + 2,
+            paddingVertical: 7,
+        },
+        qHeaderLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            flex: 1,
+        },
+        qHeaderRight: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+        },
+        qDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+        },
+        qLabel: {
+            fontSize: FontSize.sm,
+            fontWeight: "700",
+            flexShrink: 1,
+        },
+        qLabelExpanded: {
+            fontSize: FontSize.md,
+        },
+        qCount: {
+            fontSize: 11,
+            color: C.textTertiary,
+            fontWeight: "600",
+        },
+        qCountExpanded: {
+            fontSize: FontSize.xs,
+        },
+        expandBtn: {
+            padding: 4,
+            borderRadius: Radius.sm,
+        },
+        qTaskList: {
+            flex: 1,
+            backgroundColor: C.bgCard,
+            paddingHorizontal: Spacing.sm,
+            paddingVertical: 2,
+        },
+        qTask: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 6,
+            paddingVertical: 6,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        qCheckbox: {
+            padding: 2,
+            marginTop: 1,
+        },
+        qCheckInner: {
+            width: 16,
+            height: 16,
+            borderRadius: 5,
+            borderWidth: 1.5,
+            justifyContent: "center" as const,
+            alignItems: "center" as const,
+        },
+        taskItemContent: {
+            flex: 1,
+        },
+        qTaskTitle: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+            lineHeight: 18,
+        },
+        qTaskTitleExpanded: {
+            fontSize: FontSize.md,
+            lineHeight: 22,
+        },
+        qTaskTitleCompleted: {
+            textDecorationLine: "line-through" as const,
+            color: C.textTertiary,
+        },
+        qCheckCompleted: {
+            backgroundColor: C.success,
+            borderColor: C.success,
+        },
+        taskItemMeta: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 3,
+        },
+        taskMetaTag: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
+        },
+        taskMetaText: {
+            fontSize: 11,
+            color: C.textTertiary,
+        },
+        taskGroupDot: {
+            width: 5,
+            height: 5,
+            borderRadius: 3,
+        },
+        taskNotes: {
+            fontSize: 11,
+            color: C.textTertiary,
+            fontStyle: "italic",
+            marginTop: 2,
+        },
+        qEmptyContainer: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: Spacing.lg,
+        },
+        qEmpty: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            textAlign: "center",
+        },
+        dropZone: {
+            alignItems: "center",
+            gap: 4,
+        },
+        dropZoneText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+        },
+        filterBar: filterStyles.filterBar,
+        filterChip: filterStyles.filterChip,
+        filterChipActive: filterStyles.filterChipActive,
+        filterChipText: filterStyles.filterChipText,
+        filterChipTextActive: filterStyles.filterChipTextActive,
+        filterDropdown: {
+            position: "absolute",
+            top: 38,
+            left: 0,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.lg,
+            zIndex: 30,
+            minWidth: 160,
+            overflow: "hidden",
+        },
+        filterOption: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+        },
+        filterOptionActive: {
+            backgroundColor: C.accentLight,
+        },
+        filterOptionText: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+        },
+        filterOptionTextActive: {
+            color: C.accent,
+            fontWeight: "600" as const,
+        },
+        // ── Tray styles ──────────────────────────────────────────
+        tray: {
+            backgroundColor: C.bgCard,
+            borderTopWidth: 0,
+            borderTopLeftRadius: Radius.xl,
+            borderTopRightRadius: Radius.xl,
+            ...Shadows.xl,
+            shadowOffset: { width: 0, height: -4 },
+            overflow: "hidden",
+        },
+        trayHandle: {
+            alignItems: "center",
+            paddingTop: 10,
+            paddingBottom: 8,
+            paddingHorizontal: Spacing.lg,
+        },
+        trayHandlePill: {
+            width: 40,
+            height: 5,
+            borderRadius: 3,
+            backgroundColor: C.borderLight,
+            marginBottom: 10,
+        },
+        trayHandleRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+        },
+        trayHandleLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+        },
+        trayHandleText: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+            fontWeight: "600",
+        },
+        trayContent: {
+            overflow: "hidden",
+        },
+        trayScrollContent: {
+            paddingHorizontal: Spacing.lg,
+            paddingBottom: Spacing.lg,
+        },
+        trayTask: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 12,
+            paddingHorizontal: Spacing.md,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.sm,
+        },
+        trayTaskContent: {
+            flex: 1,
+            flexDirection: "row" as const,
+            alignItems: "center" as const,
+            gap: 8,
+        },
+        trayTaskTitle: {
+            fontSize: FontSize.sm,
+            color: C.textPrimary,
+            lineHeight: 18,
+        },
+        dragHandle: {
+            width: 34,
+            height: 34,
+            borderRadius: Radius.sm,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            backgroundColor: C.bg,
+            justifyContent: "center" as const,
+            alignItems: "center" as const,
+            marginLeft: 8,
+            ...Shadows.sm,
+        },
+        // ── Ghost card ───────────────────────────────────────────
+        ghostCard: {
+            position: "absolute",
+            zIndex: 999,
+            width: 170,
+        },
+        ghostCardInner: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            borderWidth: 1.5,
+            borderColor: C.accent,
+            ...Shadows.xl,
+            shadowColor: C.accent,
+            shadowOpacity: 0.25,
+        },
+        ghostCardText: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
     });
 };
 
@@ -451,6 +453,14 @@ export default function MatrixScreen() {
     const { user } = useAuth();
     const { tasks } = useTasks(user?.uid);
     const { groups } = useTaskGroups(user?.uid);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.uid) {
+                logEvent(user.uid, "tab_view", { tab: "matrix" }).catch(() => null);
+            }
+        }, [user?.uid])
+    );
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
@@ -1064,6 +1074,7 @@ export default function MatrixScreen() {
                 defaultUrgent={defaultUrgent}
                 defaultImportant={defaultImportant}
                 groups={groups}
+                createdFrom="matrix"
             />
         </View>
     );

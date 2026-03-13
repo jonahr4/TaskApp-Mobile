@@ -6,6 +6,7 @@ import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { useColors, useTheme } from "@/hooks/useTheme";
+import { logEvent } from "@/lib/analytics";
 import { createTaskUnified, deleteTaskUnified, reorderGroupsUnified, updateTaskUnified } from "@/lib/crud";
 import { loadSettings, rescheduleAllReminders } from "@/lib/notifications";
 import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
@@ -13,6 +14,7 @@ import type { Task, TaskGroup } from "@/lib/types";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActionSheetIOS,
@@ -916,6 +918,14 @@ export default function TasksScreen() {
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
     useAutoUrgent(user?.uid, tasks);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.uid) {
+                logEvent(user.uid, "tab_view", { tab: "tasks" }).catch(() => null);
+            }
+        }, [user?.uid])
+    );
 
     // Auto-reschedule notifications whenever tasks change
     useEffect(() => {

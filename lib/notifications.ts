@@ -247,6 +247,60 @@ export async function cancelDailySummary(): Promise<void> {
     await Notifications.cancelScheduledNotificationAsync(getDailySummaryId());
 }
 
+// ── Streak Milestones ───────────────────────────────────────────────────────
+
+export async function scheduleStreakMilestoneNotification(streak: number): Promise<void> {
+    // Check if the current streak is a milestone (e.g. 3, 7, 14, 21, 28, etc)
+    const isMilestone = streak === 3 || (streak > 3 && streak % 7 === 0);
+    if (!isMilestone) return;
+
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    await Notifications.scheduleNotificationAsync({
+        identifier: `streak-milestone-${streak}`,
+        content: {
+            title: "🔥 Streak Milestone!",
+            body: `You hit a ${streak}-day streak! Keep up the great work!`,
+            sound: "default",
+            ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
+        },
+        // Trigger immediately (1 second from now)
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: 1,
+        },
+    });
+}
+
+// ── Streak At Risk ──────────────────────────────────────────────────────────
+
+export async function scheduleStreakAtRiskNotification(): Promise<void> {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    await cancelStreakAtRiskNotification(); // Clear any existing
+
+    await Notifications.scheduleNotificationAsync({
+        identifier: "streak-at-risk",
+        content: {
+            title: "⚠️ Streak at Risk",
+            body: "You haven't completed any tasks today. Complete one to keep your streak alive!",
+            sound: "default",
+            ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
+        },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour: 20, // 8:00 PM
+            minute: 0,
+        },
+    });
+}
+
+export async function cancelStreakAtRiskNotification(): Promise<void> {
+    await Notifications.cancelScheduledNotificationAsync("streak-at-risk");
+}
+
 // ── Bulk reschedule ─────────────────────────────────────────────────────────
 
 export async function rescheduleAllReminders(

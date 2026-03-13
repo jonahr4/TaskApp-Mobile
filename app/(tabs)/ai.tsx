@@ -715,9 +715,11 @@ export default function AiScreen() {
                             >
                                 <Ionicons name="chevron-down-circle-outline" size={22} color={C.textTertiary} />
                             </TouchableOpacity>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingHorizontal: 2 }}>
                             <Text style={styles.tzLabel}>Timezone: {timezone}</Text>
                             {aiConsentGranted && aiRemaining !== null && (
-                                <Text style={[styles.tzLabel, { marginLeft: "auto" }]}>
+                                <Text style={[styles.tzLabel, { fontWeight: "600", color: aiRemaining <= 3 ? "#ef4444" : C.textTertiary }]}>
                                     {aiRemaining} parse{aiRemaining !== 1 ? "s" : ""} left today
                                 </Text>
                             )}

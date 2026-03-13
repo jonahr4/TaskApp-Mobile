@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.2</string>
+    <string>1.0.3</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -40,7 +40,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>18</string>
+    <string>24</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -54,12 +54,6 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-
-
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>TaskApp uses your location to help you quickly attach nearby places to tasks (for example, adding your current grocery store or campus building when creating a reminder).</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>TaskApp uses the microphone for voice-to-text input in the AI assistant.</string>
     <key>NSPhotoLibraryUsageDescription</key>

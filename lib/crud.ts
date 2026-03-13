@@ -2,6 +2,7 @@
  * Unified CRUD that routes to local storage or Firestore
  * depending on whether a user is logged in.
  */
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logEvent } from "./analytics";
 import {
     createGroup as cloudCreateGroup,
@@ -20,6 +21,7 @@ import {
     localUpdateGroup,
     localUpdateTask
 } from "./localDb";
+import { cancelStreakAtRiskNotification } from "./notifications";
 import { trackTaskCreatedAndMaybeReview } from "./reviewPrompt";
 import type { CreatedFrom, Task, TaskGroup } from "./types";
 import { incrementTaskCompleted, incrementTaskCounter, updateStreakData } from "./userData";
@@ -58,10 +60,16 @@ export async function updateTaskUnified(
         : await localUpdateTask(taskId, data);
 
     // If this is a completion, update streak + counter
-    if (data.completed === true && uid) {
-        incrementTaskCompleted(uid).catch(() => null);
-        updateStreakData(uid).catch(() => null);
-        logEvent(uid, "task_completed").catch(() => null);
+    if (data.completed === true) {
+        cancelStreakAtRiskNotification().catch(() => null);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        AsyncStorage.setItem("taskapp.lastCompletedDate", todayStr).catch(() => null);
+
+        if (uid) {
+            incrementTaskCompleted(uid).catch(() => null);
+            updateStreakData(uid).catch(() => null);
+            logEvent(uid, "task_completed").catch(() => null);
+        }
     }
 
     return result;

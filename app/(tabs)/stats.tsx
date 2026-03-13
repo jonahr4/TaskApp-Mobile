@@ -1,20 +1,19 @@
+import ScreenHeader from "@/components/ScreenHeader";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors } from "@/hooks/useTheme";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Quadrant } from "@/lib/types";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
     ScrollView,
-    Dimensions,
+    StyleSheet,
+    Text,
+    View
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useColors } from "@/hooks/useTheme";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { getQuadrant, QUADRANT_META } from "@/lib/types";
-import type { Task, Quadrant } from "@/lib/types";
-import ScreenHeader from "@/components/ScreenHeader";
 
 function StatCard({
     icon,
@@ -45,140 +44,141 @@ function StatCard({
     );
 }
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: 60,
-        paddingBottom: Spacing.md,
-        backgroundColor: C.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: C.textPrimary,
-        letterSpacing: -0.5,
-    },
-    body: {
-        flex: 1,
-        padding: Spacing.lg,
-    },
-    statGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: Spacing.md,
-        marginBottom: Spacing.lg,
-    },
-    statCard: {
-        width: "47%",
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        padding: Spacing.lg,
-        borderWidth: 0,
-        borderLeftWidth: 4,
-        ...Shadows.md,
-    },
-    statIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: Spacing.sm,
-    },
-    statValue: {
-        fontSize: FontSize.xxl,
-        fontWeight: "700",
-        color: C.textPrimary,
-    },
-    statLabel: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textSecondary,
-        marginTop: 2,
-    },
-    statSub: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        marginTop: 1,
-    },
-    sectionCard: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.xl,
-        padding: Spacing.xl,
-        marginBottom: Spacing.lg,
-        borderWidth: 0,
-        ...Shadows.md,
-    },
-    sectionTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: C.textPrimary,
-        marginBottom: Spacing.lg,
-    },
-    barRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        marginBottom: Spacing.md,
-    },
-    barLabel: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        width: 90,
-    },
-    barDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    barLabelText: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        fontWeight: "500",
-    },
-    barTrack: {
-        flex: 1,
-        height: 10,
-        backgroundColor: C.bg,
-        borderRadius: 5,
-        overflow: "hidden",
-    },
-    barFill: {
-        height: "100%",
-        borderRadius: 5,
-    },
-    barCount: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textPrimary,
-        width: 30,
-        textAlign: "right",
-    },
-    groupRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingVertical: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: C.borderLight,
-    },
-    groupName: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-    },
-    groupCount: {
-        fontSize: FontSize.md,
-        fontWeight: "600",
-        color: C.textSecondary,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            paddingHorizontal: Spacing.xl,
+            paddingTop: 60,
+            paddingBottom: Spacing.md,
+            backgroundColor: C.bgCard,
+            ...Shadows.sm,
+        },
+        headerTitle: {
+            fontSize: FontSize.title,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        body: {
+            flex: 1,
+            padding: Spacing.lg,
+        },
+        statGrid: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: Spacing.md,
+            marginBottom: Spacing.lg,
+        },
+        statCard: {
+            width: "47%",
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            padding: Spacing.lg,
+            borderWidth: 0,
+            borderLeftWidth: 4,
+            ...Shadows.md,
+        },
+        statIcon: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: Spacing.sm,
+        },
+        statValue: {
+            fontSize: FontSize.xxl,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        statLabel: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textSecondary,
+            marginTop: 2,
+        },
+        statSub: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            marginTop: 1,
+        },
+        sectionCard: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.xl,
+            padding: Spacing.xl,
+            marginBottom: Spacing.lg,
+            borderWidth: 0,
+            ...Shadows.md,
+        },
+        sectionTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "600",
+            color: C.textPrimary,
+            marginBottom: Spacing.lg,
+        },
+        barRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            marginBottom: Spacing.md,
+        },
+        barLabel: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            width: 90,
+        },
+        barDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+        },
+        barLabelText: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            fontWeight: "500",
+        },
+        barTrack: {
+            flex: 1,
+            height: 10,
+            backgroundColor: C.bg,
+            borderRadius: 5,
+            overflow: "hidden",
+        },
+        barFill: {
+            height: "100%",
+            borderRadius: 5,
+        },
+        barCount: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textPrimary,
+            width: 30,
+            textAlign: "right",
+        },
+        groupRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            paddingVertical: Spacing.sm,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        groupName: {
+            flex: 1,
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+        },
+        groupCount: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+    });
 }
 
 export default function StatsScreen() {

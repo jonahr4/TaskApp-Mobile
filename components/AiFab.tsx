@@ -1,31 +1,35 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useTheme } from "@/hooks/useTheme";
+import { checkAiRateLimit, getAiUsageInfo } from "@/lib/aiRateLimit";
+import { logEvent } from "@/lib/analytics";
+import { createTaskUnified } from "@/lib/crud";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Quadrant } from "@/lib/types";
+import { QUADRANT_META } from "@/lib/types";
+import { incrementAiPrompt, incrementAiResult } from "@/lib/userData";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Keyboard,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
-    StyleSheet,
     TouchableOpacity,
-    ScrollView,
-    ActivityIndicator,
-    Modal,
-    Keyboard,
-    Platform,
-    Dimensions,
-    Animated,
-    Linking,
+    View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { createTaskUnified } from "@/lib/crud";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { useTheme } from "@/hooks/useTheme";
-import { QUADRANT_META } from "@/lib/types";
-import type { Quadrant } from "@/lib/types";
 
 // Lazy-load speech recognition (native module, fails in Expo Go)
 let SpeechModule: any = null;
@@ -93,553 +97,554 @@ function renderMarkdown(text: string, baseStyle: any) {
 // ── Task Carousel ───────────────────────────────────────────
 const PRIORITIES: Quadrant[] = ["DO", "SCHEDULE", "DELEGATE", "DELETE"];
 
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    // FAB
-    fabWrapper: {
-        position: "absolute",
-        bottom: Platform.OS === "ios" ? 110 : 80,
-        right: 20,
-        zIndex: 999,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    fabGlow: {
-        position: "absolute",
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: C.accent,
-    },
-    fab: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-        ...Shadows.lg,
-        shadowColor: C.accent,
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 3,
-        borderColor: "rgba(255,255,255,0.3)",
-        elevation: 8,
-    },
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        // FAB
+        fabWrapper: {
+            position: "absolute",
+            bottom: Platform.OS === "ios" ? 110 : 80,
+            right: 20,
+            zIndex: 999,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        fabGlow: {
+            position: "absolute",
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: C.accent,
+        },
+        fab: {
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: C.accent,
+            alignItems: "center",
+            justifyContent: "center",
+            ...Shadows.lg,
+            shadowColor: C.accent,
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            borderWidth: 3,
+            borderColor: "rgba(255,255,255,0.3)",
+            elevation: 8,
+        },
 
-    // Overlay & Sheet
-    overlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.4)",
-        justifyContent: "flex-end",
-    },
-    overlayDismiss: {
-        flex: 1,
-    },
-    sheet: {
-        backgroundColor: C.bgCard,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        flex: 1,
-        ...Shadows.lg,
-    },
-    sheetHeader: {
-        alignItems: "center",
-        paddingTop: 8,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: C.borderLight,
-    },
-    sheetHandle: {
-        width: 36,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: C.borderLight,
-        marginBottom: 12,
-    },
-    sheetTitleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: Spacing.lg,
-        width: "100%",
-    },
-    sheetTitleLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    sheetIconBg: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    sheetTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: C.textPrimary,
-    },
-    consentCard: {
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        borderRadius: Radius.lg,
-        padding: Spacing.md,
-        gap: 10,
-    },
-    consentTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "700",
-        color: C.textPrimary,
-    },
-    consentText: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        lineHeight: 20,
-    },
-    consentActions: {
-        flexDirection: "row",
-        gap: 10,
-        marginTop: 4,
-    },
-    consentBtn: {
-        flex: 1,
-        borderRadius: Radius.md,
-        paddingVertical: 10,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        backgroundColor: C.bgElevated,
-    },
-    consentBtnPrimary: {
-        backgroundColor: C.accent,
-        borderColor: C.accent,
-    },
-    consentBtnText: {
-        fontSize: FontSize.sm,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
-    consentBtnTextPrimary: {
-        color: "#fff",
-    },
+        // Overlay & Sheet
+        overlay: {
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+        },
+        overlayDismiss: {
+            flex: 1,
+        },
+        sheet: {
+            backgroundColor: C.bgCard,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            flex: 1,
+            ...Shadows.lg,
+        },
+        sheetHeader: {
+            alignItems: "center",
+            paddingTop: 8,
+            paddingBottom: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: C.borderLight,
+        },
+        sheetHandle: {
+            width: 36,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: C.borderLight,
+            marginBottom: 12,
+        },
+        sheetTitleRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: Spacing.lg,
+            width: "100%",
+        },
+        sheetTitleLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+        },
+        sheetIconBg: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: C.accent,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        sheetTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        consentCard: {
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            borderRadius: Radius.lg,
+            padding: Spacing.md,
+            gap: 10,
+        },
+        consentTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        consentText: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            lineHeight: 20,
+        },
+        consentActions: {
+            flexDirection: "row",
+            gap: 10,
+            marginTop: 4,
+        },
+        consentBtn: {
+            flex: 1,
+            borderRadius: Radius.md,
+            paddingVertical: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            backgroundColor: C.bgElevated,
+        },
+        consentBtnPrimary: {
+            backgroundColor: C.accent,
+            borderColor: C.accent,
+        },
+        consentBtnText: {
+            fontSize: FontSize.sm,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        consentBtnTextPrimary: {
+            color: "#fff",
+        },
 
-    // Messages
-    messageList: {
-        flex: 1,
-    },
-    messageListContent: {
-        padding: Spacing.lg,
-        paddingBottom: Spacing.xl,
-        gap: 16,
-    },
+        // Messages
+        messageList: {
+            flex: 1,
+        },
+        messageListContent: {
+            padding: Spacing.lg,
+            paddingBottom: Spacing.xl,
+            gap: 16,
+        },
 
-    // Welcome
-    welcomeContainer: {
-        alignItems: "center",
-        paddingVertical: 24,
-        gap: 8,
-    },
-    welcomeIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: C.accentLight,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 4,
-    },
-    welcomeTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "700",
-        color: C.textPrimary,
-    },
-    welcomeSub: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        textAlign: "center",
-        paddingHorizontal: 20,
-        lineHeight: 20,
-    },
-    suggestions: {
-        marginTop: 12,
-        gap: 8,
-        width: "100%",
-    },
-    suggestionChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: C.accentLight,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: "rgba(79, 70, 229, 0.12)",
-    },
-    suggestionText: {
-        fontSize: FontSize.sm,
-        color: C.accent,
-        fontWeight: "500",
-        flex: 1,
-    },
+        // Welcome
+        welcomeContainer: {
+            alignItems: "center",
+            paddingVertical: 24,
+            gap: 8,
+        },
+        welcomeIcon: {
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: C.accentLight,
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 4,
+        },
+        welcomeTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "700",
+            color: C.textPrimary,
+        },
+        welcomeSub: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            textAlign: "center",
+            paddingHorizontal: 20,
+            lineHeight: 20,
+        },
+        suggestions: {
+            marginTop: 12,
+            gap: 8,
+            width: "100%",
+        },
+        suggestionChip: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: C.accentLight,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            borderColor: "rgba(79, 70, 229, 0.12)",
+        },
+        suggestionText: {
+            fontSize: FontSize.sm,
+            color: C.accent,
+            fontWeight: "500",
+            flex: 1,
+        },
 
-    // User bubble
-    userBubbleRow: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
-    },
-    userBubble: {
-        backgroundColor: C.accent,
-        borderRadius: 18,
-        borderBottomRightRadius: 4,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        maxWidth: "80%",
-    },
-    userBubbleText: {
-        color: "#fff",
-        fontSize: FontSize.md,
-        lineHeight: 20,
-    },
+        // User bubble
+        userBubbleRow: {
+            flexDirection: "row",
+            justifyContent: "flex-end",
+        },
+        userBubble: {
+            backgroundColor: C.accent,
+            borderRadius: 18,
+            borderBottomRightRadius: 4,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            maxWidth: "80%",
+        },
+        userBubbleText: {
+            color: "#fff",
+            fontSize: FontSize.md,
+            lineHeight: 20,
+        },
 
-    // Assistant bubble
-    assistantBubbleRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 8,
-    },
-    assistantAvatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 2,
-    },
-    assistantContent: {
-        flex: 1,
-        gap: 8,
-    },
-    assistantText: {
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-        lineHeight: 20,
-        fontWeight: "500",
-    },
-    assistantTextBubble: {
-        flex: 1,
-        backgroundColor: C.bg,
-        borderRadius: 18,
-        borderBottomLeftRadius: 4,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-    },
+        // Assistant bubble
+        assistantBubbleRow: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 8,
+        },
+        assistantAvatar: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: C.accent,
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 2,
+        },
+        assistantContent: {
+            flex: 1,
+            gap: 8,
+        },
+        assistantText: {
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+            lineHeight: 20,
+            fontWeight: "500",
+        },
+        assistantTextBubble: {
+            flex: 1,
+            backgroundColor: C.bg,
+            borderRadius: 18,
+            borderBottomLeftRadius: 4,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+        },
 
-    // Typing indicator
-    typingBubble: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        backgroundColor: C.bg,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 18,
-        borderBottomLeftRadius: 4,
-    },
-    typingText: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-    },
+        // Typing indicator
+        typingBubble: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: C.bg,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 18,
+            borderBottomLeftRadius: 4,
+        },
+        typingText: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+        },
 
-    // System message
-    systemRow: {
-        alignItems: "center",
-    },
-    systemText: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        backgroundColor: C.bg,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: Radius.full,
-        overflow: "hidden",
-        fontWeight: "500",
-    },
+        // System message
+        systemRow: {
+            alignItems: "center",
+        },
+        systemText: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            backgroundColor: C.bg,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: Radius.full,
+            overflow: "hidden",
+            fontWeight: "500",
+        },
 
-    // Input bar
-    inputBar: {
-        flexDirection: "row",
-        alignItems: "flex-end",
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        paddingBottom: Platform.OS === "ios" ? 32 : Spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: C.borderLight,
-        backgroundColor: C.bgCard,
-        gap: 8,
-    },
-    micBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: C.accentLight,
-    },
-    micBtnActive: {
-        backgroundColor: C.accent,
-    },
-    inputField: {
-        flex: 1,
-        backgroundColor: C.bg,
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: Platform.OS === "ios" ? 10 : 8,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-        maxHeight: 100,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    sendBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    sendBtnDisabled: {
-        backgroundColor: C.bg,
-    },
+        // Input bar
+        inputBar: {
+            flexDirection: "row",
+            alignItems: "flex-end",
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.sm,
+            paddingBottom: Platform.OS === "ios" ? 32 : Spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: C.borderLight,
+            backgroundColor: C.bgCard,
+            gap: 8,
+        },
+        micBtn: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: C.accentLight,
+        },
+        micBtnActive: {
+            backgroundColor: C.accent,
+        },
+        inputField: {
+            flex: 1,
+            backgroundColor: C.bg,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            paddingVertical: Platform.OS === "ios" ? 10 : 8,
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+            maxHeight: 100,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        sendBtn: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: C.accent,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        sendBtnDisabled: {
+            backgroundColor: C.bg,
+        },
 
-    // Carousel card
-    carouselCard: {
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        ...Shadows.sm,
-        gap: 10,
-    },
-    cardHeader: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        gap: 8,
-    },
-    cardTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "700",
-        color: C.textPrimary,
-        flex: 1,
-        lineHeight: 20,
-    },
-    cardTitleInput: {
-        fontSize: FontSize.md,
-        fontWeight: "700",
-        color: C.textPrimary,
-        flex: 1,
-        lineHeight: 20,
-        backgroundColor: C.bg,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    addOneBtn: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    cardNotes: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        lineHeight: 18,
-    },
-    cardNotesInput: {
-        fontSize: FontSize.sm,
-        color: C.textSecondary,
-        lineHeight: 18,
-        backgroundColor: C.bg,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        minHeight: 60,
-    },
-    // Priority picker
-    priorityRow: {
-        gap: 4,
-    },
-    fieldLabel: {
-        fontSize: 11,
-        fontWeight: "600",
-        color: C.textTertiary,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    priorityPills: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 5,
-    },
-    priorityPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    priorityPillText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    // Date/time row
-    dateTimeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 8,
-    },
-    dateTimeItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        backgroundColor: C.bg,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    dateTimeText: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: C.textPrimary,
-    },
-    dateTimePlaceholder: {
-        fontSize: 13,
-        color: C.accent,
-        fontWeight: "600",
-    },
-    clearBtn: {
-        marginLeft: -4,
-    },
-    inlinePicker: {
-        borderTopWidth: 1,
-        borderTopColor: C.borderLight,
-        paddingTop: 4,
-        alignItems: "center",
-    },
-    pickerDoneBtn: {
-        alignSelf: "flex-end",
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        backgroundColor: C.accent,
-        borderRadius: Radius.md,
-        marginBottom: 4,
-    },
-    pickerDoneText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-    },
-    cardMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 6,
-        marginTop: 2,
-    },
-    cardPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    cardPillText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    cardDateRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-    },
-    cardDateText: {
-        fontSize: 11,
-        color: C.textTertiary,
-        fontWeight: "500",
-    },
-    guessedText: {
-        fontSize: 10,
-        color: C.textTertiary,
-        fontStyle: "italic",
-    },
+        // Carousel card
+        carouselCard: {
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            ...Shadows.sm,
+            gap: 10,
+        },
+        cardHeader: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 8,
+        },
+        cardTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "700",
+            color: C.textPrimary,
+            flex: 1,
+            lineHeight: 20,
+        },
+        cardTitleInput: {
+            fontSize: FontSize.md,
+            fontWeight: "700",
+            color: C.textPrimary,
+            flex: 1,
+            lineHeight: 20,
+            backgroundColor: C.bg,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+        },
+        addOneBtn: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        cardNotes: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            lineHeight: 18,
+        },
+        cardNotesInput: {
+            fontSize: FontSize.sm,
+            color: C.textSecondary,
+            lineHeight: 18,
+            backgroundColor: C.bg,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            minHeight: 60,
+        },
+        // Priority picker
+        priorityRow: {
+            gap: 4,
+        },
+        fieldLabel: {
+            fontSize: 11,
+            fontWeight: "600",
+            color: C.textTertiary,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+        },
+        priorityPills: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 5,
+        },
+        priorityPill: {
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: Radius.full,
+            borderWidth: 1,
+        },
+        priorityPillText: {
+            fontSize: 11,
+            fontWeight: "700",
+        },
+        // Date/time row
+        dateTimeRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 8,
+        },
+        dateTimeItem: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: C.bg,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        dateTimeText: {
+            fontSize: 13,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        dateTimePlaceholder: {
+            fontSize: 13,
+            color: C.accent,
+            fontWeight: "600",
+        },
+        clearBtn: {
+            marginLeft: -4,
+        },
+        inlinePicker: {
+            borderTopWidth: 1,
+            borderTopColor: C.borderLight,
+            paddingTop: 4,
+            alignItems: "center",
+        },
+        pickerDoneBtn: {
+            alignSelf: "flex-end",
+            paddingHorizontal: 16,
+            paddingVertical: 6,
+            backgroundColor: C.accent,
+            borderRadius: Radius.md,
+            marginBottom: 4,
+        },
+        pickerDoneText: {
+            color: "#fff",
+            fontSize: FontSize.sm,
+            fontWeight: "700",
+        },
+        cardMeta: {
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 6,
+            marginTop: 2,
+        },
+        cardPill: {
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: Radius.full,
+            borderWidth: 1,
+        },
+        cardPillText: {
+            fontSize: 11,
+            fontWeight: "700",
+        },
+        cardDateRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+        },
+        cardDateText: {
+            fontSize: 11,
+            color: C.textTertiary,
+            fontWeight: "500",
+        },
+        guessedText: {
+            fontSize: 10,
+            color: C.textTertiary,
+            fontStyle: "italic",
+        },
 
-    // Carousel navigation
-    carouselNav: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        paddingVertical: 8,
-    },
-    arrowBtn: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: C.bg,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    arrowDisabled: {
-        opacity: 0.4,
-    },
-    dots: {
-        flexDirection: "row",
-        gap: 6,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: C.borderLight,
-    },
-    dotActive: {
-        backgroundColor: C.accent,
-        width: 18,
-        borderRadius: 3,
-    },
+        // Carousel navigation
+        carouselNav: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            paddingVertical: 8,
+        },
+        arrowBtn: {
+            width: 30,
+            height: 30,
+            borderRadius: 15,
+            backgroundColor: C.bg,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        arrowDisabled: {
+            opacity: 0.4,
+        },
+        dots: {
+            flexDirection: "row",
+            gap: 6,
+        },
+        dot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: C.borderLight,
+        },
+        dotActive: {
+            backgroundColor: C.accent,
+            width: 18,
+            borderRadius: 3,
+        },
 
-    // Add All
-    addAllBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        backgroundColor: C.accent,
-        borderRadius: Radius.lg,
-        paddingVertical: 10,
-        marginTop: 4,
-    },
-    addAllText: {
-        color: "#fff",
-        fontSize: FontSize.sm,
-        fontWeight: "700",
-    },
-});
+        // Add All
+        addAllBtn: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            backgroundColor: C.accent,
+            borderRadius: Radius.lg,
+            paddingVertical: 10,
+            marginTop: 4,
+        },
+        addAllText: {
+            color: "#fff",
+            fontSize: FontSize.sm,
+            fontWeight: "700",
+        },
+    });
 }
 
 function TaskCarousel({
@@ -932,6 +937,7 @@ export default function AiFab() {
     const [creating, setCreating] = useState(false);
     const [aiConsentKnown, setAiConsentKnown] = useState(false);
     const [aiConsentGranted, setAiConsentGranted] = useState(false);
+    const [aiLimitRemaining, setAiLimitRemaining] = useState<number | null>(null);
     const scrollRef = useRef<ScrollView>(null);
     const inputRef = useRef<TextInput>(null);
     const [listening, setListening] = useState(false);
@@ -964,6 +970,12 @@ export default function AiFab() {
         };
         loadConsent();
     }, []);
+
+    useEffect(() => {
+        if (!open) return;
+        // Check rate limit on open, but with an artificial delay if needed, though getAiUsageInfo is fast now
+        getAiUsageInfo(user?.uid).then(({ remaining }) => setAiLimitRemaining(remaining)).catch(() => null);
+    }, [open]);
 
     const setAiConsent = useCallback(async (granted: boolean) => {
         await AsyncStorage.setItem(AI_DATA_SHARING_CONSENT_KEY, granted ? "granted" : "declined");
@@ -1060,6 +1072,13 @@ export default function AiFab() {
         if (!trimmed || parsing || !aiConsentGranted) return;
         Keyboard.dismiss();
 
+        const rateLimitRes = await checkAiRateLimit(user?.uid);
+        if (!rateLimitRes.allowed) {
+            Alert.alert("Daily Limit Reached", `You've used all AI parses today. Resets in ${rateLimitRes.resetIn}.`);
+            return;
+        }
+        setAiLimitRemaining(rateLimitRes.remaining);
+
         // Add user message
         const userMsg: ChatMessage = { role: "user", text: trimmed };
         setMessages((prev) => [...prev, userMsg]);
@@ -1070,6 +1089,11 @@ export default function AiFab() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
         try {
+            if (user?.uid) {
+                incrementAiPrompt(user.uid).catch(() => null);
+                logEvent(user.uid, "ai_parse", { source: "ai_fab" }).catch(() => null);
+            }
+
             // Use the chat endpoint which handles both queries and task creation
             const baseUrl = (process.env.EXPO_PUBLIC_AI_API_URL || "https://the-task-app.vercel.app/api/ai/parse").replace(/\/parse$/, "/chat");
 
@@ -1104,6 +1128,7 @@ export default function AiFab() {
                 // Text-only answer about existing tasks
                 setMessages((prev) => [...prev, { role: "assistant-text" as const, text: data.message || "I'm not sure how to answer that." }]);
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                if (user?.uid) incrementAiResult(user.uid, true).catch(() => null);
             } else if (data?.type === "tasks" && Array.isArray(data.tasks)) {
                 const mappedTasks: AiTask[] = data.tasks.map((t: AiTask) => {
                     let groupId: string | null = null;
@@ -1123,9 +1148,11 @@ export default function AiFab() {
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                if (user?.uid) incrementAiResult(user.uid, true).catch(() => null);
             } else {
                 // Fallback: treat as text answer
                 setMessages((prev) => [...prev, { role: "assistant-text" as const, text: data?.message || "Something went wrong." }]);
+                if (user?.uid) incrementAiResult(user.uid, false).catch(() => null);
             }
         } catch (err) {
             const errMsg: ChatMessage = {
@@ -1259,6 +1286,11 @@ export default function AiFab() {
                                 <Text style={styles.sheetTitle}>AI Assistant</Text>
                             </View>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                {aiLimitRemaining !== null && (
+                                    <View style={{ backgroundColor: C.accentLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full }}>
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: C.accent }}>{aiLimitRemaining} left</Text>
+                                    </View>
+                                )}
                                 {messages.length > 0 && (
                                     <TouchableOpacity
                                         onPress={() => { setMessages([]); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}

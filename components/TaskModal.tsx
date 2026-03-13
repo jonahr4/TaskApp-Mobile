@@ -35,6 +35,7 @@ type Props = {
     defaultImportant?: boolean;
     defaultDueDate?: string | null;
     groups: TaskGroup[];
+    createdFrom?: "tasks" | "calendar" | "matrix";
 };
 
 const priorityOptions: { key: Quadrant; label: string }[] = [
@@ -349,6 +350,7 @@ export default function TaskModal({
     defaultImportant,
     defaultDueDate,
     groups,
+    createdFrom = "tasks",
 }: Props) {
     const { user } = useAuth();
     const { colors: C, isDark } = useTheme();
@@ -452,7 +454,7 @@ export default function TaskModal({
             if (isEdit && task) {
                 await updateTaskUnified(user?.uid, task.id, data);
             } else {
-                await createTaskUnified(user?.uid, { ...data, createdFrom: "tasks" } as any);
+                await createTaskUnified(user?.uid, { ...data, createdFrom } as any);
             }
             onClose();
         } catch {

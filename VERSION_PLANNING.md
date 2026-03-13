@@ -47,17 +47,17 @@
 - [x] Create `lib/analytics.ts` — event logger → `users/{uid}/events`
 - [x] Log task creation and completion events
 - [x] Log AI parse events
-- [ ] Log tab view events
-- [ ] Update privacy policy to mention usage analytics
+- [x] Log tab view events
+- [x] Update privacy policy to mention usage analytics
 
 #### Streak / Gamification
 - [x] Persist streak (current + longest) in `userData` Firestore doc
-- [ ] Streak milestone notifications at 3, 7, 14, 30 days
-- [ ] "Streak at risk" evening notification if no completions yet today
+- [x] Streak milestone notifications at 3, 7, 14, 30 days
+- [x] "Streak at risk" evening notification if no completions yet today
 
 #### Manual Steps Needed
-- [ ] Add Firestore Security Rule for `userData` collection
-- [ ] Update privacy policy (see walkthrough for exact prompt)
+- [x] Add Firestore Security Rule for `userData` collection
+- [x] Update privacy policy (see walkthrough for exact prompt)
 
 ---
 

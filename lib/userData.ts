@@ -21,6 +21,7 @@ import {
     updateDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { scheduleStreakMilestoneNotification } from "./notifications";
 
 export type CreatedFrom = "tasks" | "ai" | "calendar" | "matrix";
 
@@ -49,7 +50,7 @@ export type UserData = {
 
     // Task counters
     taskCount: number;
-    tasksCreatedManually: number; // from tasks screen
+    tasksCreatedFromTasks: number; // from tasks screen
     tasksCreatedFromAI: number;
     tasksCreatedFromCalendar: number;
     tasksCreatedFromMatrix: number;
@@ -105,7 +106,7 @@ export async function initUserData(user: User): Promise<void> {
                 provider,
                 ...deviceInfo,
                 taskCount: 0,
-                tasksCreatedManually: 0,
+                tasksCreatedFromTasks: 0,
                 tasksCreatedFromAI: 0,
                 tasksCreatedFromCalendar: 0,
                 tasksCreatedFromMatrix: 0,
@@ -149,7 +150,7 @@ export async function incrementTaskCounter(
     try {
         const ref = getUserDocRef(uid);
         const fieldMap: Record<CreatedFrom, string> = {
-            tasks: "tasksCreatedManually",
+            tasks: "tasksCreatedFromTasks",
             ai: "tasksCreatedFromAI",
             calendar: "tasksCreatedFromCalendar",
             matrix: "tasksCreatedFromMatrix",
@@ -203,16 +204,32 @@ export async function incrementAiResult(
  * Fetch the user's daily AI limit.
  * Returns the admin-set value if present, else 25.
  */
+// In-session cache so we only hit Firestore once per app session per user
+const _limitCache: Record<string, number> = {};
+
+/**
+ * Fetch the user's daily AI limit.
+ * Returns the admin-set value if present, else 25.
+ * Uses an in-memory cache + 2s timeout to avoid blocking the UI.
+ */
 export async function getDailyAiLimit(uid: string): Promise<number> {
+    if (_limitCache[uid] !== undefined) return _limitCache[uid];
     try {
-        const snap = await getDoc(getUserDocRef(uid));
-        if (snap.exists()) {
-            const limit = snap.data().dailyAiLimit;
-            if (typeof limit === "number" && limit > 0) return limit;
+        const snap = await Promise.race([
+            getDoc(getUserDocRef(uid)),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), 2000)
+            ),
+        ]);
+        const limit = (snap as any).data?.()?.dailyAiLimit;
+        if (typeof limit === "number" && limit > 0) {
+            _limitCache[uid] = limit;
+            return limit;
         }
     } catch {
-        // fall through to default
+        // timeout or Firestore error — fall through to default
     }
+    _limitCache[uid] = 25;
     return 25;
 }
 
@@ -256,6 +273,11 @@ export async function updateStreakData(uid: string): Promise<void> {
                 lastCompletedDate: todayStr,
             },
         });
+
+        // Trigger streak milestone notification if applicable
+        if (newCurrent > current.current) {
+            scheduleStreakMilestoneNotification(newCurrent).catch(() => null);
+        }
     } catch (err) {
         console.warn("[userData] updateStreakData failed:", err);
     }
