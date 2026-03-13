@@ -277,7 +277,7 @@ function GroupPage({
             completed: false,
             order: task.order + 1,
             autoUrgentDays: task.autoUrgentDays,
-
+            createdFrom: "tasks",
         });
         if (!uid) onLocalChange?.();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -452,7 +452,7 @@ export default function TaskModal({
             if (isEdit && task) {
                 await updateTaskUnified(user?.uid, task.id, data);
             } else {
-                await createTaskUnified(user?.uid, data as any);
+                await createTaskUnified(user?.uid, { ...data, createdFrom: "tasks" } as any);
             }
             onClose();
         } catch {
