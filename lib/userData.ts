@@ -56,6 +56,9 @@ export type UserData = {
     tasksCreatedFromMatrix: number;
     tasksCompleted: number;
 
+    // Daily Usage Tracking
+    dailyUsage?: Record<string, { created: number; completed: number }>;
+
     // AI counters
     aiPromptsCount: number;     // times "Parse with AI" was pressed
     aiParseSuccessCount: number;
@@ -111,6 +114,7 @@ export async function initUserData(user: User): Promise<void> {
                 tasksCreatedFromCalendar: 0,
                 tasksCreatedFromMatrix: 0,
                 tasksCompleted: 0,
+                dailyUsage: {},
                 aiPromptsCount: 0,
                 aiParseSuccessCount: 0,
                 aiParseFailCount: 0,
@@ -155,9 +159,13 @@ export async function incrementTaskCounter(
             calendar: "tasksCreatedFromCalendar",
             matrix: "tasksCreatedFromMatrix",
         };
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
         await updateDoc(ref, {
             taskCount: increment(1),
             [fieldMap[source]]: increment(1),
+            [`dailyUsage.${todayStr}.created`]: increment(1),
         });
     } catch (err) {
         console.warn("[userData] incrementTaskCounter failed:", err);
@@ -167,8 +175,12 @@ export async function incrementTaskCounter(
 /** Call when a task is marked complete. */
 export async function incrementTaskCompleted(uid: string): Promise<void> {
     try {
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
         await updateDoc(getUserDocRef(uid), {
             tasksCompleted: increment(1),
+            [`dailyUsage.${todayStr}.completed`]: increment(1),
         });
     } catch (err) {
         console.warn("[userData] incrementTaskCompleted failed:", err);

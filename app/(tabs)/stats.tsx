@@ -3,15 +3,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { useColors } from "@/hooks/useTheme";
+import { db } from "@/lib/firebase";
 import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
 import type { Quadrant } from "@/lib/types";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import { UserData } from "@/lib/userData";
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo } from "react";
+import { doc, DocumentData, DocumentSnapshot, onSnapshot } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
 import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View
 } from "react-native";
 
@@ -178,6 +182,71 @@ function makeStyles(C: typeof Colors.light) {
             fontWeight: "600",
             color: C.textSecondary,
         },
+        datesUsedHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: Spacing.sm,
+        },
+        datesUsedHeaderLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+        },
+        datesUsedTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        datesUsedContent: {
+            marginTop: Spacing.md,
+            backgroundColor: C.bg,
+            borderRadius: Radius.lg,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        datesUsedRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: Spacing.md,
+            paddingHorizontal: Spacing.md,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: C.borderLight,
+        },
+        datesUsedRowLast: {
+            borderBottomWidth: 0,
+        },
+        datesUsedDate: {
+            flex: 1,
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.textPrimary,
+        },
+        datesUsedDataRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.lg,
+        },
+        datesUsedDataItem: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            width: 50,
+        },
+        datesUsedDataText: {
+            fontSize: FontSize.md,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+        datesUsedEmpty: {
+            padding: Spacing.lg,
+            alignItems: "center",
+        },
+        datesUsedEmptyText: {
+            fontSize: FontSize.md,
+            color: C.textTertiary,
+        },
     });
 }
 
@@ -187,6 +256,17 @@ export default function StatsScreen() {
     const { tasks } = useTasks(user?.uid);
     const { groups } = useTaskGroups(user?.uid);
     const styles = useMemo(() => makeStyles(C), [C]);
+
+    const [userData, setUserData] = useState<UserData | null>(null);
+    const [isDatesUsedExpanded, setIsDatesUsedExpanded] = useState(false);
+
+    useEffect(() => {
+        if (!user?.uid) return;
+        const unsub = onSnapshot(doc(db, "userData", user.uid), (snap: DocumentSnapshot<DocumentData, DocumentData>) => {
+            if (snap.exists()) setUserData(snap.data() as UserData);
+        });
+        return () => unsub();
+    }, [user?.uid]);
 
     const stats = useMemo(() => {
         const total = tasks.length;
@@ -356,6 +436,67 @@ export default function StatsScreen() {
                         ))}
                     </View>
                 )}
+
+                {/* Dates Used (Daily Usage) */}
+                <View style={[styles.sectionCard, { marginBottom: 40 }]}>
+                    <TouchableOpacity
+                        style={styles.datesUsedHeader}
+                        onPress={() => setIsDatesUsedExpanded(!isDatesUsedExpanded)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.datesUsedHeaderLeft}>
+                            <Ionicons
+                                name={isDatesUsedExpanded ? "folder-open" : "folder"}
+                                size={24}
+                                color={C.accent}
+                            />
+                            <Text style={styles.datesUsedTitle}>Dates Used</Text>
+                        </View>
+                        <Ionicons
+                            name={isDatesUsedExpanded ? "chevron-up" : "chevron-down"}
+                            size={20}
+                            color={C.textTertiary}
+                        />
+                    </TouchableOpacity>
+
+                    {isDatesUsedExpanded && (
+                        <View style={styles.datesUsedContent}>
+                            {userData?.dailyUsage && Object.keys(userData.dailyUsage).length > 0 ? (
+                                Object.entries(userData.dailyUsage)
+                                    .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+                                    .map(([dateStr, metrics], idx, arr) => {
+                                        // Format date: "YYYY-MM-DD" -> "MMM D, YYYY"
+                                        const [y, m, d] = dateStr.split("-").map(Number);
+                                        const formattedDate = new Date(y, m - 1, d).toLocaleDateString(undefined, {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        });
+
+                                        return (
+                                            <View key={dateStr} style={[styles.datesUsedRow, idx === arr.length - 1 && styles.datesUsedRowLast]}>
+                                                <Text style={styles.datesUsedDate}>{formattedDate}</Text>
+                                                <View style={styles.datesUsedDataRow}>
+                                                    <View style={styles.datesUsedDataItem}>
+                                                        <Ionicons name="add-circle" size={16} color={C.accent} />
+                                                        <Text style={styles.datesUsedDataText}>{metrics.created || 0}</Text>
+                                                    </View>
+                                                    <View style={styles.datesUsedDataItem}>
+                                                        <Ionicons name="checkmark-circle" size={16} color={C.success} />
+                                                        <Text style={styles.datesUsedDataText}>{metrics.completed || 0}</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })
+                            ) : (
+                                <View style={styles.datesUsedEmpty}>
+                                    <Text style={styles.datesUsedEmptyText}>No daily usage data yet.</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
             </ScrollView>
         </View>
     );
