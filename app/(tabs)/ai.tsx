@@ -3,10 +3,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { useTheme } from "@/hooks/useTheme";
+import { checkAiRateLimit, getAiUsageInfo } from "@/lib/aiRateLimit";
+import { logEvent } from "@/lib/analytics";
 import { createTaskUnified } from "@/lib/crud";
 import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
 import type { Quadrant } from "@/lib/types";
 import { QUADRANT_META } from "@/lib/types";
+import { incrementAiPrompt, incrementAiResult } from "@/lib/userData";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
@@ -430,6 +433,7 @@ export default function AiScreen() {
     const scrollRef = useRef<ScrollView>(null);
     const [aiConsentKnown, setAiConsentKnown] = useState(false);
     const [aiConsentGranted, setAiConsentGranted] = useState(false);
+    const [aiRemaining, setAiRemaining] = useState<number | null>(null);
 
     useEffect(() => {
         const loadConsent = async () => {
@@ -443,6 +447,15 @@ export default function AiScreen() {
         loadConsent();
     }, []);
 
+    const refreshAiRemaining = useCallback(async () => {
+        const info = await getAiUsageInfo(user?.uid);
+        setAiRemaining(info.remaining);
+    }, [user?.uid]);
+
+    useEffect(() => {
+        refreshAiRemaining();
+    }, [refreshAiRemaining]);
+
     const setAiConsent = useCallback(async (granted: boolean) => {
         await AsyncStorage.setItem(AI_DATA_SHARING_CONSENT_KEY, granted ? "granted" : "declined");
         setAiConsentGranted(granted);
@@ -454,12 +467,30 @@ export default function AiScreen() {
 
     const handleParse = async () => {
         if (!text.trim() || !aiConsentGranted) return;
+
+        // Check rate limit before doing anything
+        const rateResult = await checkAiRateLimit(user?.uid);
+        if (!rateResult.allowed) {
+            Alert.alert(
+                "Daily Limit Reached",
+                `You've used all your AI parses for today. Resets in ${rateResult.resetIn}.`
+            );
+            return;
+        }
+        setAiRemaining(rateResult.remaining);
+
         Keyboard.dismiss();
         setParsing(true);
         setSuccess("");
         setShowPriorityPicker(null);
         setShowGroupPicker(null);
         setDtPicker(null);
+
+        if (user?.uid) {
+            incrementAiPrompt(user.uid).catch(() => null);
+            logEvent(user.uid, "ai_parse", { source: "ai_tab" }).catch(() => null);
+        }
+
         try {
             const apiUrl = process.env.EXPO_PUBLIC_AI_API_URL || "https://the-task-app.vercel.app/api/ai/parse";
 
@@ -480,6 +511,7 @@ export default function AiScreen() {
             if (!res.ok) {
                 const errMsg = data?.error || "AI request failed";
                 const detail = data?.detail ? `\n\nDetail: ${typeof data.detail === "string" ? data.detail.slice(0, 200) : JSON.stringify(data.detail).slice(0, 200)}` : "";
+                if (user?.uid) incrementAiResult(user.uid, false).catch(() => null);
                 throw new Error(`${errMsg}${detail}`);
             }
 
@@ -495,9 +527,11 @@ export default function AiScreen() {
                     return { ...t, groupId };
                 });
                 setResults(mappedTasks);
+                if (user?.uid) incrementAiResult(user.uid, true).catch(() => null);
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
             } else {
+                if (user?.uid) incrementAiResult(user.uid, false).catch(() => null);
                 throw new Error("AI returned no tasks. Raw: " + JSON.stringify(data)?.slice(0, 200));
             }
         } catch (err) {
@@ -505,6 +539,7 @@ export default function AiScreen() {
             Alert.alert("AI Error", err instanceof Error ? err.message : "Failed to parse text with AI.");
         } finally {
             setParsing(false);
+            refreshAiRemaining();
         }
     };
 
@@ -529,6 +564,7 @@ export default function AiScreen() {
                     order: tasks.length + created,
                     autoUrgentDays: null,
                     reminder: false,
+                    createdFrom: "ai",
                 });
                 created += 1;
             }
@@ -679,7 +715,14 @@ export default function AiScreen() {
                             >
                                 <Ionicons name="chevron-down-circle-outline" size={22} color={C.textTertiary} />
                             </TouchableOpacity>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingHorizontal: 2 }}>
                             <Text style={styles.tzLabel}>Timezone: {timezone}</Text>
+                            {aiConsentGranted && aiRemaining !== null && (
+                                <Text style={[styles.tzLabel, { fontWeight: "600", color: aiRemaining <= 3 ? "#ef4444" : C.textTertiary }]}>
+                                    {aiRemaining} parse{aiRemaining !== 1 ? "s" : ""} left today
+                                </Text>
+                            )}
                         </View>
                         {success !== "" && (
                             <View style={styles.successBanner}>

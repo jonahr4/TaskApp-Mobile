@@ -1,13 +1,13 @@
 import { StyleSheet } from "react-native";
-import { Colors, Spacing, Radius, FontSize } from "./theme";
+import { Colors, Radius, Spacing } from "./theme";
 
 export const makeFilterStyles = (C: typeof Colors.light) =>
     StyleSheet.create({
         filterBar: {
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
-            paddingHorizontal: Spacing.lg,
+            gap: 4,
+            paddingHorizontal: Spacing.md,
             paddingTop: 8,
             paddingBottom: 8,
             zIndex: 20,
@@ -18,9 +18,9 @@ export const makeFilterStyles = (C: typeof Colors.light) =>
         filterChip: {
             flexDirection: "row",
             alignItems: "center",
-            gap: 4,
-            paddingHorizontal: 10,
-            paddingVertical: 6,
+            gap: 3,
+            paddingHorizontal: 8,
+            paddingVertical: 5,
             borderRadius: Radius.full,
             backgroundColor: C.bgCard,
             borderWidth: 1,
@@ -31,7 +31,7 @@ export const makeFilterStyles = (C: typeof Colors.light) =>
             borderColor: C.accent,
         },
         filterChipText: {
-            fontSize: FontSize.xs,
+            fontSize: 11,
             fontWeight: "500" as const,
             color: C.textSecondary,
         },

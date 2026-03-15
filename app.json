@@ -2,7 +2,7 @@
   "expo": {
     "name": "TaskApp",
     "slug": "mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon-new-taskapp1-iOS-Default-1024x1024@1x.png",
     "scheme": "mobile",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "22",
+      "buildNumber": "27",
       "bundleIdentifier": "com.jonahro.mobile",
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -40,10 +40,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.jonahro.mobile"
+      "package": "com.jonahro.mobile",
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",

@@ -2,24 +2,29 @@
  * Unified CRUD that routes to local storage or Firestore
  * depending on whether a user is logged in.
  */
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logEvent } from "./analytics";
 import {
-    createTask as cloudCreateTask,
-    updateTask as cloudUpdateTask,
-    deleteTask as cloudDeleteTask,
     createGroup as cloudCreateGroup,
-    updateGroup as cloudUpdateGroup,
+    createTask as cloudCreateTask,
     deleteGroup as cloudDeleteGroup,
+    deleteTask as cloudDeleteTask,
+    updateGroup as cloudUpdateGroup,
+    updateTask as cloudUpdateTask
 } from "./firestore";
 import {
-    localCreateTask,
-    localUpdateTask,
-    localDeleteTask,
     localCreateGroup,
-    localUpdateGroup,
+    localCreateTask,
     localDeleteGroup,
+    localDeleteTask,
     localReorderGroups,
+    localUpdateGroup,
+    localUpdateTask
 } from "./localDb";
-import type { Task, TaskGroup } from "./types";
+import { cancelStreakAtRiskNotification } from "./notifications";
+import { trackTaskCreatedAndMaybeReview } from "./reviewPrompt";
+import type { CreatedFrom, Task, TaskGroup } from "./types";
+import { incrementTaskCompleted, incrementTaskCounter, updateStreakData } from "./userData";
 
 // ---- Tasks ----
 
@@ -27,11 +32,22 @@ export async function createTaskUnified(
     uid: string | undefined,
     data: Omit<Task, "id" | "createdAt" | "updatedAt">
 ) {
+    const result = uid
+        ? await cloudCreateTask(uid, data)
+        : await localCreateTask(data);
+
+    // Fire-and-forget side-effects (never block task creation)
+    const source = (data.createdFrom ?? "tasks") as CreatedFrom;
+    const isAi = source === "ai";
+
+    trackTaskCreatedAndMaybeReview(isAi).catch(() => null);
+
     if (uid) {
-        return cloudCreateTask(uid, data);
-    } else {
-        return localCreateTask(data);
+        incrementTaskCounter(uid, source).catch(() => null);
+        logEvent(uid, "task_created", { source }).catch(() => null);
     }
+
+    return result;
 }
 
 export async function updateTaskUnified(
@@ -39,11 +55,24 @@ export async function updateTaskUnified(
     taskId: string,
     data: Partial<Omit<Task, "id" | "createdAt">>
 ) {
-    if (uid) {
-        return cloudUpdateTask(uid, taskId, data);
-    } else {
-        return localUpdateTask(taskId, data);
+    const result = uid
+        ? await cloudUpdateTask(uid, taskId, data)
+        : await localUpdateTask(taskId, data);
+
+    // If this is a completion, update streak + counter
+    if (data.completed === true) {
+        cancelStreakAtRiskNotification().catch(() => null);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        AsyncStorage.setItem("taskapp.lastCompletedDate", todayStr).catch(() => null);
+
+        if (uid) {
+            incrementTaskCompleted(uid).catch(() => null);
+            updateStreakData(uid).catch(() => null);
+            logEvent(uid, "task_completed").catch(() => null);
+        }
     }
+
+    return result;
 }
 
 export async function deleteTaskUnified(

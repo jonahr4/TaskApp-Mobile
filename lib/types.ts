@@ -1,5 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
+export type CreatedFrom = "tasks" | "ai" | "calendar" | "matrix";
+
 export type Task = {
     id: string;
     title: string;
@@ -14,6 +16,7 @@ export type Task = {
     location?: string | null;
     completed: boolean;
     order: number;
+    createdFrom?: CreatedFrom | null;
     createdAt: Timestamp;
     updatedAt: Timestamp;
 };

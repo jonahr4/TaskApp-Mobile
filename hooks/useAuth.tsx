@@ -2,6 +2,7 @@ import { useSync, type SyncScenario } from "@/hooks/useSync";
 import { auth } from "@/lib/firebase";
 import { deleteAllUserData, groupsQuery, tasksQuery } from "@/lib/firestore";
 import { clearLocalData, replaceAllLocalGroups, replaceAllLocalTasks } from "@/lib/localDb";
+import { initUserData } from "@/lib/userData";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import {
     createUserWithEmailAndPassword,
@@ -96,12 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInEmail = async (email: string, password: string): Promise<SyncScenario> => {
         const cred = await signInWithEmailAndPassword(auth, email, password);
+        initUserData(cred.user).catch(() => null);
         const scenario = await sync.onSignIn(cred.user);
         return scenario;
     };
 
     const signUpEmail = async (email: string, password: string): Promise<SyncScenario> => {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
+        initUserData(cred.user).catch(() => null);
         const scenario = await sync.onSignIn(cred.user);
         return scenario;
     };
@@ -114,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!idToken) throw new Error("No ID token from Google Sign-In");
         const credential = GoogleAuthProvider.credential(idToken);
         const cred = await signInWithCredential(auth, credential);
+        initUserData(cred.user).catch(() => null);
         const scenario = await sync.onSignIn(cred.user);
         return scenario;
     };
@@ -144,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const cred = await signInWithCredential(auth, credential);
+        initUserData(cred.user).catch(() => null);
         const scenario = await sync.onSignIn(cred.user);
         return scenario;
     };

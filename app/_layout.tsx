@@ -3,7 +3,7 @@ import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
-import { configureForegroundHandler } from "@/lib/notifications";
+import { configureForegroundHandler, scheduleStreakAtRiskNotification } from "@/lib/notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Slot, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -44,6 +44,22 @@ function AppShell() {
   useEffect(() => {
     _showOnboarding = () => setShowOnboarding(true);
     return () => { _showOnboarding = null; };
+  }, []);
+
+  // Schedule streak at risk notification if no tasks completed today
+  useEffect(() => {
+    const checkStreakReminder = async () => {
+      try {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const lastCompleted = await AsyncStorage.getItem("taskapp.lastCompletedDate");
+        if (lastCompleted !== todayStr) {
+          await scheduleStreakAtRiskNotification();
+        }
+      } catch {
+        // ignore storage errors
+      }
+    };
+    checkStreakReminder();
   }, []);
 
   const handleOnboardingDone = async () => {

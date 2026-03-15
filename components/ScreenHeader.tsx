@@ -170,8 +170,12 @@ export default function ScreenHeader({ title }: Props) {
     const [calFeedOpen, setCalFeedOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [showLinks, setShowLinks] = useState(false);
 
-    const close = useCallback(() => setMenuOpen(false), []);
+    const close = useCallback(() => {
+        setMenuOpen(false);
+        setShowLinks(false);
+    }, []);
 
     const handleDeleteAccount = useCallback(() => {
         Alert.alert(
@@ -300,17 +304,44 @@ export default function ScreenHeader({ title }: Props) {
                             <Text style={styles.menuBtnText}>Learn More</Text>
                         </TouchableOpacity>
 
-                        {/* Privacy Policy */}
+                        {/* Links Accordion */}
                         <TouchableOpacity
                             style={styles.menuBtn}
-                            onPress={() => { close(); Linking.openURL("https://www.the-task.app/privacy"); }}
+                            onPress={() => setShowLinks(!showLinks)}
                             activeOpacity={0.7}
                         >
                             <View style={styles.menuIconWrap}>
-                                <Ionicons name="shield-checkmark-outline" size={16} color={C.textSecondary} />
+                                <Ionicons name="link-outline" size={16} color={C.textSecondary} />
                             </View>
-                            <Text style={styles.menuBtnText}>Privacy Policy</Text>
+                            <Text style={[styles.menuBtnText, { flex: 1 }]}>Links</Text>
+                            <Ionicons name={showLinks ? "chevron-up" : "chevron-down"} size={16} color={C.textSecondary} />
                         </TouchableOpacity>
+
+                        {showLinks && (
+                            <View style={{ paddingLeft: 34 }}>
+                                <TouchableOpacity
+                                    style={[styles.menuBtn, { paddingVertical: 6 }]}
+                                    onPress={() => { close(); Linking.openURL("https://www.the-task.app"); }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.menuIconWrap, { width: 24, height: 24 }]}>
+                                        <Ionicons name="globe-outline" size={14} color={C.textSecondary} />
+                                    </View>
+                                    <Text style={[styles.menuBtnText, { fontSize: FontSize.sm }]}>Main Website</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.menuBtn, { paddingVertical: 6, marginBottom: 4 }]}
+                                    onPress={() => { close(); Linking.openURL("https://www.the-task.app/privacy"); }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.menuIconWrap, { width: 24, height: 24 }]}>
+                                        <Ionicons name="shield-checkmark-outline" size={14} color={C.textSecondary} />
+                                    </View>
+                                    <Text style={[styles.menuBtnText, { fontSize: FontSize.sm }]}>Privacy Policy</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
                         <View style={styles.divider} />
 
