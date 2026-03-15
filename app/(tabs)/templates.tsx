@@ -1,24 +1,24 @@
-import { useState, useMemo, useCallback, useRef } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    TextInput,
-    Platform,
-} from "react-native";
+import ScreenHeader from "@/components/ScreenHeader";
+import TaskModal from "@/components/TaskModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors } from "@/hooks/useTheme";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Task, TaskGroup } from "@/lib/types";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
 import Fuse from "fuse.js";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useColors } from "@/hooks/useTheme";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { getQuadrant, QUADRANT_META } from "@/lib/types";
-import type { Task, TaskGroup } from "@/lib/types";
-import TaskModal from "@/components/TaskModal";
-import ScreenHeader from "@/components/ScreenHeader";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 // ── Date parsing ─────────────────────────────────────────────
 const MONTH_NAMES: Record<string, number> = {
@@ -101,182 +101,183 @@ function formatDueDate(task: Task): string | null {
     return str;
 }
 
-type StatusFilter = "all" | "active" | "completed";
+import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
 
 // ── Component ────────────────────────────────────────────────
-function makeStyles(C: typeof Colors.light) { return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    header: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Platform.OS === "ios" ? 60 : 48,
-        paddingBottom: Spacing.sm,
-        backgroundColor: C.bgCard,
-        ...Shadows.sm,
-    },
-    headerTitle: {
-        fontSize: FontSize.title,
-        fontWeight: "800",
-        color: C.textPrimary,
-        letterSpacing: -0.5,
-    },
-    searchWrap: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginHorizontal: Spacing.lg,
-        marginTop: Spacing.md,
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-        paddingHorizontal: Spacing.md,
-        ...Shadows.sm,
-    },
-    searchInput: {
-        flex: 1,
-        height: 44,
-        fontSize: FontSize.md,
-        color: C.textPrimary,
-    },
-    filterRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.sm,
-    },
-    chip: {
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderRadius: Radius.full,
-        backgroundColor: C.bgCard,
-        borderWidth: 1,
-        borderColor: C.borderLight,
-    },
-    chipActive: {
-        backgroundColor: C.accent,
-        borderColor: C.accent,
-    },
-    chipText: {
-        fontSize: FontSize.xs,
-        fontWeight: "600",
-        color: C.textSecondary,
-    },
-    chipTextActive: {
-        color: "#fff",
-    },
-    resultCount: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        marginLeft: "auto",
-    },
-    body: {
-        flex: 1,
-        paddingHorizontal: Spacing.lg,
-    },
-    emptyState: {
-        alignItems: "center",
-        paddingTop: 80,
-        gap: 8,
-    },
-    emptyTitle: {
-        fontSize: FontSize.lg,
-        fontWeight: "600",
-        color: C.textSecondary,
-    },
-    emptyHint: {
-        fontSize: FontSize.sm,
-        color: C.textTertiary,
-        textAlign: "center",
-        paddingHorizontal: Spacing.xl,
-    },
-    resultRow: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        backgroundColor: C.bgCard,
-        borderRadius: Radius.lg,
-        borderWidth: 0,
-        padding: Spacing.lg,
-        marginBottom: Spacing.sm,
-        ...Shadows.sm,
-    },
-    statusDot: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: Spacing.md,
-        marginTop: 1,
-    },
-    statusDotActive: {
-        borderWidth: 2,
-        borderColor: C.borderLight,
-        backgroundColor: "transparent",
-    },
-    statusDotDone: {
-        backgroundColor: C.success,
-    },
-    resultContent: {
-        flex: 1,
-    },
-    resultTitle: {
-        fontSize: FontSize.md,
-        fontWeight: "500",
-        color: C.textPrimary,
-        marginBottom: 3,
-    },
-    resultTitleDone: {
-        textDecorationLine: "line-through",
-        color: C.textTertiary,
-    },
-    metaRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 6,
-    },
-    metaTag: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-    },
-    metaText: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-    },
-    groupDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-    },
-    priorityBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: Radius.full,
-        borderWidth: 1,
-    },
-    priorityDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-    },
-    priorityText: {
-        fontSize: 11,
-        fontWeight: "600",
-    },
-    notesPreview: {
-        fontSize: FontSize.xs,
-        color: C.textTertiary,
-        fontStyle: "italic",
-        marginTop: 3,
-    },
-});
+function makeStyles(C: typeof Colors.light) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: C.bg,
+        },
+        header: {
+            paddingHorizontal: Spacing.xl,
+            paddingTop: Platform.OS === "ios" ? 60 : 48,
+            paddingBottom: Spacing.sm,
+            backgroundColor: C.bgCard,
+            ...Shadows.sm,
+        },
+        headerTitle: {
+            fontSize: FontSize.title,
+            fontWeight: "800",
+            color: C.textPrimary,
+            letterSpacing: -0.5,
+        },
+        searchWrap: {
+            flexDirection: "row",
+            alignItems: "center",
+            marginHorizontal: Spacing.lg,
+            marginTop: Spacing.md,
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+            paddingHorizontal: Spacing.md,
+            ...Shadows.sm,
+        },
+        searchInput: {
+            flex: 1,
+            height: 44,
+            fontSize: FontSize.md,
+            color: C.textPrimary,
+        },
+        filterRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: Spacing.lg,
+            paddingVertical: Spacing.sm,
+        },
+        chip: {
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: Radius.full,
+            backgroundColor: C.bgCard,
+            borderWidth: 1,
+            borderColor: C.borderLight,
+        },
+        chipActive: {
+            backgroundColor: C.accent,
+            borderColor: C.accent,
+        },
+        chipText: {
+            fontSize: FontSize.xs,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+        chipTextActive: {
+            color: "#fff",
+        },
+        resultCount: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            marginLeft: "auto",
+        },
+        body: {
+            flex: 1,
+            paddingHorizontal: Spacing.lg,
+        },
+        emptyState: {
+            alignItems: "center",
+            paddingTop: 80,
+            gap: 8,
+        },
+        emptyTitle: {
+            fontSize: FontSize.lg,
+            fontWeight: "600",
+            color: C.textSecondary,
+        },
+        emptyHint: {
+            fontSize: FontSize.sm,
+            color: C.textTertiary,
+            textAlign: "center",
+            paddingHorizontal: Spacing.xl,
+        },
+        resultRow: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            backgroundColor: C.bgCard,
+            borderRadius: Radius.lg,
+            borderWidth: 0,
+            padding: Spacing.lg,
+            marginBottom: Spacing.sm,
+            ...Shadows.sm,
+        },
+        statusDot: {
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: Spacing.md,
+            marginTop: 1,
+        },
+        statusDotActive: {
+            borderWidth: 2,
+            borderColor: C.borderLight,
+            backgroundColor: "transparent",
+        },
+        statusDotDone: {
+            backgroundColor: C.success,
+        },
+        resultContent: {
+            flex: 1,
+        },
+        resultTitle: {
+            fontSize: FontSize.md,
+            fontWeight: "500",
+            color: C.textPrimary,
+            marginBottom: 3,
+        },
+        resultTitleDone: {
+            textDecorationLine: "line-through",
+            color: C.textTertiary,
+        },
+        metaRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 6,
+        },
+        metaTag: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
+        },
+        metaText: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+        },
+        groupDot: {
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+        },
+        priorityBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: Radius.full,
+            borderWidth: 1,
+        },
+        priorityDot: {
+            width: 5,
+            height: 5,
+            borderRadius: 3,
+        },
+        priorityText: {
+            fontSize: 11,
+            fontWeight: "600",
+        },
+        notesPreview: {
+            fontSize: FontSize.xs,
+            color: C.textTertiary,
+            fontStyle: "italic",
+            marginTop: 3,
+        },
+    });
 }
 
 export default function SearchScreen() {
@@ -288,7 +289,7 @@ export default function SearchScreen() {
     const inputRef = useRef<TextInput>(null);
 
     const [query, setQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [statusFilter, setStatusFilter] = useStatusFilter();
     const [editTask, setEditTask] = useState<Task | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
 
@@ -324,7 +325,7 @@ export default function SearchScreen() {
 
         // 1. Status filter
         let pool = tasks;
-        if (statusFilter === "active") pool = tasks.filter((t) => !t.completed);
+        if (statusFilter === "in_progress") pool = tasks.filter((t) => !t.completed);
         else if (statusFilter === "completed") pool = tasks.filter((t) => t.completed);
 
         // 2. Try date parsing first
@@ -404,7 +405,7 @@ export default function SearchScreen() {
 
             {/* Status filter chips */}
             <View style={styles.filterRow}>
-                {(["all", "active", "completed"] as StatusFilter[]).map((f) => (
+                {(["all", "in_progress", "completed"] as StatusFilter[]).map((f) => (
                     <TouchableOpacity
                         key={f}
                         style={[styles.chip, statusFilter === f && styles.chipActive]}
@@ -412,7 +413,7 @@ export default function SearchScreen() {
                         activeOpacity={0.7}
                     >
                         <Text style={[styles.chipText, statusFilter === f && styles.chipTextActive]}>
-                            {f === "all" ? "All" : f === "active" ? "Active" : "Completed"}
+                            {f === "all" ? "All" : f === "in_progress" ? "Active" : "Completed"}
                         </Text>
                     </TouchableOpacity>
                 ))}

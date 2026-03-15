@@ -39,6 +39,8 @@ yarn-error.*
 
 # generated native folders
 /android
+modules/**/android/build/
+modules/**/android/.gradle/
 
 # build artifacts
 *.ipa

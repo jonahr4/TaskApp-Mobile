@@ -1,25 +1,26 @@
-import { useState, useMemo, useCallback } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-    Pressable,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { useColors } from "@/hooks/useTheme";
-import { Colors, Spacing, Radius, FontSize, Shadows } from "@/lib/theme";
-import { makeFilterStyles } from "@/lib/sharedStyles";
-import { getQuadrant, QUADRANT_META } from "@/lib/types";
-import type { Task, TaskGroup, Quadrant } from "@/lib/types";
-import TaskModal from "@/components/TaskModal";
 import { GroupFilterDropdown } from "@/components/GroupFilterDropdown";
 import ScreenHeader from "@/components/ScreenHeader";
+import TaskModal from "@/components/TaskModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
+import { useTasks } from "@/hooks/useTasks";
+import { useColors } from "@/hooks/useTheme";
+import { logEvent } from "@/lib/analytics";
+import { makeFilterStyles } from "@/lib/sharedStyles";
+import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
+import type { Task, TaskGroup } from "@/lib/types";
+import { getQuadrant, QUADRANT_META } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import {
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -27,10 +28,11 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-type StatusFilter = "all" | "in_progress" | "completed";
+import { StatusFilter, useStatusFilter } from "@/hooks/useStatusFilter";
+
 const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "in_progress", label: "In Progress" },
+    { key: "in_progress", label: "Active" },
     { key: "completed", label: "Completed" },
 ];
 
@@ -313,11 +315,19 @@ export default function CalendarScreen() {
     const { groups } = useTaskGroups(user?.uid);
     const styles = useMemo(() => makeStyles(C), [C]);
 
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.uid) {
+                logEvent(user.uid, "tab_view", { tab: "calendar" }).catch(() => null);
+            }
+        }, [user?.uid])
+    );
+
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [editTask, setEditTask] = useState<Task | null>(null);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [statusFilter, setStatusFilter] = useStatusFilter();
     const [showFilterMenu, setShowFilterMenu] = useState(false);
 
     // Group filter — start with all selected
@@ -503,16 +513,18 @@ export default function CalendarScreen() {
                 <View style={{ flex: 1 }} />
 
                 {/* Group filter */}
-                <GroupFilterDropdown
-                    groups={groups}
-                    selectedIds={selectedGroupIds}
-                    onToggle={handleToggleGroup}
-                    onSelectAll={handleSelectAllGroups}
-                />
+                <View style={{ marginLeft: "auto" }}>
+                    <GroupFilterDropdown
+                        groups={groups}
+                        selectedIds={selectedGroupIds}
+                        onToggle={handleToggleGroup}
+                        onSelectAll={handleSelectAllGroups}
+                    />
+                </View>
 
                 {/* Return to Today */}
                 {!isCurrentMonth && (
-                    <TouchableOpacity onPress={goToToday} style={styles.todayBtn} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={goToToday} style={[styles.todayBtn, { marginLeft: "auto" }]} activeOpacity={0.7}>
                         <Ionicons name="today-outline" size={12} color={C.accent} />
                         <Text style={styles.todayBtnText}>Today</Text>
                     </TouchableOpacity>
@@ -702,6 +714,7 @@ export default function CalendarScreen() {
                 task={editTask}
                 groups={groups}
                 defaultDueDate={selectedDate}
+                createdFrom="calendar"
             />
         </View>
     );
