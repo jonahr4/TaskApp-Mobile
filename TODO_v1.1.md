@@ -63,10 +63,10 @@
 ---
 
 ### P1 — Rename Quadrant Labels
-- [ ] **Rename quadrant names** in `lib/types.ts:51-54`
-  - Current sublabels: "Do First" / "Schedule" / "Delegate" / "Eliminate"
-  - Rename to use "Important" and "Urgent" in names
-  - Also update any hardcoded refs in `matrix.tsx` and notification labels
+- [x] **Rename quadrant names** in `lib/types.ts:51-54`
+  - Old: "Do First" / "Schedule" / "Delegate" / "Eliminate"
+  - New: "Important & Urgent" / "Important" / "Urgent" / "Neither"
+  - No hardcoded refs found — all UI reads from `meta.sublabel`
 
 ---
 

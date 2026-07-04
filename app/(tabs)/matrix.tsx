@@ -1334,8 +1334,9 @@ function QuadrantCell({
                                         styles.qLabel,
                                         { color: quadColor },
                                         isExpanded && styles.qLabelExpanded,
+                                        meta.sublabel.length > 10 && { lineHeight: FontSize.xs, fontSize: FontSize.xs },
                                     ]}
-                                    numberOfLines={1}
+                                    numberOfLines={2}
                                 >
                                     {meta.sublabel}
                                 </Text>

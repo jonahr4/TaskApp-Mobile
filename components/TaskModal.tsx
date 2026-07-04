@@ -39,10 +39,10 @@ type Props = {
 };
 
 const priorityOptions: { key: Quadrant; label: string }[] = [
-    { key: "DO", label: "Do First" },
-    { key: "SCHEDULE", label: "Schedule" },
-    { key: "DELEGATE", label: "Delegate" },
-    { key: "DELETE", label: "Eliminate" },
+    { key: "DO", label: "Important & Urgent" },
+    { key: "SCHEDULE", label: "Important" },
+    { key: "DELEGATE", label: "Urgent" },
+    { key: "DELETE", label: "Neither" },
 ];
 
 /* ── helpers ─────────────────────────────── */
@@ -718,11 +718,11 @@ export default function TaskModal({
                                 onPress={() =>
                                     Alert.alert(
                                         "Eisenhower Focus Matrix",
-                                        "The Eisenhower Matrix helps you prioritize tasks by urgency and importance:\n\n" +
-                                        "🔴 Do First — Urgent & Important\nCritical tasks that need immediate attention.\n\n" +
-                                        "🟡 Schedule — Not Urgent & Important\nImportant goals to plan and work on over time.\n\n" +
-                                        "🔵 Delegate — Urgent & Not Important\nTime-sensitive but can be handed off to others.\n\n" +
-                                        "⚫ Eliminate — Not Urgent & Not Important\nDistractions to minimize or remove."
+                                        "The Focus Matrix helps you prioritize tasks by urgency and importance:\n\n" +
+                                        "🔴 Important & Urgent\nCritical tasks that need immediate attention.\n\n" +
+                                        "🔵 Important\nImportant goals to plan and work on over time.\n\n" +
+                                        "🟡 Urgent\nTime-sensitive but less important — handle quickly or hand off.\n\n" +
+                                        "⚫ Neither\nLow-priority items to minimize or remove."
                                     )
                                 }
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

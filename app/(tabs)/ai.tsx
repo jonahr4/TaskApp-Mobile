@@ -44,10 +44,10 @@ type AiTask = {
 };
 
 const PRIORITY_OPTIONS: { key: Quadrant; label: string }[] = [
-    { key: "DO", label: "Do First" },
-    { key: "SCHEDULE", label: "Schedule" },
-    { key: "DELEGATE", label: "Delegate" },
-    { key: "DELETE", label: "Eliminate" },
+    { key: "DO", label: "Important & Urgent" },
+    { key: "SCHEDULE", label: "Important" },
+    { key: "DELEGATE", label: "Urgent" },
+    { key: "DELETE", label: "Neither" },
 ];
 
 function formatDisplayDate(dateStr: string | null): string {
@@ -910,7 +910,7 @@ export default function AiScreen() {
                                                 >
                                                     <View style={[styles.pickerDot, { backgroundColor: meta.color }]} />
                                                     <Text style={[styles.pickerText, { color: meta.color }]}>
-                                                        {PRIORITY_OPTIONS.find(o => o.key === task.priority)?.label ?? "Do First"}
+                                                        {PRIORITY_OPTIONS.find(o => o.key === task.priority)?.label ?? "Important & Urgent"}
                                                     </Text>
                                                     <Ionicons name="chevron-down" size={12} color={meta.color} />
                                                 </TouchableOpacity>

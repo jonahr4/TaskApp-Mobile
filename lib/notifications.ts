@@ -160,9 +160,9 @@ export async function scheduleTaskReminders(
     // Priority label — only show if task actually has a priority set
     const hasPriority = task.urgent === true || task.important === true;
     const priorityLabel = !hasPriority ? null :
-        task.urgent && task.important ? "🔴 Do First" :
-            !task.urgent && task.important ? "🔵 Schedule" :
-                task.urgent && !task.important ? "🟡 Delegate" : null;
+        task.urgent && task.important ? "🔴 Important & Urgent" :
+            !task.urgent && task.important ? "🔵 Important" :
+                task.urgent && !task.important ? "🟡 Urgent" : null;
 
     const emoji = colorToEmoji(groupColor);
 
