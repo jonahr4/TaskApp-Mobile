@@ -1,6 +1,7 @@
 import AiFab from "@/components/AiFab";
 import MergePrompt from "@/components/MergePrompt";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import SignOutPrompt from "@/components/SignOutPrompt";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { configureForegroundHandler, scheduleStreakAtRiskNotification } from "@/lib/notifications";
@@ -23,8 +24,10 @@ export function triggerOnboarding() {
 }
 
 function AppShell() {
-  const { loading, syncScenario, syncing, syncLocalTasks, confirmMerge, discardLocal } =
-    useAuth();
+  const {
+    loading, syncScenario, syncing, syncLocalTasks, confirmMerge, discardLocal,
+    showSignOutPrompt, signOutKeep, signOutClear, signOutCancel,
+  } = useAuth();
   const { isDark, colors } = useTheme();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
@@ -101,6 +104,13 @@ function AppShell() {
         merging={syncing}
         onConfirm={confirmMerge}
         onDiscard={discardLocal}
+      />
+      {/* Sign-out prompt — keep or clear local data */}
+      <SignOutPrompt
+        visible={showSignOutPrompt}
+        onKeep={signOutKeep}
+        onClear={signOutClear}
+        onCancel={signOutCancel}
       />
       {/* Onboarding — first launch or retriggered */}
       <OnboardingScreen visible={showOnboarding} onDone={handleOnboardingDone} />

@@ -20,15 +20,15 @@
 ---
 
 ### P0 — Sign-Out / Sign-In Task Persistence
-- [ ] **Sign out → clear local tasks** — `hooks/useAuth.tsx:160-178`
+- [x] **Sign out → clear local tasks** — `hooks/useAuth.tsx:160-178`
   - Current: snapshots cloud data TO local on sign-out (tasks persist locally after logout)
   - New: on sign-out, clear local tasks (safe in cloud)
   - Remove `replaceAllLocalTasks` / `replaceAllLocalGroups` calls in `logOut()`
   - Add `clearLocalData()` after `signOut(auth)`
-- [ ] **Keep local-only tasks (no account)**
+- [x] **Keep local-only tasks (no account)**
   - If user has been using app WITHOUT an account → tasks stay local
   - Only clear local data if user WAS signed in
-- [ ] **Fix sign-in merge/discard flow**
+- [x] **Fix sign-in merge/discard flow**
   - Bug: user chose to "discard local tasks" but they stayed anyway
   - Fix: discard path must call `clearLocalData()`
   - Merge path: upload/merge local tasks into the signed-in account
@@ -38,6 +38,13 @@
 ### P1 — Verify: Local Tasks in Matrix
 - [ ] **Check** that `app/(tabs)/matrix.tsx` reads from the same task source as `tasks.tsx` when signed out
   - Likely not a bug — verify and close if working
+
+---
+
+### P2 — Sign-Out / Merge UI Consistency
+- [x] **Replace native Alert sign-out dialog** with a styled modal matching `MergePrompt.tsx`
+  - Both screens handle "keep vs discard" local data — should look the same
+  - Created `SignOutPrompt.tsx` component with matching theme
 
 ---
 

@@ -45,13 +45,18 @@ type AuthCtx = {
     signInGoogle: () => Promise<SyncScenario>;
     signInApple: () => Promise<SyncScenario>;
     deleteAccount: () => Promise<void>;
-    logOut: () => Promise<void>;
+    logOut: () => void;
     // Sync state
     syncScenario: SyncScenario | null;
     syncing: boolean;
     syncLocalTasks: any[];
     confirmMerge: (selectedIds?: string[]) => Promise<void>;
     discardLocal: () => Promise<void>;
+    // Sign-out prompt state
+    showSignOutPrompt: boolean;
+    signOutKeep: () => Promise<void>;
+    signOutClear: () => Promise<void>;
+    signOutCancel: () => void;
 };
 
 const AuthContext = createContext<AuthCtx>({
@@ -62,12 +67,16 @@ const AuthContext = createContext<AuthCtx>({
     signInGoogle: async () => "none",
     signInApple: async () => "none",
     deleteAccount: async () => { },
-    logOut: async () => { },
+    logOut: () => { },
     syncScenario: null,
     syncing: false,
     syncLocalTasks: [],
     confirmMerge: async () => { },
     discardLocal: async () => { },
+    showSignOutPrompt: false,
+    signOutKeep: async () => { },
+    signOutClear: async () => { },
+    signOutCancel: () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -153,8 +162,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return scenario;
     };
 
-    const logOut = async () => {
-        // Snapshot cloud data to local storage so tasks persist after sign-out
+    const [showSignOutPrompt, setShowSignOutPrompt] = useState(false);
+
+    const logOut = () => {
+        if (!user) {
+            signOut(auth);
+            return;
+        }
+        setShowSignOutPrompt(true);
+    };
+
+    const signOutKeep = async () => {
+        // Snapshot cloud data to local storage so tasks persist offline
         if (user) {
             try {
                 const [tasksSnap, groupsSnap] = await Promise.all([
@@ -168,10 +187,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     groupsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
                 );
             } catch {
-                // Best-effort — don't block sign-out if snapshot fails
+                // Best-effort — don't block sign-out
             }
         }
+        setShowSignOutPrompt(false);
         await signOut(auth);
+    };
+
+    const signOutClear = async () => {
+        // Wipe local data for a clean slate
+        setShowSignOutPrompt(false);
+        await clearLocalData();
+        await signOut(auth);
+    };
+
+    const signOutCancel = () => {
+        setShowSignOutPrompt(false);
     };
 
     const deleteAccount = async () => {
@@ -206,6 +237,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 syncLocalTasks: sync.localTasks,
                 confirmMerge,
                 discardLocal: sync.discardLocal,
+                showSignOutPrompt,
+                signOutKeep,
+                signOutClear,
+                signOutCancel,
             }}
         >
             {children}

@@ -66,27 +66,15 @@ export function useSync() {
             return "none";
         }
 
-        // Scenario 2: local data + empty cloud → upload
+        // Scenario 2: local data + empty cloud → ask user before uploading
         if (hasLocal && !hasCloud) {
-            // Upload local groups first, then tasks with remapped group IDs
-            const groupIdMap: Record<string, string> = {};
-            for (const g of localGroups) {
-                const { id, createdAt, ...data } = g;
-                const ref = await createGroup(user.uid, data as Omit<TaskGroup, "id" | "createdAt">);
-                groupIdMap[id] = ref.id;
-            }
-            for (const t of localTasks) {
-                const { id, createdAt, updatedAt, ...data } = t;
-                await createTask(user.uid, {
-                    ...data,
-                    groupId: data.groupId && groupIdMap[data.groupId]
-                        ? groupIdMap[data.groupId]
-                        : data.groupId,
-                } as Omit<Task, "id" | "createdAt" | "updatedAt">);
-            }
-            await clearLocalData();
-            setState({ syncing: false, scenario: "upload", localTasks: [], cloudTasks: [] });
-            return "upload";
+            setState({
+                syncing: false,
+                scenario: "merge_needed",
+                localTasks,
+                cloudTasks: [],
+            });
+            return "merge_needed";
         }
 
         // Scenario 3: no local + cloud data → download (cache locally)
