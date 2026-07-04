@@ -8,6 +8,7 @@ import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
 import type { Task, TaskGroup } from "@/lib/types";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import Fuse from "fuse.js";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -287,6 +288,15 @@ export default function SearchScreen() {
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
     const inputRef = useRef<TextInput>(null);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!user?.uid) {
+                reloadLocal();
+                reloadLocalGroups();
+            }
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
+    );
 
     const [query, setQuery] = useState("");
     const [statusFilter, setStatusFilter] = useStatusFilter();

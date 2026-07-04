@@ -9,8 +9,9 @@ import type { Quadrant } from "@/lib/types";
 import { getQuadrant, QUADRANT_META } from "@/lib/types";
 import { UserData } from "@/lib/userData";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { doc, DocumentData, DocumentSnapshot, onSnapshot } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ScrollView,
     StyleSheet,
@@ -253,9 +254,18 @@ function makeStyles(C: typeof Colors.light) {
 export default function StatsScreen() {
     const C = useColors();
     const { user } = useAuth();
-    const { tasks } = useTasks(user?.uid);
-    const { groups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
     const styles = useMemo(() => makeStyles(C), [C]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!user?.uid) {
+                reloadLocal();
+                reloadLocalGroups();
+            }
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
+    );
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [isDatesUsedExpanded, setIsDatesUsedExpanded] = useState(false);

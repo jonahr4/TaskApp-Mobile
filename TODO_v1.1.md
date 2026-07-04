@@ -35,9 +35,10 @@
 
 ---
 
-### P1 — Verify: Local Tasks in Matrix
-- [ ] **Check** that `app/(tabs)/matrix.tsx` reads from the same task source as `tasks.tsx` when signed out
-  - Likely not a bug — verify and close if working
+### P1 — Local Tasks in Matrix
+- [x] **Matrix missing `reloadLocal` calls** — `app/(tabs)/matrix.tsx`
+  - Matrix never called `reloadLocal()` after task create/edit/toggle/drag
+  - Fix: destructure `reloadLocal` from `useTasks`, call after all mutations when signed out
 
 ---
 

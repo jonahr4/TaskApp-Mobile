@@ -452,15 +452,19 @@ export default function MatrixScreen() {
     const C = useColors();
     const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
-    const { tasks } = useTasks(user?.uid);
-    const { groups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
 
     useFocusEffect(
         useCallback(() => {
             if (user?.uid) {
                 logEvent(user.uid, "tab_view", { tab: "matrix" }).catch(() => null);
+            } else {
+                // Local mode: reload from AsyncStorage to stay synced with other tabs
+                reloadLocal();
+                reloadLocalGroups();
             }
-        }, [user?.uid])
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
     );
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -610,7 +614,8 @@ export default function MatrixScreen() {
     const handleToggle = useCallback(async (task: Task) => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         await updateTaskUnified(user?.uid, task.id, { completed: !task.completed });
-    }, [user?.uid]);
+        if (!user?.uid) reloadLocal();
+    }, [user?.uid, reloadLocal]);
 
     const openNewInQuadrant = useCallback((q: Quadrant) => {
         const meta = QUADRANT_META[q];
@@ -718,6 +723,7 @@ export default function MatrixScreen() {
                     urgent: meta.urgent,
                     important: meta.important,
                 });
+                if (!user?.uid) reloadLocal();
             } else {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
@@ -1070,7 +1076,11 @@ export default function MatrixScreen() {
 
             <TaskModal
                 visible={modalOpen}
-                onClose={() => { setModalOpen(false); setEditTask(null); }}
+                onClose={() => {
+                    setModalOpen(false);
+                    setEditTask(null);
+                    if (!user?.uid) { reloadLocal(); reloadLocalGroups(); }
+                }}
                 task={editTask}
                 defaultUrgent={defaultUrgent}
                 defaultImportant={defaultImportant}

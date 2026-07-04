@@ -946,8 +946,8 @@ export default function AiFab() {
     const { colors: C, isDark } = useTheme();
     const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
-    const { groups } = useTaskGroups(user?.uid);
-    const { tasks } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
 
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState("");
@@ -1209,6 +1209,7 @@ export default function AiFab() {
                 createdFrom: "ai",
             });
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (!user?.uid) { reloadLocal(); reloadLocalGroups(); }
 
             // Add success message
             setMessages((prev) => [...prev, { role: "system", text: `✅ Added "${task.title}"` }]);
@@ -1250,6 +1251,7 @@ export default function AiFab() {
                 { role: "system", text: `✅ Added ${created} task${created > 1 ? "s" : ""}!` },
             ]);
             setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+            if (!user?.uid) { reloadLocal(); reloadLocalGroups(); }
         } catch {
             setMessages((prev) => [...prev, { role: "system", text: "❌ Failed to create tasks" }]);
         } finally {

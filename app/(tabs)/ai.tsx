@@ -11,6 +11,7 @@ import type { Quadrant } from "@/lib/types";
 import { QUADRANT_META } from "@/lib/types";
 import { incrementAiPrompt, incrementAiResult } from "@/lib/userData";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
@@ -419,8 +420,17 @@ export default function AiScreen() {
     const { colors: C, isDark } = useTheme();
     const styles = useMemo(() => makeStyles(C), [C]);
     const { user } = useAuth();
-    const { groups } = useTaskGroups(user?.uid);
-    const { tasks } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!user?.uid) {
+                reloadLocal();
+                reloadLocalGroups();
+            }
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
+    );
 
     const [text, setText] = useState("");
     const [parsing, setParsing] = useState(false);
@@ -572,6 +582,7 @@ export default function AiScreen() {
             setSuccess(created > 1 ? `${created} tasks created!` : "Task created!");
             setResults([]);
             setText("");
+            if (!user?.uid) { reloadLocal(); reloadLocalGroups(); }
         } catch (err) {
             Alert.alert("Error", "Failed to create tasks.");
         } finally {

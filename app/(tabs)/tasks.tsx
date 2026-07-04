@@ -924,8 +924,12 @@ export default function TasksScreen() {
         useCallback(() => {
             if (user?.uid) {
                 logEvent(user.uid, "tab_view", { tab: "tasks" }).catch(() => null);
+            } else {
+                // Local mode: reload from AsyncStorage to stay synced with other tabs
+                reloadLocal();
+                reloadLocalGroups();
             }
-        }, [user?.uid])
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
     );
 
     // Auto-reschedule notifications whenever tasks change (debounced)

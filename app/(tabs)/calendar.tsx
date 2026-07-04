@@ -311,16 +311,20 @@ function makeStyles(C: typeof Colors.light) {
 export default function CalendarScreen() {
     const C = useColors();
     const { user } = useAuth();
-    const { tasks } = useTasks(user?.uid);
-    const { groups } = useTaskGroups(user?.uid);
+    const { tasks, reloadLocal } = useTasks(user?.uid);
+    const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
     const styles = useMemo(() => makeStyles(C), [C]);
 
     useFocusEffect(
         useCallback(() => {
             if (user?.uid) {
                 logEvent(user.uid, "tab_view", { tab: "calendar" }).catch(() => null);
+            } else {
+                // Local mode: reload from AsyncStorage to stay synced with other tabs
+                reloadLocal();
+                reloadLocalGroups();
             }
-        }, [user?.uid])
+        }, [user?.uid, reloadLocal, reloadLocalGroups])
     );
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -710,7 +714,11 @@ export default function CalendarScreen() {
 
             <TaskModal
                 visible={modalOpen}
-                onClose={() => { setModalOpen(false); setEditTask(null); }}
+                onClose={() => {
+                    setModalOpen(false);
+                    setEditTask(null);
+                    if (!user?.uid) { reloadLocal(); reloadLocalGroups(); }
+                }}
                 task={editTask}
                 groups={groups}
                 defaultDueDate={selectedDate}
