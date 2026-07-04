@@ -3,17 +3,17 @@
 ## Bug Fixes
 
 ### P0 — Notification Spam
-- [ ] **Fix streak-at-risk daily repeat** — `lib/notifications.ts:278-298`
+- [x] **Fix streak-at-risk daily repeat** — `lib/notifications.ts:278-298`
   - Root cause: uses `DAILY` trigger → repeats every 8 PM forever
   - Never cancelled when a task is completed
   - Fix: cancel streak-at-risk in task completion handler (`lib/crud.ts`)
   - Fix: only schedule if streak > 0 AND notifications enabled
   - Fix: if streak is already broken (0), don't schedule at all
-- [ ] **Tone down streak notifications**
+- [x] **Tone down streak notifications**
   - Reduce milestone triggers (currently 3, 7, 14, 21, 28…)
   - If streak is lost → bi-weekly nudge at most, not daily
   - Consider making streak notifications opt-in via settings
-- [ ] **Debounce `rescheduleAllReminders`** — `app/(tabs)/tasks.tsx:932-946`
+- [x] **Debounce `rescheduleAllReminders`** — `app/(tabs)/tasks.tsx:932-946`
   - Currently fires on every `[tasks, groups]` change
   - Add 2-second debounce to prevent cancel/reschedule flood
 

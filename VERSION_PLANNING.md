@@ -1,8 +1,8 @@
 # TaskApp Mobile — Version Planning
 
-## v1.0.3 — Analytics, Rate Limits & Engagement *(in progress)*
+## v1.0.3 — Analytics, Rate Limits & Engagement *(shipped)*
 
-### ✅ Already Shipped
+### Shipped
 - [x] Task list with drag-sort + groups
 - [x] Eisenhower Matrix (4-quadrant prioritization)
 - [x] Calendar view with iCal feed
@@ -14,54 +14,41 @@
 - [x] Dark mode
 - [x] Offline-first with Firestore sync
 - [x] Google Sign-In + Apple Sign-In
-- [x] Archives page (archived tasks/groups)
 - [x] Task search (templates tab)
 - [x] Sign-out preserves local tasks
-
-### 🔧 In Progress (this version)
-
-#### App Review Prompts
-- [x] Install `expo-store-review`
-- [x] Trigger at 5th, 15th, 30th, 50th task created (after March 12, 2026)
-- [x] Trigger at 1st and 5th AI-created task (after March 12, 2026)
-- [x] Each trigger fires only once (tracked in AsyncStorage)
-
-#### User Data Collection (`userData/{uid}` Firestore collection)
-- [x] Capture on sign-in: email, name, provider, device model, OS, app version, timezone
-- [x] Counters: tasks created (manual / AI / calendar / matrix), tasks completed
-- [x] AI counters: prompts sent, parse successes, parse failures
-- [x] Configurable `dailyAiLimit` per user (default 25, admin-adjustable in Firebase)
-- [x] Streak data: current streak, longest streak, last completed date
-
-#### Task `createdFrom` Field
-- [x] Add `createdFrom?: "tasks" | "ai" | "calendar" | "matrix"` to Task type
-- [x] Track creation source at each call site + update userData counters
-
-#### AI Rate Limiting
-- [x] 25 AI parses/day per user, resets at midnight
-- [x] `dailyAiLimit` configurable per-user in Firestore (admin can override per user)
-- [x] Remaining count shown in AI tab UI
-- [x] Friendly alert when limit reached (shows reset time)
-
-#### Analytics
-- [x] Create `lib/analytics.ts` — event logger → `users/{uid}/events`
-- [x] Log task creation and completion events
-- [x] Log AI parse events
-- [x] Log tab view events
-- [x] Update privacy policy to mention usage analytics
-
-#### Streak / Gamification
-- [x] Persist streak (current + longest) in `userData` Firestore doc
-- [x] Streak milestone notifications at 3, 7, 14, 30 days
-- [x] "Streak at risk" evening notification if no completions yet today
-
-#### Manual Steps Needed
-- [x] Add Firestore Security Rule for `userData` collection
-- [x] Update privacy policy (see walkthrough for exact prompt)
+- [x] App review prompts (5th, 15th, 30th, 50th task + 1st/5th AI task)
+- [x] User data collection (`userData/{uid}`)
+- [x] Task `createdFrom` field tracking
+- [x] AI rate limiting (25/day, configurable)
+- [x] Analytics event logging (`users/{uid}/events`)
+- [x] Streak tracking + milestone notifications
+- [x] Admin dashboard (Vite/React, deployed on Vercel)
 
 ---
 
-## v1.1 — Task Power Features *(planned)*
+## v1.1.0 — Bug Fixes, Archive & UX Polish *(in progress)*
+
+See `TODO_v1.1.md` for full task breakdown.
+
+### Bug Fixes
+- [ ] **Notification spam** — streak-at-risk uses DAILY repeating trigger, never cancelled on task completion; tone down streak notifications overall
+- [ ] **Sign-out/sign-in task persistence** — sign-out should clear local tasks (safe in cloud); fix discard-local-tasks path not actually clearing; keep local-only (no account) tasks intact
+- [ ] **Verify local tasks in matrix** — confirm matrix reads from same source when signed out
+
+### Features
+- [ ] **Default group reorder & delete** — allow reordering/deleting any group, guard against 0 groups, prompt to migrate tasks
+- [ ] **Rename quadrant labels** — rename the quadrant names themselves to reference "Important" and "Urgent"
+- [ ] **Archive mode** — port from web app (`TheTaskApp/src/app/archives/page.tsx`); add `archived?: boolean` to Task/TaskGroup types; archive viewer page
+- [ ] **7-day adjustable filter** — date range filter on task list (Today / 7d / 30d / All), default 7d
+- [ ] **Calendar group filter bug (web)** — fix web calendar showing all tasks regardless of group filter
+
+### UX
+- [ ] **Splash screen** — update to show "TaskApp" in app font and coloring
+- [ ] **Scroll indicators** — subtle gradient fade at bottom of scrollable lists
+
+---
+
+## v1.2 — Task Power Features *(planned)*
 
 - [ ] **Recurring tasks** — `recurrence` field on Task (frequency, interval, daysOfWeek, endDate)
   - Complete → advance dueDate in-place (no new doc)
@@ -76,7 +63,7 @@
 
 ---
 
-## v1.2 — Collaboration *(planned)*
+## v1.3 — Collaboration *(planned)*
 
 - [ ] **Task sharing / Workspaces** — new root `workspaces/{id}/tasks` collection
   - Workspace doc has `members: string[]`
@@ -117,7 +104,7 @@
 
 ---
 
-## 💡 Parking Lot (Ideas — No Version Assigned)
+## Parking Lot (Ideas — No Version Assigned)
 
 - **App Clips** — tight 15MB limit may be hard to meet with current Firebase+Expo binary
 - **Android port** — currently iOS-only (WidgetKit, Apple Sign-In)

@@ -46,10 +46,24 @@ function AppShell() {
     return () => { _showOnboarding = null; };
   }, []);
 
-  // Schedule streak at risk notification if no tasks completed today
+  // Schedule streak at risk notification only if:
+  // 1. Notifications are enabled
+  // 2. User has an active streak (> 0)
+  // 3. No tasks completed today
   useEffect(() => {
     const checkStreakReminder = async () => {
       try {
+        // Check if notifications are enabled first
+        const { loadSettings } = await import("@/lib/notifications");
+        const settings = await loadSettings();
+        if (!settings.enabled) return;
+
+        // Check if there's an active streak worth protecting
+        const streakRaw = await AsyncStorage.getItem("taskapp.currentStreak");
+        const currentStreak = streakRaw ? parseInt(streakRaw, 10) : 0;
+        if (currentStreak <= 0) return;
+
+        // Only schedule if no tasks completed today
         const todayStr = new Date().toISOString().slice(0, 10);
         const lastCompleted = await AsyncStorage.getItem("taskapp.lastCompletedDate");
         if (lastCompleted !== todayStr) {

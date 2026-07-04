@@ -22,6 +22,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { scheduleStreakMilestoneNotification } from "./notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type CreatedFrom = "tasks" | "ai" | "calendar" | "matrix";
 
@@ -285,6 +286,9 @@ export async function updateStreakData(uid: string): Promise<void> {
                 lastCompletedDate: todayStr,
             },
         });
+
+        // Persist streak locally so _layout.tsx can check without a Firestore read
+        AsyncStorage.setItem("taskapp.currentStreak", String(newCurrent)).catch(() => null);
 
         // Trigger streak milestone notification if applicable
         if (newCurrent > current.current) {

@@ -250,8 +250,8 @@ export async function cancelDailySummary(): Promise<void> {
 // ── Streak Milestones ───────────────────────────────────────────────────────
 
 export async function scheduleStreakMilestoneNotification(streak: number): Promise<void> {
-    // Check if the current streak is a milestone (e.g. 3, 7, 14, 21, 28, etc)
-    const isMilestone = streak === 3 || (streak > 3 && streak % 7 === 0);
+    // Only fire at meaningful milestones: 7, 14, 30, then every 30 after
+    const isMilestone = streak === 7 || streak === 14 || streak === 30 || (streak > 30 && streak % 30 === 0);
     if (!isMilestone) return;
 
     const hasPermission = await requestPermissions();
@@ -260,8 +260,8 @@ export async function scheduleStreakMilestoneNotification(streak: number): Promi
     await Notifications.scheduleNotificationAsync({
         identifier: `streak-milestone-${streak}`,
         content: {
-            title: "🔥 Streak Milestone!",
-            body: `You hit a ${streak}-day streak! Keep up the great work!`,
+            title: "Streak Milestone",
+            body: `You hit a ${streak}-day streak! Keep up the great work.`,
             sound: "default",
             ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
         },
@@ -281,18 +281,24 @@ export async function scheduleStreakAtRiskNotification(): Promise<void> {
 
     await cancelStreakAtRiskNotification(); // Clear any existing
 
+    // Build a one-shot trigger for 8 PM today (NOT a daily repeat)
+    const now = new Date();
+    const triggerDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+
+    // If it's already past 8 PM, don't schedule
+    if (triggerDate <= now) return;
+
     await Notifications.scheduleNotificationAsync({
         identifier: "streak-at-risk",
         content: {
-            title: "⚠️ Streak at Risk",
+            title: "Streak at Risk",
             body: "You haven't completed any tasks today. Complete one to keep your streak alive!",
             sound: "default",
             ...(Platform.OS === "android" ? { channelId: "task-reminders" } : {}),
         },
         trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DAILY,
-            hour: 20, // 8:00 PM
-            minute: 0,
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
         },
     });
 }

@@ -928,21 +928,29 @@ export default function TasksScreen() {
         }, [user?.uid])
     );
 
-    // Auto-reschedule notifications whenever tasks change
+    // Auto-reschedule notifications whenever tasks change (debounced)
+    const rescheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
-        let cancelled = false;
-        loadSettings().then((settings) => {
-            if (!cancelled && settings.enabled) {
-                const groupMap: Record<string, string> = {};
-                const colorMap: Record<string, string> = {};
-                for (const g of groups) {
-                    groupMap[g.id] = g.name;
-                    if (g.color) colorMap[g.id] = g.color;
+        // Clear any pending reschedule
+        if (rescheduleTimerRef.current) clearTimeout(rescheduleTimerRef.current);
+
+        rescheduleTimerRef.current = setTimeout(() => {
+            loadSettings().then((settings) => {
+                if (settings.enabled) {
+                    const groupMap: Record<string, string> = {};
+                    const colorMap: Record<string, string> = {};
+                    for (const g of groups) {
+                        groupMap[g.id] = g.name;
+                        if (g.color) colorMap[g.id] = g.color;
+                    }
+                    rescheduleAllReminders(tasks, settings, groupMap, colorMap);
                 }
-                rescheduleAllReminders(tasks, settings, groupMap, colorMap);
-            }
-        });
-        return () => { cancelled = true; };
+            });
+        }, 2000);
+
+        return () => {
+            if (rescheduleTimerRef.current) clearTimeout(rescheduleTimerRef.current);
+        };
     }, [tasks, groups]);
 
     const handleLocalChange = () => {
