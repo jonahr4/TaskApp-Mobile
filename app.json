@@ -9,9 +9,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/iPhone 17 - 1.png",
+      "image": "./assets/images/New Splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#a8c9e0"
+      "backgroundColor": "#b8a5e6"
     },
     "ios": {
       "supportsTablet": true,
