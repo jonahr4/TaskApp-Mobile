@@ -40,23 +40,30 @@ async function syncToWidget(tasks: Task[]) {
     }
 }
 
-export function useTasks(uid: string | undefined) {
+export function useTasks(uid: string | undefined, includeArchived: boolean = false) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const uidRef = useRef(uid);
     uidRef.current = uid;
+    const includeArchivedRef = useRef(includeArchived);
+    includeArchivedRef.current = includeArchived;
+
+    const applyFilter = useCallback((list: Task[]) => {
+        return includeArchivedRef.current ? list : list.filter((t) => !t.archived);
+    }, []);
 
     const loadLocal = useCallback(async () => {
         const local = await getLocalTasks();
-        setTasks(local);
+        setTasks(applyFilter(local));
         setLoading(false);
-    }, []);
+    }, [applyFilter]);
 
     useEffect(() => {
         if (uid) {
             // Cloud mode: real-time Firestore listener
             const unsub = onSnapshot(tasksQuery(uid), (snap) => {
-                setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Task)));
+                const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Task));
+                setTasks(includeArchivedRef.current ? fetched : fetched.filter((t) => !t.archived));
                 setLoading(false);
             });
             return unsub;
