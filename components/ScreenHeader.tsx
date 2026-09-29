@@ -215,6 +215,7 @@ export default function ScreenHeader({ title }: Props) {
                 <TouchableOpacity
                     onPress={() => setMenuOpen(!menuOpen)}
                     style={styles.profileBtn}
+                    testID="profile-menu"
                 >
                     <View style={[
                         styles.profileCircle,

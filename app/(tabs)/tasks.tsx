@@ -151,6 +151,7 @@ function TaskRow({
             style={styles.taskRow}
             onPress={onPress}
             activeOpacity={0.7}
+            testID="task-row"
         >
             <TouchableOpacity
                 style={[
@@ -311,6 +312,7 @@ function GroupPage({
                         <TouchableOpacity
                             onPress={() => onAddTask(group?.id ?? null)}
                             style={styles.addBtn}
+                            testID="group-add-task"
                         >
                             <Ionicons name="add" size={22} color={C.accent} />
                         </TouchableOpacity>
@@ -1294,7 +1296,7 @@ export default function TasksScreen() {
                 ]}
                 pointerEvents={fabOpen ? "auto" : "none"}
             >
-                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewGroup} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewGroup} activeOpacity={0.85} testID="fab-new-list">
                     <Ionicons name="folder-outline" size={20} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.fabMiniLabel}>New List</Text>
@@ -1314,7 +1316,7 @@ export default function TasksScreen() {
                 ]}
                 pointerEvents={fabOpen ? "auto" : "none"}
             >
-                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewTask} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.fabMiniBtn} onPress={handleNewTask} activeOpacity={0.85} testID="fab-new-task">
                     <Ionicons name="add-circle-outline" size={20} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.fabMiniLabel}>New Task</Text>
@@ -1325,6 +1327,7 @@ export default function TasksScreen() {
                 style={styles.fab}
                 onPress={toggleFab}
                 activeOpacity={0.85}
+                testID="fab"
             >
                 <Animated.View
                     style={{
