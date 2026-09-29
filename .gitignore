@@ -56,3 +56,7 @@ google-services.json
 # macOS duplicate files
 *\ 2.*
 *\ 2/
+
+# Playwright
+playwright-report/
+test-results/
