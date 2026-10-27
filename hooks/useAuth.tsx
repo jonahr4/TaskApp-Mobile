@@ -44,7 +44,7 @@ type AuthCtx = {
     signUpEmail: (email: string, password: string) => Promise<SyncScenario>;
     signInGoogle: () => Promise<SyncScenario>;
     signInApple: () => Promise<SyncScenario>;
-    deleteAccount: () => Promise<void>;
+    deleteAccount: (keepLocal: boolean) => Promise<void>;
     logOut: () => void;
     // Sync state
     syncScenario: SyncScenario | null;
@@ -205,13 +205,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setShowSignOutPrompt(false);
     };
 
-    const deleteAccount = async () => {
+    const deleteAccount = async (keepLocal: boolean) => {
         if (!user) throw new Error("No user signed in");
-        // Delete all cloud data first
+        if (keepLocal) {
+            const [tasksSnap, groupsSnap] = await Promise.all([
+                getDocs(tasksQuery(user.uid)),
+                getDocs(groupsQuery(user.uid)),
+            ]);
+            await replaceAllLocalTasks(
+                tasksSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+            );
+            await replaceAllLocalGroups(
+                groupsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))
+            );
+        }
         await deleteAllUserData(user.uid);
-        // Clear local cache
-        await clearLocalData();
-        // Delete the Firebase auth account
+        if (!keepLocal) {
+            await clearLocalData();
+        }
         await user.delete();
     };
 

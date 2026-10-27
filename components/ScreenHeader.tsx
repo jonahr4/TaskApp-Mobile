@@ -1,5 +1,6 @@
 import { triggerOnboarding } from "@/app/_layout";
 import { CalendarFeedSheet } from "@/components/CalendarFeedSheet";
+import DeleteAccountPrompt from "@/components/DeleteAccountPrompt";
 import { NotificationSettingsSheet } from "@/components/NotificationSettingsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useColors, useTheme } from "@/hooks/useTheme";
@@ -169,7 +170,8 @@ export default function ScreenHeader({ title }: Props) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [calFeedOpen, setCalFeedOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
-    const [deleting, setDeleting] = useState(false);
+    const [deleteAction, setDeleteAction] = useState<"keep" | "all" | null>(null);
+    const [deletePromptOpen, setDeletePromptOpen] = useState(false);
     const [showLinks, setShowLinks] = useState(false);
 
     const close = useCallback(() => {
@@ -178,32 +180,24 @@ export default function ScreenHeader({ title }: Props) {
     }, []);
 
     const handleDeleteAccount = useCallback(() => {
-        Alert.alert(
-            "Delete Account",
-            "This will permanently delete your account and all your data. This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        setDeleting(true);
-                        try {
-                            await deleteAccount();
-                            close();
-                        } catch (err: any) {
-                            const msg = err?.code === "auth/requires-recent-login"
-                                ? "For security, please sign out and sign back in, then try again."
-                                : err?.message || "Failed to delete account.";
-                            Alert.alert("Error", msg);
-                        } finally {
-                            setDeleting(false);
-                        }
-                    },
-                },
-            ]
-        );
-    }, [deleteAccount, close]);
+        close();
+        setDeletePromptOpen(true);
+    }, [close]);
+
+    const runDeleteAccount = useCallback(async (keepLocal: boolean) => {
+        setDeleteAction(keepLocal ? "keep" : "all");
+        try {
+            await deleteAccount(keepLocal);
+            setDeletePromptOpen(false);
+        } catch (err: any) {
+            const msg = err?.code === "auth/requires-recent-login"
+                ? "For security, please sign out and sign back in, then try again."
+                : err?.message || "Failed to delete account.";
+            Alert.alert("Error", msg);
+        } finally {
+            setDeleteAction(null);
+        }
+    }, [deleteAccount]);
 
     const styles = useMemo(() => makeStyles(C), [C]);
 
@@ -363,14 +357,14 @@ export default function ScreenHeader({ title }: Props) {
                                 <TouchableOpacity
                                     style={styles.menuBtn}
                                     onPress={handleDeleteAccount}
-                                    disabled={deleting}
+                                    disabled={deleteAction !== null}
                                     activeOpacity={0.7}
                                 >
                                     <View style={[styles.menuIconWrap, { backgroundColor: "rgba(239,68,68,0.08)" }]}>
                                         <Ionicons name="trash-outline" size={16} color={C.danger} />
                                     </View>
                                     <Text style={[styles.menuBtnText, { color: C.danger }]}>
-                                        {deleting ? "Deleting…" : "Delete Account"}
+                                        Delete Account
                                     </Text>
                                 </TouchableOpacity>
                             </>
@@ -399,6 +393,13 @@ export default function ScreenHeader({ title }: Props) {
             {/* Sheets */}
             <CalendarFeedSheet visible={calFeedOpen} onClose={() => setCalFeedOpen(false)} />
             <NotificationSettingsSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
+            <DeleteAccountPrompt
+                visible={deletePromptOpen}
+                busyAction={deleteAction}
+                onKeep={() => runDeleteAccount(true)}
+                onDeleteAll={() => runDeleteAccount(false)}
+                onCancel={() => setDeletePromptOpen(false)}
+            />
         </>
     );
 }
