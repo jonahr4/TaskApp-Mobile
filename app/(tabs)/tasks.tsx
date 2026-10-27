@@ -1,4 +1,5 @@
 import GroupModal from "@/components/GroupModal";
+import ReorderGroupsSheet from "@/components/ReorderGroupsSheet";
 import ScreenHeader from "@/components/ScreenHeader";
 import TaskModal from "@/components/TaskModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +8,8 @@ import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { useTasks } from "@/hooks/useTasks";
 import { useColors, useTheme } from "@/hooks/useTheme";
 import { logEvent } from "@/lib/analytics";
-import { createTaskUnified, deleteTaskUnified, reorderGroupsUnified, updateTaskUnified } from "@/lib/crud";
+import { createTaskUnified, deleteTaskUnified, updateTaskUnified } from "@/lib/crud";
+import { loadGeneralListOrder } from "@/lib/listOrder";
 import { loadSettings, rescheduleAllReminders } from "@/lib/notifications";
 import { Colors, FontSize, Radius, Shadows, Spacing } from "@/lib/theme";
 import type { Task, TaskGroup } from "@/lib/types";
@@ -21,7 +23,6 @@ import {
     Alert,
     Animated,
     Dimensions,
-    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -31,8 +32,6 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
-import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PEEK_WIDTH = 24;
@@ -918,6 +917,8 @@ export default function TasksScreen() {
     const { user } = useAuth();
     const { tasks, reloadLocal } = useTasks(user?.uid);
     const { groups, reloadLocal: reloadLocalGroups } = useTaskGroups(user?.uid);
+    const [generalListOrder, setGeneralListOrder] = useState(0);
+    const [groupOrderOverride, setGroupOrderOverride] = useState<string[] | null>(null);
     useAutoUrgent(user?.uid, tasks);
 
     useFocusEffect(
@@ -956,6 +957,41 @@ export default function TasksScreen() {
             if (rescheduleTimerRef.current) clearTimeout(rescheduleTimerRef.current);
         };
     }, [tasks, groups]);
+
+    useEffect(() => {
+        let cancelled = false;
+        loadGeneralListOrder(user?.uid).then((index) => {
+            if (!cancelled) setGeneralListOrder(index);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.uid]);
+
+    const orderedGroups = useMemo(() => {
+        const sorted = [...groups].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        if (!groupOrderOverride) return sorted;
+        const byId = new Map(sorted.map((group) => [group.id, group]));
+        const next: TaskGroup[] = [];
+        for (const id of groupOrderOverride) {
+            const group = byId.get(id);
+            if (group) next.push(group);
+        }
+        for (const group of sorted) {
+            if (!groupOrderOverride.includes(group.id)) next.push(group);
+        }
+        return next;
+    }, [groups, groupOrderOverride]);
+
+    useEffect(() => {
+        if (!groupOrderOverride) return;
+        const saved = [...groups]
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((group) => group.id);
+        if (saved.join("|") === groupOrderOverride.join("|")) {
+            setGroupOrderOverride(null);
+        }
+    }, [groups, groupOrderOverride]);
 
     const handleLocalChange = () => {
         reloadLocal();
@@ -1000,23 +1036,18 @@ export default function TasksScreen() {
         await new Promise<void>((r) => setTimeout(r, 600));
     }, [reloadLocal, reloadLocalGroups]);
 
-    // Build pages: one per group + "Ungrouped" if there are ungrouped tasks
     const pages = useMemo(() => {
-        const result: { group: TaskGroup | null; tasks: Task[] }[] = [];
-
-        // Always show an "Ungrouped" / general page first
         const ungrouped = tasks.filter(
-            (t) => !t.groupId || !groups.find((g) => g.id === t.groupId)
+            (t) => !t.groupId || !orderedGroups.find((g) => g.id === t.groupId)
         );
-        result.push({ group: null, tasks: ungrouped });
-
-        for (const g of groups) {
-            const groupTasks = tasks.filter((t) => t.groupId === g.id);
-            result.push({ group: g, tasks: groupTasks });
-        }
-
-        return result;
-    }, [tasks, groups]);
+        const groupPages: { group: TaskGroup | null; tasks: Task[] }[] = orderedGroups.map((g) => ({
+            group: g,
+            tasks: tasks.filter((t) => t.groupId === g.id),
+        }));
+        const index = Math.min(Math.max(generalListOrder, 0), groupPages.length);
+        groupPages.splice(index, 0, { group: null, tasks: ungrouped });
+        return groupPages;
+    }, [tasks, orderedGroups, generalListOrder]);
 
     const handleEditTask = useCallback((task: Task) => {
         setEditTask(task);
@@ -1380,78 +1411,20 @@ export default function TasksScreen() {
                 tasks={editGroup ? tasks.filter(t => t.groupId === editGroup.id) : []}
             />
 
-            {/* Reorder Groups Modal */}
-            <Modal
+            <ReorderGroupsSheet
                 visible={reorderModalOpen}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setReorderModalOpen(false)}
-            >
-                <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
-                    {/* Handle */}
-                    <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
-                        <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: C.borderLight }} />
-                    </View>
-                    {/* Header */}
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Platform.OS === "ios" ? 10 : Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: C.borderLight }}>
-                        <Text style={{ fontSize: FontSize.lg, fontWeight: "700", color: C.textPrimary }}>Reorder Groups</Text>
-                        <TouchableOpacity onPress={() => setReorderModalOpen(false)}>
-                            <Ionicons name="close-circle" size={28} color={C.textTertiary} />
-                        </TouchableOpacity>
-                    </View>
-                    {/* Hint */}
-                    <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xs }}>
-                        <Text style={{ fontSize: FontSize.sm, color: C.textTertiary }}>Hold and drag the ≡ handle to reorder</Text>
-                    </View>
-                    {/* Draggable Group List */}
-                    {groups.length === 0 ? (
-                        <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-                            <Ionicons name="layers-outline" size={40} color={C.borderLight} />
-                            <Text style={{ color: C.textTertiary, fontSize: FontSize.md }}>No groups to reorder</Text>
-                        </View>
-                    ) : (
-                        <DraggableFlatList
-                            data={groups}
-                            keyExtractor={(item) => item.id}
-                            onDragBegin={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-                            onDragEnd={async ({ data: reordered }) => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                await reorderGroupsUnified(user?.uid, reordered);
-                                if (!user) handleLocalChange();
-                            }}
-                            contentContainerStyle={{ padding: Spacing.lg, gap: 8 }}
-                            renderItem={({ item: g, drag, isActive }) => (
-                                <ScaleDecorator>
-                                    <TouchableOpacity
-                                        onLongPress={drag}
-                                        disabled={isActive}
-                                        activeOpacity={0.7}
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            backgroundColor: isActive ? C.accentLight : C.bgCard,
-                                            borderRadius: Radius.md,
-                                            borderWidth: 1,
-                                            borderColor: isActive ? C.accent : C.borderLight,
-                                            paddingHorizontal: Spacing.md,
-                                            paddingVertical: Spacing.md,
-                                            shadowColor: isActive ? "#000" : "transparent",
-                                            shadowOffset: { width: 0, height: 4 },
-                                            shadowOpacity: isActive ? 0.15 : 0,
-                                            shadowRadius: 8,
-                                            elevation: isActive ? 6 : 0,
-                                        }}
-                                    >
-                                        <Ionicons name="menu" size={22} color={isActive ? C.accent : C.textTertiary} style={{ marginRight: Spacing.sm }} />
-                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: g.color || C.textTertiary, marginRight: Spacing.sm }} />
-                                        <Text style={{ flex: 1, fontSize: FontSize.md, fontWeight: "600", color: C.textPrimary }} numberOfLines={1}>{g.name}</Text>
-                                    </TouchableOpacity>
-                                </ScaleDecorator>
-                            )}
-                        />
-                    )}
-                </GestureHandlerRootView>
-            </Modal>
+                groups={groups}
+                generalIndex={generalListOrder}
+                uid={user?.uid}
+                onClose={() => setReorderModalOpen(false)}
+                onApplied={(index, orderedIds) => {
+                    setGeneralListOrder(index);
+                    setGroupOrderOverride(orderedIds);
+                }}
+                onPersisted={() => {
+                    if (!user) handleLocalChange();
+                }}
+            />
         </View>
     );
 }

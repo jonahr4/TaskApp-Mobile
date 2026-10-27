@@ -9,6 +9,7 @@ import {
     createTask as cloudCreateTask,
     deleteGroup as cloudDeleteGroup,
     deleteTask as cloudDeleteTask,
+    reorderGroupOrders,
     updateGroup as cloudUpdateGroup,
     updateTask as cloudUpdateTask
 } from "./firestore";
@@ -127,10 +128,7 @@ export async function reorderGroupsUnified(
     orderedGroups: { id: string }[]
 ) {
     if (uid) {
-        // Cloud: sequential updates to avoid race conditions
-        for (let i = 0; i < orderedGroups.length; i++) {
-            await cloudUpdateGroup(uid, orderedGroups[i].id, { order: i });
-        }
+        await reorderGroupOrders(uid, orderedGroups.map((g) => g.id));
     } else {
         // Local: atomic batch update
         await localReorderGroups(orderedGroups.map((g) => g.id));

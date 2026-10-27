@@ -10,6 +10,7 @@ import {
     serverTimestamp,
     query,
     orderBy,
+    writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Task, TaskGroup } from "./types";
@@ -85,6 +86,16 @@ export async function updateGroup(
 
 export async function deleteGroup(uid: string, groupId: string) {
     return deleteDoc(doc(db, "users", uid, "taskGroups", groupId));
+}
+
+/** One commit for the whole list, so the screen doesn't jump after each row. */
+export async function reorderGroupOrders(uid: string, orderedIds: string[]): Promise<void> {
+    if (orderedIds.length === 0) return;
+    const batch = writeBatch(db);
+    orderedIds.forEach((id, index) => {
+        batch.update(doc(db, "users", uid, "taskGroups", id), { order: index });
+    });
+    await batch.commit();
 }
 
 // --- Calendar Token ---
